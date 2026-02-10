@@ -1,6 +1,7 @@
 
-import firebase from "firebase/compat/app";
-import "firebase/compat/auth";
+import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
+import type { Auth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 import type { Database } from "firebase/database";
 
@@ -45,27 +46,24 @@ export const isAuthConfigured = () => {
 
 // Inicializa o App
 let app;
-let auth: firebase.auth.Auth | null = null;
+let auth: Auth | null = null;
 let db: Database | null = null;
-let googleProvider: firebase.auth.GoogleAuthProvider | null = null;
+let googleProvider: GoogleAuthProvider | null = null;
 
 try {
-  // Use compat initialization
-  app = firebase.initializeApp(firebaseConfig);
+  app = initializeApp(firebaseConfig);
   
-  // Inicializa Auth (Compat)
-  auth = firebase.auth();
+  // Inicializa Auth (Modular)
+  auth = getAuth(app);
   // Defina o idioma do dispositivo
   auth.useDeviceLanguage();
-  
-  // Persistence setup
-  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
+  setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-  // Inicializa Database (Modular, compatible with compat app)
-  db = getDatabase(app as any);
+  // Inicializa Database (Modular)
+  db = getDatabase(app);
 
-  // Configura Provider Google (Compat)
-  googleProvider = new firebase.auth.GoogleAuthProvider();
+  // Configura Provider Google (Modular)
+  googleProvider = new GoogleAuthProvider();
   googleProvider.addScope('email');
   googleProvider.addScope('profile');
   googleProvider.setCustomParameters({

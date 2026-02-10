@@ -9,14 +9,25 @@ import { Chat } from './components/Chat';
 import { AIChat } from './components/AIChat';
 import { NPCManager } from './components/NPCManager';
 import { DiceTray } from './components/DiceTray';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { TermsOfService } from './components/TermsOfService';
 // Fix: Added missing icons X, Download, FileUp and aliased Map as MapIcon to support both usage styles in the app
-import { Dices, User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, CloudLightning, Loader2, Map, Map as MapIcon, Settings, CheckCircle2, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, PenTool, LayoutDashboard, Menu } from 'lucide-react';
+import { Dices, User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, CloudLightning, Loader2, Map, Map as MapIcon, Settings, CheckCircle2, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, PenTool, LayoutDashboard, Menu, Shield, Scale } from 'lucide-react';
 import { DEFAULT_MONSTERS, INITIAL_CHAR } from './constants';
 
 import { auth, googleProvider, db, isDriveConfigured } from './firebaseConfig';
-// Import compat firebase for types and auth methods reference if needed (though we use the exported auth instance mostly)
-import firebase from "firebase/compat/app";
-import "firebase/compat/auth";
+
+// Modular Firebase Auth Imports
+import { 
+  getRedirectResult, 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  signInWithRedirect, 
+  signInAnonymously, 
+  signOut, 
+  User as FirebaseUser,
+  Auth
+} from "firebase/auth";
 
 import { ref, onValue, set, update, push, child, get } from "firebase/database";
 import { initGapiClient, initGisClient, saveFileToDrive, openDrivePicker } from './googleDrive';
@@ -162,7 +173,7 @@ const DEFAULT_MAP_CONFIG: MapConfig = {
 
 export default function App() {
   const [viewState, setViewState] = useState<'LAUNCHER' | 'APP'>('LAUNCHER');
-  const [currentUser, setCurrentUser] = useState<firebase.User | null>(null);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [roomName, setRoomName] = useState('Minha Campanha');
   const [campaignName, setCampaignName] = useState(''); 
   const [campaignPassword, setCampaignPassword] = useState(''); 
@@ -200,6 +211,8 @@ export default function App() {
   const [driveStatus, setDriveStatus] = useState<'disconnected' | 'connected' | 'saving' | 'error'>('disconnected');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false); // Estado para o modal de privacidade
+  const [showTerms, setShowTerms] = useState(false); // Estado para o modal de Termos de Uso
   const [showAI, setShowAI] = useState(false);
   const [showNotepad, setShowNotepad] = useState(false);
   const [isDriveLoading, setIsDriveLoading] = useState(false);
@@ -252,12 +265,8 @@ export default function App() {
 
     if (!auth) return;
     
-    // Using compat auth methods
-    auth.getRedirectResult().then((result: any) => {
-        if (result && result.user) setCurrentUser(result.user);
-    }).catch(handleAuthError);
-
-    const unsubscribe = auth.onAuthStateChanged((user: any) => {
+    // Auth State Observer using Modular syntax
+    const unsubscribe = onAuthStateChanged(auth as Auth, (user) => {
       if (user) setCurrentUser(user);
       else setViewState('LAUNCHER');
     });
@@ -507,8 +516,8 @@ export default function App() {
 
     try {
       if (!currentUser) {
-          if (method === 'popup') await auth.signInWithPopup(googleProvider);
-          else { await auth.signInWithRedirect(googleProvider); return; }
+          if (method === 'popup') await signInWithPopup(auth as Auth, googleProvider);
+          else { await signInWithRedirect(auth as Auth, googleProvider); return; }
       }
       setIsSyncing(false);
       attemptJoinRoom();
@@ -521,7 +530,7 @@ export default function App() {
       setIsSyncing(true);
       try {
           if (!auth) throw new Error("Auth module missing");
-          await auth.signInAnonymously();
+          await signInAnonymously(auth as Auth);
           setIsSyncing(false);
           attemptJoinRoom();
       } catch (e: any) {
@@ -769,24 +778,26 @@ export default function App() {
               <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0c0a09]"></div>
               <div className="relative z-10 animate-in slide-in-from-left duration-700">
                   <div className="flex items-center gap-3 mb-6">
-                      <Dices size={48} className={th.text} />
+                      <img src="/favicon.png" alt="Logo" className="w-16 h-16 drop-shadow-lg" onError={(e) => { e.currentTarget.style.display='none'; }} />
                       <h1 className="text-6xl font-cinzel font-bold text-stone-100 tracking-tighter drop-shadow-lg">RPGNEP</h1>
                   </div>
                   <p className="text-xl text-stone-300 max-w-md leading-relaxed font-serif italic drop-shadow-md">
                       "Onde lendas são forjadas e destinos rolados."
                   </p>
               </div>
-              <div className="relative z-10 text-stone-500 text-sm flex gap-4">
+              <div className="relative z-10 text-stone-500 text-sm flex gap-4 items-center">
                   <span>v2.1 • Ultimate</span>
                   <span>|</span>
-                  <span>D&D 5e Compatible</span>
+                  <button onClick={() => setShowPrivacy(true)} className="hover:text-amber-500 transition-colors">Política de Privacidade</button>
+                  <span>|</span>
+                  <button onClick={() => setShowTerms(true)} className="hover:text-amber-500 transition-colors">Termos de Uso</button>
               </div>
           </div>
 
           <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 bg-[#0c0a09] relative">
             <div className="w-full max-w-md space-y-8 animate-in zoom-in-95 duration-500">
                 <div className="lg:hidden text-center mb-8">
-                    <Dices size={64} className={`mx-auto mb-4 ${th.text}`} />
+                    <img src="/favicon.png" alt="Logo" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" onError={(e) => { e.currentTarget.style.display='none'; }} />
                     <h1 className="text-4xl font-cinzel font-bold text-white">RPGNEP</h1>
                 </div>
 
@@ -861,7 +872,7 @@ export default function App() {
                     
                     {currentUser && !showPasswordPrompt && (
                         <div className="mt-4 text-center">
-                            <button onClick={() => {if(auth) auth.signOut(); setCurrentUser(null);}} className="text-xs text-stone-500 hover:text-white underline">Sair de {currentUser.email || 'Convidado'}</button>
+                            <button onClick={() => {if(auth) signOut(auth as Auth); setCurrentUser(null);}} className="text-xs text-stone-500 hover:text-white underline">Sair de {currentUser.email || 'Convidado'}</button>
                         </div>
                     )}
 
@@ -877,6 +888,11 @@ export default function App() {
                     )}
                 </div>
                 
+                <div className="text-center mt-4 lg:hidden flex gap-4 justify-center">
+                    <button onClick={() => setShowPrivacy(true)} className="text-xs text-stone-600 hover:text-stone-400">Privacidade</button>
+                    <button onClick={() => setShowTerms(true)} className="text-xs text-stone-600 hover:text-stone-400">Termos</button>
+                </div>
+
                 {authError && (
                     <div className="bg-red-900/20 p-4 rounded-lg border border-red-800/50 flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex items-start gap-3">
@@ -896,7 +912,7 @@ export default function App() {
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setMode('SHEET')}>
                 <div className={`p-2 rounded-lg bg-gradient-to-br from-stone-800 to-stone-900 border border-white/10 group-hover:border-amber-500/50 transition-colors`}>
-                    <Dices className={`${th.text} transition-transform group-hover:rotate-180 duration-500`} size={24} />
+                    <img src="/favicon.png" alt="RPGNEP" className="w-6 h-6 object-contain group-hover:rotate-12 transition-transform duration-500" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500 transition-transform group-hover:rotate-180 duration-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
                 </div>
                 <h1 className="text-xl font-cinzel font-bold text-stone-200 tracking-widest group-hover:text-white transition-colors bg-clip-text text-transparent bg-gradient-to-r from-stone-200 to-stone-400">RPGNEP</h1>
               </div>
@@ -951,7 +967,7 @@ export default function App() {
                     <button onClick={() => setShowNotepad(!showNotepad)} className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-300 ${showNotepad ? 'bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/50' : 'hover:bg-white/5 text-stone-400 hover:text-yellow-400'}`} title="Bloco de Notas"><FileText size={18}/></button>
                     <button onClick={() => setShowSaveModal(true)} className={`w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors relative ${unsavedChanges ? 'text-amber-500' : 'text-stone-400 hover:text-green-400'}`} title="Salvar / Carregar"><Save size={18}/>{unsavedChanges && <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_#f59e0b]"></span>}</button>
                     <button onClick={() => setShowConfigModal(true)} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/5 text-stone-400 hover:text-white transition-colors" title="Configurações"><Settings size={18}/></button>
-                    <button onClick={() => { if(auth) auth.signOut(); setViewState('LAUNCHER'); setCurrentUser(null); }} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-stone-400 hover:text-red-500 transition-colors" title="Sair"><LogOut size={18}/></button>
+                    <button onClick={() => { if(auth) signOut(auth as Auth); setViewState('LAUNCHER'); setCurrentUser(null); }} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-stone-400 hover:text-red-500 transition-colors" title="Sair"><LogOut size={18}/></button>
                 </div>
             </div>
           </header>
@@ -959,7 +975,7 @@ export default function App() {
           {/* MOBILE HEADER (Visible on Mobile) */}
           <header className={`md:hidden fixed top-0 left-0 right-0 z-40 bg-stone-950/90 backdrop-blur-md border-b border-white/5 h-[50px] flex justify-between items-center px-4 shadow-md`}>
              <div className="flex items-center gap-2">
-                <Dices className={th.text} size={20} />
+                <img src="/favicon.png" alt="RPGNEP" className="w-6 h-6 object-contain" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
                 <h1 className="text-lg font-cinzel font-bold text-white tracking-widest">RPGNEP</h1>
              </div>
              <div className="flex items-center gap-3">
@@ -983,7 +999,7 @@ export default function App() {
                           <button onClick={() => {setShowConfigModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><Settings size={18}/> Configurações</button>
                           <button onClick={handleShare} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><LinkIcon size={18}/> Compartilhar Sala</button>
                           <div className="border-t border-stone-800 my-2"></div>
-                          <button onClick={() => { if(auth) auth.signOut(); setViewState('LAUNCHER'); }} className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-900/20 text-red-400"><LogOut size={18}/> Sair</button>
+                          <button onClick={() => { if(auth) signOut(auth as Auth); setViewState('LAUNCHER'); }} className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-900/20 text-red-400"><LogOut size={18}/> Sair</button>
                       </div>
                   </div>
               </div>

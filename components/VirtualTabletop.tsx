@@ -66,28 +66,50 @@ const TEXTURE_LINKS = {
     stone: convertDriveLink('https://drive.google.com/file/d/1zniemBGbdoKUUk71DHvyBqr_1odIffl6/view?usp=drive_link')
 };
 
-const LIST_IMG = [
-  'cogu1.PNG', 'cogu2.PNG', 'cogu3.PNG', 'cogu4.PNG', 'cogu5.PNG', 'cogu6.PNG',
-  'dunge0.PNG', 'dunge1.PNG', 'dunge2.PNG', 'dunge3.PNG', 'dunge4.PNG', 'dunge5.PNG', 'dunge6.PNG', 'dunge7.PNG', 'dunge8.PNG', 'dunge9.PNG', 'dunge10.PNG',
-  'flora1.PNG', 'flora2.PNG', 'flora3.PNG', 'flora4.PNG', 'flora5.PNG', 'flora7.PNG', 'flora8.PNG', 'flora9.PNG',
-  'g_pantano1.png', 'g_pantano2.png', 'g_pantano3.png', 'g_pantano4.png', 'g_pantano5.png', 'g_pantano6.png', 'g_pantano7.png', 'g_pantano9.png',
-  'mesa.png', 'rpgtextura2.JPG', 'rpgtextura3.JPG', 'rpgtextura4.JPG', 'rpgtextura5.JPG', 'rpgtextura6.JPG',
-  'textura.PNG', 'textura1.PNG', 'textura2.PNG', 'textura3.PNG'
-].map(f => `/textures/img/${f}`);
+const LIST_FLOORS = [
+    'https://drive.google.com/file/d/1yG9prBlEFYd7oIBXNZuDIwGM4wk4O0FU/view?usp=drive_link', 'https://drive.google.com/file/d/1HNz3dAJOeTdobi-b9xIt5yYj_tlnivrp/view?usp=drive_link', 'https://drive.google.com/file/d/1adfSWf_NUJG-k6plRsPeNloNcAa4B83i/view?usp=drive_link',
+    'https://drive.google.com/file/d/1JCo2EkynAsld7ekD3f-v-nRpOutDrtVs/view?usp=drive_link', 'https://drive.google.com/file/d/10dL8ga4lOMILVOm6izO7c4qtytRL34k5/view?usp=drive_link', 'https://drive.google.com/file/d/145r_7v3CTP-vzOl1bPtZ1w7LBDqrbUdv/view?usp=drive_link',
+    'https://drive.google.com/file/d/1-mIpVdTTyiwKg0DmQdpTMNnr31appvFx/view?usp=drive_link', 'https://drive.google.com/file/d/1Lda7MgJKwBSjNTQHpKZ5gT45JpjQSRGf/view?usp=drive_link', 'https://drive.google.com/file/d/1g7OEoPcvFpsDAUZWsvmA_wBGyNh5MkRD/view?usp=drive_link',
+    'https://drive.google.com/file/d/1wdqT7aURB0ZBM0NpzfLnwcWn6tkormbR/view?usp=drive_link', 'https://drive.google.com/file/d/1uPZrAFQYnvryyEHSmMqwxe-KZd7OQFld/view?usp=drive_link', 'https://drive.google.com/file/d/1ehX92xYJ5Nqfc3c3uQDMd8KFRp2fJHzW/view?usp=drive_link',
+    'https://drive.google.com/file/d/1a9g-bW1-0sw-dTgqP3lPRknZ7arqHd3d/view?usp=drive_link', 'https://drive.google.com/file/d/1dh5xUJS4g1o1_avyxFbDlWzFHxf69FGl/view?usp=drive_link', 'https://drive.google.com/file/d/1K4KFVnvpzZdPWkoxcGPVdwNiupJb9hxb/view?usp=drive_link',
+    'https://drive.google.com/file/d/1GEdbfoVyiz5An3disV_OjNuZt4I7P0pp/view?usp=drive_link', 'https://drive.google.com/file/d/1v_Z6qu7lT-34NkWdscV2mcRhH54D8whX/view?usp=drive_link', 'https://drive.google.com/file/d/1qbtdzL1B1jCZJ6XyBW1dSmk0xFEVbKiC/view?usp=drive_link',
+    'https://drive.google.com/file/d/1kyzNyJ1QSl7LFEv_zFGAMTAtP6-X6swt/view?usp=drive_link', 'https://drive.google.com/file/d/1cu8gmMz78gnuEriiK7diGOEpyyQwXLVw/view?usp=drive_link', 'https://drive.google.com/file/d/1Tt1T68es0iQCDs88D0aqdUaTYKw6tqND/view?usp=drive_link',
+    'https://drive.google.com/file/d/1SKusYB09QYiZQ_p3xtqlB3uYT87bnXsZ/view?usp=drive_link', 'https://drive.google.com/file/d/1GgZdSqo5_gvl3OiZzbKbn0lfKI1K80Su/view?usp=drive_link', 'https://drive.google.com/file/d/140bQQqxJXA6TKTK9ZtY9Hr5nyJhj9tL_/view?usp=drive_link',
+    'https://drive.google.com/file/d/1kSLRTNf3wXCurBxjtts2RQeFbOB_tc66/view?usp=drive_link', 'https://drive.google.com/file/d/1xVzcv5V15IeoLHycKgPVjhOLusaqNsW1/view?usp=drive_link', 'https://drive.google.com/file/d/16RTIw74t78nNhnLA6FLLRUdWk_YzGmaq/view?usp=drive_link',
+    'https://drive.google.com/file/d/1RvGSubwbY7aDnlWs4SCbL0NimIXt85KX/view?usp=drive_link', 'https://drive.google.com/file/d/1ctEqP1sEnMYM_Ksij2x5rPv0oC7MvjXW/view?usp=drive_link', 'https://drive.google.com/file/d/1poluq_9UPff3VZnnv4mvWaZgHJIliHN2/view?usp=drive_link',
+    'https://drive.google.com/file/d/16s7bUlV6lGGOHyuka3mxzSWO96Aj7p6-/view?usp=drive_link', 'https://drive.google.com/file/d/1zniemBGbdoKUUk71DHvyBqr_1odIffl6/view?usp=drive_link', 'https://drive.google.com/file/d/17BuRpKR5L55ap11IEeJWGWOHsbAOHr1x/view?usp=drive_link',
+    'https://drive.google.com/file/d/1bP5vpuQ5Ifv4HDmC6AzXCj3urPh3b3IJ/view?usp=drive_link', 'https://drive.google.com/file/d/1G9ZhwZ6cfHNiN1HYcVR97whTMt3XXnPL/view?usp=drive_link', 'https://drive.google.com/file/d/1z4Bggrb8VKxB4RgnFzjqgEvkwWJbQLmz/view?usp=drive_link',
+    'https://drive.google.com/file/d/1pcZTgCK223xzAEBKEr3bOLP5-Ev6P7bj/view?usp=drive_link', 'https://drive.google.com/file/d/1xuZX3xrV6MlYsjKnKimm_xg6NCk_spOJ/view?usp=drive_link', 'https://drive.google.com/file/d/1DlmOnVCKurqBdPjrDIkIl01Mgm_zdBYf/view?usp=drive_link',
+    'https://drive.google.com/file/d/1domgLutcRcO1GIbyN2oyxjqk001F774z/view?usp=drive_link', 'https://drive.google.com/file/d/1wW1RNK8fWA1DBWSAub3T_6Nd7YkQv89y/view?usp=drive_link', 'https://drive.google.com/file/d/1fdUHnw1Ho3a8a4kA6YSYhr3gIxx6w-uC/view?usp=drive_link',
+    'https://drive.google.com/file/d/1p5aNeoO_OuxxH-FE2HARVct77PTn6aSK/view?usp=drive_link', 'https://drive.google.com/file/d/1n-wxgpjytlU-2ofq0XP8w-9XOc2u3umt/view?usp=drive_link', 'https://drive.google.com/file/d/1J5hbiIbBrvCIIxc71DF_OMyM-Hep0Xmr/view?usp=drive_link',
+    'https://drive.google.com/file/d/1MUolSL8ntxAMPSnfuxS5qeb6Fmyd-8AW/view?usp=drive_link', 'https://drive.google.com/file/d/1CdC0cLbCWvgDY_BIRe075mjvjJKznri5/view?usp=drive_link', 'https://drive.google.com/file/d/1udR23AMUwX1Dr1YNMYDHWkvyp9jsHgLP/view?usp=drive_link'
+];
 
-const LIST_MURRO = [
-  '1.PNG', '2.PNG', '3.PNG', '4.PNG', '5.PNG', '6.PNG', '7.PNG',
-  'muro10.PNG', 'muro11.PNG', 'muro12.PNG',
-  'murro.PNG', 'murro1.PNG', 'murro3.PNG', 'murro4.PNG', 'murro5.PNG', 'murro6.PNG', 'murro7.PNG', 'murro8.PNG', 'murro9.PNG'
-].map(f => `/textures/murro/${f}`);
+const LIST_WALLS = [
+    'https://drive.google.com/open?id=1eQO_jF0GBK_FACz3MnqV14nJvfgCc8P0', 'https://drive.google.com/open?id=1S6-xVi37VPHPpfokAu6VRCvLgpt6xgcA', 'https://drive.google.com/open?id=1xJal9EoezMkI9ysp0W0aX-e49kP8KWap',
+    'https://drive.google.com/open?id=1-Bde6F9trcacg37dDElhOK843cQTNjqS', 'https://drive.google.com/open?id=1aSdfsmlZ8lFQuVhf4Puv3GO6yBaqAtOL', 'https://drive.google.com/open?id=1pjiSTmd6ib03I2i4WhUs7zJbyXop1s3g',
+    'https://drive.google.com/open?id=1ouPmYHSg670PY_arpHaa93yAl5tdmdSL', 'https://drive.google.com/open?id=1fEkjvDTgsCue0DP38EVnJNml1dcrvDt0', 'https://drive.google.com/open?id=1aBFC4V6tRB-eMuvrcNum1gvbe9Iyy3fb',
+    'https://drive.google.com/open?id=1jOu63dqxYO3g-bZxPDIoRLT2yUYP7oLT', 'https://drive.google.com/open?id=1R8MMPRSAe-bA1sC2M-b4bvj1wORxo_dJ', 'https://drive.google.com/open?id=1KqSMZzneWE_-nkKXILQhDP1VBggvGein',
+    'https://drive.google.com/file/d/1frLi8C6HN9QEL64BPvk3LaEyDV7QHpYJ/view?usp=drive_link', 'https://drive.google.com/file/d/1e44PDQWVlPMOtRx7mMeC_JwS66GeQHnu/view?usp=drive_link', 'https://drive.google.com/file/d/12U-pFEmE15qlAgbgJIMcNx1229SeNgox/view?usp=drive_link',
+    'https://drive.google.com/file/d/1PyK8whMDX1jeG5YQQndf4FMr8wapag7-/view?usp=drive_link', 'https://drive.google.com/file/d/1aSBty1TYBn_LKa4wH_MN3F5g_1YMLLVd/view?usp=drive_link', 'https://drive.google.com/file/d/1vIn2JQ39zbbduUCBRdpj-9sK1iNrjsdn/view?usp=drive_link',
+    'https://drive.google.com/file/d/1qy3bmOENt6HQfBPZb2ileIlIomqrN_wm/view?usp=drive_link', 'https://drive.google.com/file/d/1eQO_jF0GBK_FACz3MnqV14nJvfgCc8P0/view?usp=drive_link'
+];
 
-const LIST_PREDIOS = [
-  '1.PNG', '13.png', '1_2.png', '1_3.png', '1_4.png', '1_6.png', '1_7.png', '1_8.png', '1_9.png', '7_1.png', '7_2.png', '7_3.png'
-].map(f => `/textures/predios/${f}`);
+const LIST_BUILDINGS = [
+    'https://drive.google.com/file/d/1N5A6F37tV7lr_3mCzypCU-NZCdPTKNrw/view?usp=drive_link', 'https://drive.google.com/file/d/1tJhKk6o6jI3VNHWBwTiNMKS73k8zU5Xx/view?usp=drive_link', 'https://drive.google.com/file/d/1fdD3dM4VFHpTON016FnfC5OqPSgNhK0A/view?usp=drive_link',
+    'https://drive.google.com/file/d/1fSn7OZL-H_XsIqBXjkFGajiMDlPuJwhT/view?usp=drive_link', 'https://drive.google.com/file/d/1naxjar7A0cZgMveMTPNdOCZM_EOs2NUK/view?usp=drive_link', 'https://drive.google.com/file/d/1T6_gfF4kiIhd70Rrc2USu2Z0thMV4elg/view?usp=drive_link',
+    'https://drive.google.com/file/d/1Mf0lUyrx58nRMkrmcxJ1n5n31nvA0p39/view?usp=drive_link', 'https://drive.google.com/file/d/1JdJ5SsmYLlHYxRtJniGyS7KUaEqzVSLv/view?usp=drive_link', 'https://drive.google.com/file/d/1XahZ_x1BcB6WWNbV81QwvCAP_NLtYMFK/view?usp=drive_link',
+    'https://drive.google.com/file/d/1jp9ZcruzOFc8vMcL7Kdx3EBLOJwS-6kr/view?usp=drive_link', 'https://drive.google.com/file/d/1I8jm2yhskVvUdReX9c932YT0opMc0cV_/view?usp=drive_link', 'https://drive.google.com/file/d/1trm2YDmTeLbufKKMoTljXvym5wNDA1cN/view?usp=drive_link'
+];
 
-const LIST_VEGETACAO = [
-  'arbusto.PNG', 'arbusto_de_flores.png', 'arvore.PNG', 'baga.PNG', 'castor.PNG', 'coelho.PNG', 'cogumelo.PNG', 'cogumelomarron.PNG', 'cogumelomarronp.PNG', 'esquilo.PNG', 'florbranca.PNG', 'furão.PNG', 'java.PNG', 'lobo.PNG', 'ratinhos.PNG', 'raul.PNG', 'teixugo.PNG', 'urso.PNG'
-].map(f => `/textures/vegetacao/${f}`);
+const LIST_NATURE = [
+    'https://drive.google.com/file/d/1zb0s6nxSG5y7vVV7W_5PN01v-BXOycVv/view?usp=drive_link', 'https://drive.google.com/file/d/1Q5AWEw93pQa8mc5ohqF_IeoIF8D1NRBz/view?usp=drive_link', 'https://drive.google.com/file/d/1OVAzJyS087ZHv7e1Jb7rWVbawMfICK6p/view?usp=drive_link',
+    'https://drive.google.com/file/d/1rC6oN8Lnt9tmj9Ika_uBe71GsuVOlp0j/view?usp=drive_link', 'https://drive.google.com/file/d/16ZzMaAUTWUHU0HQ63X5LnsBAOFJe9dzf/view?usp=drive_link', 'https://drive.google.com/file/d/1wX2KKoi_wyM3Mp9axYLUzIVmn0UGU1Sa/view?usp=drive_link',
+    'https://drive.google.com/file/d/1bpibaBo9QJZaeIpA7IEU4tGdgq6qx1ez/view?usp=drive_link', 'https://drive.google.com/file/d/1MpokFiXfCFy4Mus_1ZHc1vBqwGJ9kuWo/view?usp=drive_link', 'https://drive.google.com/file/d/1iSpnc-mfRpa-RI_Osvtba5tfAiyw_Kxi/view?usp=drive_link',
+    'https://drive.google.com/file/d/1VBwlTZPydLRxKHPwnQOsYLOZGOhGFIcI/view?usp=drive_link', 'https://drive.google.com/file/d/1KTirMyOC7N6MZrCkmXimqE88CLuN9Yu5/view?usp=drive_link', 'https://drive.google.com/file/d/1okGbMibtorTKozUQ_eWwRmtC7hen90ND/view?usp=drive_link',
+    'https://drive.google.com/file/d/1XylzNe0A0tjPxyO1SjI1Of5dmmJYG-Jd/view?usp=drive_link', 'https://drive.google.com/file/d/1vJ_7vpog3TWOeva9bZK_XJBgPqbVbh1I/view?usp=drive_link', 'https://drive.google.com/file/d/113hL7pB4SKK1QPs6_N9SE7Cf2wXeHIPF/view?usp=drive_link',
+    'https://drive.google.com/file/d/1_SkIMjbmhMXFYmlbJp6uNDa0B2RcGMu0/view?usp=drive_link', 'https://drive.google.com/file/d/1m7-l9rK4ID3TjeToi2pnn9MTehT11zJD/view?usp=drive_link', 'https://drive.google.com/file/d/1vO2Yn9ZHvKvchVH6Htx9dWde71zOY-5G/view?usp=drive_link'
+];
 
 const LIST_MAPS = [
     'https://drive.google.com/file/d/1BUaI_x0bWCgsmwoiYZDnXUWUn3XS6Rf0/view?usp=drive_link',
@@ -105,10 +127,10 @@ const PALETTES: Record<string, {c: string, n: string}[]> = {
         {c: TEXTURE_LINKS.water, n: 'Água'}, {c: TEXTURE_LINKS.grass, n: 'Grama'},
         {c: TEXTURE_LINKS.wood, n: 'Madeira'}, {c: TEXTURE_LINKS.stone, n: 'Pedra'}
     ],
-    "Pisos e Chão": LIST_IMG.map((url, i) => ({ c: convertDriveLink(url), n: `Piso ${i+1}` })),
-    "Paredes e Muros": LIST_MURRO.map((url, i) => ({ c: convertDriveLink(url), n: `Parede ${i+1}` })),
-    "Estruturas": LIST_PREDIOS.map((url, i) => ({ c: convertDriveLink(url), n: `Construção ${i+1}` })),
-    "Natureza": LIST_VEGETACAO.map((url, i) => ({ c: convertDriveLink(url), n: `Flora ${i+1}` })),
+    "Pisos e Chão": LIST_FLOORS.map((url, i) => ({ c: convertDriveLink(url), n: `Piso ${i+1}` })),
+    "Paredes e Muros": LIST_WALLS.map((url, i) => ({ c: convertDriveLink(url), n: `Parede ${i+1}` })),
+    "Estruturas": LIST_BUILDINGS.map((url, i) => ({ c: convertDriveLink(url), n: `Construção ${i+1}` })),
+    "Natureza": LIST_NATURE.map((url, i) => ({ c: convertDriveLink(url), n: `Flora ${i+1}` })),
     "Mapas Prontos": LIST_MAPS.map((url, i) => ({ c: convertDriveLink(url), n: `Mapa ${i+1}` })),
 };
 
@@ -1256,10 +1278,10 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
 
   return (
     <div className="flex h-full bg-[#0a0a10] text-[#e8e8ff] font-lato overflow-hidden relative" onContextMenu={e => e.preventDefault()}>
-        {!sidebarOpen && ( <button onClick={() => setSidebarOpen(true)} className="absolute top-4 left-4 z-30 p-2 bg-[#181822] border border-[#444] rounded-lg text-[#ffb74d] hover:bg-[#252535] shadow-lg opacity-80 hover:opacity-100"><ChevronRight size={20} /></button> )}
+        {!sidebarOpen && ( <button onClick={() => setSidebarOpen(true)} className="absolute top-2 left-2 md:top-4 md:left-4 z-30 p-2 bg-[#181822] border border-[#444] rounded-lg text-[#ffb74d] hover:bg-[#252535] shadow-lg opacity-80 hover:opacity-100"><ChevronRight size={20} /></button> )}
         
         {/* RESPONSIVE SIDEBAR: Drawer on Mobile, Sidebar on Desktop */}
-        <div className={`fixed inset-0 md:static z-50 md:z-20 bg-[#181822] md:bg-transparent md:flex md:flex-col md:border-r-[3px] md:border-[#2a2a3a] md:shadow-2xl md:shrink-0 transition-all duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0 w-full md:w-[300px]' : '-translate-x-full w-0 md:opacity-0 md:overflow-hidden'}`}>
+        <div className={`fixed inset-0 z-50 md:static md:z-20 bg-[#181822] md:bg-transparent md:flex md:flex-col md:border-r-[3px] md:border-[#2a2a3a] md:shadow-2xl md:shrink-0 transition-all duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0 w-full md:w-[300px]' : '-translate-x-full w-0 md:opacity-0 md:overflow-hidden'}`}>
             <div className="flex items-center justify-between p-3 border-b border-[#2a2a3a] bg-[#181822]"><h1 className="font-cinzel text-[#ffb74d] text-base tracking-[2px] truncate">FERRAMENTAS</h1><button onClick={() => setSidebarOpen(false)} className="p-1 text-stone-500 hover:text-white"><ChevronLeft size={18} /></button></div>
             <div className="flex-1 overflow-y-auto p-2 custom-scrollbar bg-[#181822]">
                 {/* ... (Sidebar buttons logic remains same until Map Tab) ... */}
@@ -1275,7 +1297,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
 
                 {sidebarTab === 'tools' && !isGameMode && (
                     <div className="space-y-4">
-                        <div className="grid grid-cols-4 gap-1">
+                        <div className="flex overflow-x-auto gap-2 p-1 md:grid md:grid-cols-4 md:gap-1">
                             {[
                                 { id: 'pencil', icon: Pencil, title: 'Lápis' }, { id: 'eraser', icon: Eraser, title: 'Borracha' },
                                 { id: 'fill', icon: PaintBucket, title: 'Balde' }, { id: 'move', icon: Move, title: 'Mover' },
@@ -1283,7 +1305,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                                 { id: 'fog-hide', icon: EyeOff, title: 'Esconder (Névoa)' }, { id: 'fog-reveal', icon: Eye, title: 'Revelar (Névoa)' },
                                 { id: 'ruler', icon: Ruler, title: 'Régua' }, { id: 'hand', icon: Hand, title: 'Panorâmica' }
                             ].map(t => (
-                                <button key={t.id} onClick={() => setTool(t.id as any)} className={`p-2 rounded border flex items-center justify-center transition-all ${tool === t.id ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#252535] border-[#333] text-stone-400 hover:text-white'}`} title={t.title}>
+                                <button key={t.id} onClick={() => setTool(t.id as any)} className={`p-2 rounded border flex items-center justify-center transition-all shrink-0 min-w-[40px] md:min-w-0 ${tool === t.id ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#252535] border-[#333] text-stone-400 hover:text-white'}`} title={t.title}>
                                     <t.icon size={18} />
                                 </button>
                             ))}
@@ -1591,7 +1613,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                 }}
             />
             {/* ... Rest of Canvas UI ... */}
-            <div className="absolute top-4 right-4 flex flex-col gap-2">
+            <div className="absolute top-16 right-2 md:top-4 md:right-4 flex flex-col gap-2 scale-75 md:scale-100 origin-top-right">
                 <button onClick={centerMap} className="bg-[#181822] p-2 rounded-full border border-[#444] text-white hover:bg-[#252535] shadow-lg" title="Resetar Vista"><Target size={20}/></button>
                 <button onClick={fitToScreen} className="bg-[#181822] p-2 rounded-full border border-[#444] text-white hover:bg-[#252535] shadow-lg" title="Ajustar à Tela"><Maximize size={20}/></button>
                 <div className="bg-[#181822] rounded-full border border-[#444] flex flex-col overflow-hidden shadow-lg mt-2">
@@ -1602,7 +1624,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                 <button onClick={() => setShowFog(!showFog)} className={`p-2 rounded-full border shadow-lg mt-2 ${showFog ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#181822] border-[#444] text-stone-400'}`} title="Alternar Névoa"><CloudRain size={20}/></button>
             </div>
 
-            <div className="absolute bottom-24 left-4 flex gap-2">
+            <div className="absolute top-16 left-2 md:top-auto md:bottom-24 md:left-4 flex gap-2 scale-75 md:scale-100 origin-top-left">
                 <button onClick={undo} disabled={historyIndex <= 0} className="bg-[#181822] p-2 rounded-full border border-[#444] text-white disabled:opacity-50 hover:bg-[#252535] shadow-lg"><Undo2 size={20}/></button>
                 <button onClick={redo} disabled={historyIndex >= history.length - 1} className="bg-[#181822] p-2 rounded-full border border-[#444] text-white disabled:opacity-50 hover:bg-[#252535] shadow-lg"><Redo2 size={20}/></button>
             </div>
@@ -1848,14 +1870,14 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
         </div>
         
         {/* Token Bench */}
-        <div className="absolute bottom-0 left-0 w-full h-20 bg-[#181822] border-t border-[#333] z-20 flex items-center px-4 gap-4 overflow-x-auto custom-scrollbar">
+        <div className="absolute bottom-0 left-0 w-full h-16 md:h-20 bg-[#181822] border-t border-[#333] z-20 flex items-center px-4 gap-4 overflow-x-auto custom-scrollbar">
             {!isGameMode && (
                 <>
-                    <button onClick={() => addTokenToBench(false)} className="flex flex-col items-center justify-center w-16 h-16 rounded border border-dashed border-[#444] text-stone-500 hover:text-[#ffb74d] hover:border-[#ffb74d] shrink-0">
+                    <button onClick={() => addTokenToBench(false)} className="flex flex-col items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded border border-dashed border-[#444] text-stone-500 hover:text-[#ffb74d] hover:border-[#ffb74d] shrink-0">
                         <Plus size={20}/>
                         <span className="text-[9px] font-bold mt-1">NPC</span>
                     </button>
-                    <button onClick={() => handleAddPropFromSelection()} className="flex flex-col items-center justify-center w-16 h-16 rounded border border-dashed border-[#444] text-stone-500 hover:text-blue-400 hover:border-blue-400 shrink-0">
+                    <button onClick={() => handleAddPropFromSelection()} className="flex flex-col items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded border border-dashed border-[#444] text-stone-500 hover:text-blue-400 hover:border-blue-400 shrink-0">
                         <Plus size={20}/>
                         <span className="text-[9px] font-bold mt-1">Objeto</span>
                     </button>
@@ -1868,7 +1890,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                     draggable
                     onDragStart={(e) => handleBenchDragStart(e, token)}
                     onContextMenu={(e) => handleBenchContextMenu(e, token.id)}
-                    className="relative w-14 h-14 bg-[#222] rounded-full border-2 border-[#444] hover:border-[#ffb74d] cursor-grab active:cursor-grabbing flex items-center justify-center shrink-0 group transition-all"
+                    className="relative w-12 h-12 md:w-14 md:h-14 bg-[#222] rounded-full border-2 border-[#444] hover:border-[#ffb74d] cursor-grab active:cursor-grabbing flex items-center justify-center shrink-0 group transition-all"
                 >
                     {token.image ? (
                         <img src={token.image} className="w-full h-full object-cover rounded-full pointer-events-none" />

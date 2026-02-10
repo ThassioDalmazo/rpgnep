@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 /* Added Monster to the imports from ./types */
 import { AppMode, Character, EncounterParticipant, LogEntry, Token, CampaignData, ChatMessage, MapConfig, Monster } from './types';
@@ -11,14 +10,21 @@ import { NPCManager } from './components/NPCManager';
 import { DiceTray } from './components/DiceTray';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
-// Fix: Added missing icons X, Download, FileUp and aliased Map as MapIcon to support both usage styles in the app
 import { Dices, User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, CloudLightning, Loader2, Map, Map as MapIcon, Settings, CheckCircle2, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, PenTool, LayoutDashboard, Menu, Shield, Scale } from 'lucide-react';
 import { DEFAULT_MONSTERS, INITIAL_CHAR } from './constants';
 
 import { auth, googleProvider, db, isDriveConfigured } from './firebaseConfig';
-// Import compat firebase for types and auth methods reference if needed (though we use the exported auth instance mostly)
-import firebase from "firebase/compat/app";
-import "firebase/compat/auth";
+
+// Modular Firebase Auth Imports
+import { 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  signInWithRedirect, 
+  signInAnonymously, 
+  signOut, 
+  User as FirebaseUser,
+  Auth
+} from "firebase/auth";
 
 import { ref, onValue, set, update, push, child, get } from "firebase/database";
 import { initGapiClient, initGisClient, saveFileToDrive, openDrivePicker } from './googleDrive';
@@ -164,7 +170,7 @@ const DEFAULT_MAP_CONFIG: MapConfig = {
 
 export default function App() {
   const [viewState, setViewState] = useState<'LAUNCHER' | 'APP'>('LAUNCHER');
-  const [currentUser, setCurrentUser] = useState<firebase.User | null>(null);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [roomName, setRoomName] = useState('Minha Campanha');
   const [campaignName, setCampaignName] = useState(''); 
   const [campaignPassword, setCampaignPassword] = useState(''); 
@@ -256,12 +262,8 @@ export default function App() {
 
     if (!auth) return;
     
-    // Using compat auth methods
-    auth.getRedirectResult().then((result: any) => {
-        if (result && result.user) setCurrentUser(result.user);
-    }).catch(handleAuthError);
-
-    const unsubscribe = auth.onAuthStateChanged((user: any) => {
+    // Auth State Observer using Modular syntax
+    const unsubscribe = onAuthStateChanged(auth as Auth, (user) => {
       if (user) setCurrentUser(user);
       else setViewState('LAUNCHER');
     });
@@ -511,8 +513,8 @@ export default function App() {
 
     try {
       if (!currentUser) {
-          if (method === 'popup') await auth.signInWithPopup(googleProvider);
-          else { await auth.signInWithRedirect(googleProvider); return; }
+          if (method === 'popup') await signInWithPopup(auth as Auth, googleProvider);
+          else { await signInWithRedirect(auth as Auth, googleProvider); return; }
       }
       setIsSyncing(false);
       attemptJoinRoom();
@@ -525,7 +527,7 @@ export default function App() {
       setIsSyncing(true);
       try {
           if (!auth) throw new Error("Auth module missing");
-          await auth.signInAnonymously();
+          await signInAnonymously(auth as Auth);
           setIsSyncing(false);
           attemptJoinRoom();
       } catch (e: any) {
@@ -773,7 +775,7 @@ export default function App() {
               <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0c0a09]"></div>
               <div className="relative z-10 animate-in slide-in-from-left duration-700">
                   <div className="flex items-center gap-3 mb-6">
-                      <Dices size={48} className={th.text} />
+                      <img src="/icon.png" alt="Logo" className="w-16 h-16 drop-shadow-lg" onError={(e) => { e.currentTarget.style.display='none'; }} />
                       <h1 className="text-6xl font-cinzel font-bold text-stone-100 tracking-tighter drop-shadow-lg">RPGNEP</h1>
                   </div>
                   <p className="text-xl text-stone-300 max-w-md leading-relaxed font-serif italic drop-shadow-md">
@@ -792,7 +794,7 @@ export default function App() {
           <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 bg-[#0c0a09] relative">
             <div className="w-full max-w-md space-y-8 animate-in zoom-in-95 duration-500">
                 <div className="lg:hidden text-center mb-8">
-                    <Dices size={64} className={`mx-auto mb-4 ${th.text}`} />
+                    <img src="/icon.png" alt="Logo" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" onError={(e) => { e.currentTarget.style.display='none'; }} />
                     <h1 className="text-4xl font-cinzel font-bold text-white">RPGNEP</h1>
                 </div>
 
@@ -867,7 +869,7 @@ export default function App() {
                     
                     {currentUser && !showPasswordPrompt && (
                         <div className="mt-4 text-center">
-                            <button onClick={() => {if(auth) auth.signOut(); setCurrentUser(null);}} className="text-xs text-stone-500 hover:text-white underline">Sair de {currentUser.email || 'Convidado'}</button>
+                            <button onClick={() => {if(auth) signOut(auth as Auth); setCurrentUser(null);}} className="text-xs text-stone-500 hover:text-white underline">Sair de {currentUser.email || 'Convidado'}</button>
                         </div>
                     )}
 
@@ -907,7 +909,7 @@ export default function App() {
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setMode('SHEET')}>
                 <div className={`p-2 rounded-lg bg-gradient-to-br from-stone-800 to-stone-900 border border-white/10 group-hover:border-amber-500/50 transition-colors`}>
-                    <Dices className={`${th.text} transition-transform group-hover:rotate-180 duration-500`} size={24} />
+                    <img src="/icon.png" alt="RPGNEP" className="w-6 h-6 object-contain group-hover:rotate-12 transition-transform duration-500" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500 transition-transform group-hover:rotate-180 duration-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
                 </div>
                 <h1 className="text-xl font-cinzel font-bold text-stone-200 tracking-widest group-hover:text-white transition-colors bg-clip-text text-transparent bg-gradient-to-r from-stone-200 to-stone-400">RPGNEP</h1>
               </div>
@@ -962,7 +964,7 @@ export default function App() {
                     <button onClick={() => setShowNotepad(!showNotepad)} className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-300 ${showNotepad ? 'bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/50' : 'hover:bg-white/5 text-stone-400 hover:text-yellow-400'}`} title="Bloco de Notas"><FileText size={18}/></button>
                     <button onClick={() => setShowSaveModal(true)} className={`w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors relative ${unsavedChanges ? 'text-amber-500' : 'text-stone-400 hover:text-green-400'}`} title="Salvar / Carregar"><Save size={18}/>{unsavedChanges && <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_#f59e0b]"></span>}</button>
                     <button onClick={() => setShowConfigModal(true)} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/5 text-stone-400 hover:text-white transition-colors" title="Configurações"><Settings size={18}/></button>
-                    <button onClick={() => { if(auth) auth.signOut(); setViewState('LAUNCHER'); setCurrentUser(null); }} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-stone-400 hover:text-red-500 transition-colors" title="Sair"><LogOut size={18}/></button>
+                    <button onClick={() => { if(auth) signOut(auth as Auth); setViewState('LAUNCHER'); setCurrentUser(null); }} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-stone-400 hover:text-red-500 transition-colors" title="Sair"><LogOut size={18}/></button>
                 </div>
             </div>
           </header>
@@ -970,7 +972,7 @@ export default function App() {
           {/* MOBILE HEADER (Visible on Mobile) */}
           <header className={`md:hidden fixed top-0 left-0 right-0 z-40 bg-stone-950/90 backdrop-blur-md border-b border-white/5 h-[50px] flex justify-between items-center px-4 shadow-md`}>
              <div className="flex items-center gap-2">
-                <Dices className={th.text} size={20} />
+                <img src="/icon.png" alt="RPGNEP" className="w-6 h-6 object-contain" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
                 <h1 className="text-lg font-cinzel font-bold text-white tracking-widest">RPGNEP</h1>
              </div>
              <div className="flex items-center gap-3">
@@ -979,293 +981,3 @@ export default function App() {
              </div>
           </header>
 
-          {/* MOBILE MENU DRAWER */}
-          {mobileMenuOpen && (
-              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end" onClick={() => setMobileMenuOpen(false)}>
-                  <div className="w-64 bg-stone-900 h-full border-l border-stone-800 p-4 animate-in slide-in-from-right" onClick={e => e.stopPropagation()}>
-                      <div className="flex justify-between items-center mb-6 border-b border-stone-800 pb-2">
-                          <span className="font-bold text-stone-200">Menu</span>
-                          <button onClick={() => setMobileMenuOpen(false)}><X size={24} className="text-stone-500"/></button>
-                      </div>
-                      <div className="space-y-4">
-                          <button onClick={() => {setShowAI(!showAI); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><Sparkles size={18}/> Oráculo IA</button>
-                          <button onClick={() => {setShowNotepad(!showNotepad); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><FileText size={18}/> Bloco de Notas</button>
-                          <button onClick={() => {setShowSaveModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><Save size={18}/> Salvar / Carregar</button>
-                          <button onClick={() => {setShowConfigModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><Settings size={18}/> Configurações</button>
-                          <button onClick={() => {setShowPrivacy(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><ShieldCheck size={18}/> Política de Privacidade</button>
-                          <button onClick={() => {setShowTerms(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><Scale size={18}/> Termos de Uso</button>
-                          <button onClick={handleShare} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><LinkIcon size={18}/> Compartilhar Sala</button>
-                          <div className="border-t border-stone-800 my-2"></div>
-                          <button onClick={() => { if(auth) auth.signOut(); setViewState('LAUNCHER'); }} className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-900/20 text-red-400"><LogOut size={18}/> Sair</button>
-                      </div>
-                  </div>
-              </div>
-          )}
-
-          {/* MOBILE BOTTOM NAVIGATION */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-stone-950 border-t border-white/10 h-[60px] flex items-center justify-around px-2 pb-safe">
-            {[
-                { id: 'SHEET', icon: User, label: 'Herói' },
-                { id: 'NPC', icon: Users, label: 'NPCs' },
-                { id: 'VTT', icon: MapIcon, label: 'Mapa' },
-                { id: 'DM', icon: ShieldCheck, label: 'Mestre' },
-                { id: 'CHAT', icon: MessageSquare, label: 'Chat' }
-            ].map((item) => (
-                <button 
-                    key={item.id}
-                    onClick={() => setMode(item.id as AppMode)}
-                    className={`flex flex-col items-center justify-center w-full h-full gap-1 ${mode === item.id ? 'text-amber-500' : 'text-stone-500'}`}
-                >
-                    <item.icon size={20} className={mode === item.id ? 'fill-current/20' : ''} />
-                    <span className="text-[9px] font-bold uppercase">{item.label}</span>
-                </button>
-            ))}
-          </nav>
-
-          <main className="flex-1 overflow-hidden relative flex mt-[50px] mb-[60px] md:mt-[64px] md:mb-0 h-[calc(100vh-110px)] md:h-[calc(100vh-64px)]">
-            {mode === 'SHEET' && (
-                <aside className="hidden md:flex w-64 bg-stone-900 border-r border-stone-800 flex-col z-20 shadow-xl">
-                    <div className="p-4 border-b border-stone-800 flex justify-between items-center bg-stone-950/50">
-                        <span className="text-xs font-bold text-stone-400 uppercase tracking-wider flex items-center gap-2"><LayoutDashboard size={14}/> Aventureiros</span>
-                        <div className="flex gap-1">
-                            <label className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white cursor-pointer transition-all" title="Importar Ficha">
-                                <FileUp size={16}/>
-                                <input type="file" hidden accept=".json" onChange={handleCharacterImport} />
-                            </label>
-                            <button onClick={() => {const newC = {...INITIAL_CHAR, id: generateId()}; setCharacters([...characters, newC]); setActiveCharIndex(characters.length);}} className={`p-1.5 rounded-lg bg-stone-800 hover:bg-amber-600 text-stone-400 hover:text-white transition-all`} title="Novo Personagem"><Plus size={16}/></button>
-                        </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
-                        {characters.map((c, i) => (
-                            <button 
-                                key={c.id} 
-                                onClick={() => setActiveCharIndex(i)} 
-                                className={`w-full p-3 rounded-xl border text-left transition-all group relative overflow-hidden ${
-                                    activeCharIndex === i 
-                                    ? `bg-gradient-to-r from-stone-800 to-stone-800/50 border-amber-500/30 shadow-lg` 
-                                    : 'bg-stone-900 border-transparent hover:bg-stone-800 hover:border-stone-700'
-                                }`}
-                            >
-                                {activeCharIndex === i && <div className={`absolute left-0 top-0 bottom-0 w-1 ${th.primary}`}></div>}
-                                <div className={`font-bold text-sm mb-0.5 ${activeCharIndex === i ? 'text-white' : 'text-stone-400 group-hover:text-stone-200'}`}>{c.name}</div>
-                                <div className="text-[10px] text-stone-500 flex justify-between items-center">
-                                    <span className="bg-black/20 px-1.5 py-0.5 rounded">{c.class}</span>
-                                    <span className={`font-mono ${activeCharIndex === i ? 'text-amber-500' : ''}`}>Nvl {c.level}</span>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                </aside>
-            )}
-
-            <div className="flex-1 overflow-hidden relative bg-[#0c0a09]">
-                {mode === 'SHEET' && (
-                <div className="h-full overflow-y-auto custom-scrollbar p-2 md:p-4 lg:p-8">
-                    {/* Mobile Character Toggle */}
-                    <div className="md:hidden flex overflow-x-auto gap-2 mb-4 no-scrollbar pb-2">
-                        <button onClick={() => {const newC = {...INITIAL_CHAR, id: generateId()}; setCharacters([...characters, newC]); setActiveCharIndex(characters.length);}} className="flex-shrink-0 w-10 h-10 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center text-stone-400"><Plus size={20}/></button>
-                        <label className="flex-shrink-0 w-10 h-10 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center text-stone-400 cursor-pointer">
-                            <FileUp size={20}/>
-                            <input type="file" hidden accept=".json" onChange={handleCharacterImport} />
-                        </label>
-                        {characters.map((c, i) => (
-                            <button 
-                                key={c.id} 
-                                onClick={() => setActiveCharIndex(i)}
-                                className={`flex-shrink-0 px-4 py-2 rounded-full border text-xs font-bold ${activeCharIndex === i ? 'bg-amber-900/30 border-amber-600 text-amber-500' : 'bg-stone-900 border-stone-800 text-stone-500'}`}
-                            >
-                                {c.name}
-                            </button>
-                        ))}
-                    </div>
-
-                    <CharacterSheetMemo 
-                        char={activeChar} 
-                        setChar={(c: any) => {
-                            const newChars = [...characters];
-                            if (typeof c === 'function') {
-                                newChars[activeCharIndex] = c(newChars[activeCharIndex]);
-                            } else {
-                                newChars[activeCharIndex] = c;
-                            }
-                            setCharacters(newChars);
-                        }} 
-                        onRoll={(d: number, mod: number, label: string) => {
-                            const r1 = Math.floor(Math.random() * d) + 1;
-                            const total = r1 + mod;
-                            addLogEntry(label, `${activeChar.name} rolou ${label}: [${r1}] + ${mod} = ${total}`, r1 === 20 ? 'crit' : r1 === 1 ? 'fail' : 'dice');
-                            broadcastChat(`🎲 Rolou ${label}: [${r1}]${mod>=0?'+':''}${mod} = **${total}**`);
-                        }}
-                        onDelete={() => {
-                            if(characters.length <= 1) { alert("Você precisa ter pelo menos um personagem."); return; }
-                            if(window.confirm(`Excluir ${activeChar.name}?`)) {
-                                const newChars = characters.filter(c => c.id !== activeChar.id);
-                                setCharacters(newChars);
-                                setActiveCharIndex(0);
-                            }
-                        }}
-                    />
-                </div>
-                )}
-                
-                {mode === 'NPC' && (
-                    <NPCManager 
-                        npcs={npcs} 
-                        onUpdate={(updated) => setNpcs(prev => prev.map(n => n.id === updated.id ? updated : n))}
-                        onAdd={() => setNpcs(prev => [...prev, { ...INITIAL_CHAR, id: generateId(), name: "Novo NPC", level: 0 }])}
-                        onDelete={(id) => setNpcs(prev => prev.filter(n => n.id !== id))}
-                        onRoll={(d, mod, label) => {
-                            const r1 = Math.floor(Math.random() * d) + 1;
-                            const total = r1 + mod;
-                            addLogEntry(label, `Mestre rolou ${label}: [${r1}] + ${mod} = ${total}`, 'dice');
-                            broadcastChat(`🎲 Mestre rolou ${label}: [${r1}]${mod>=0?'+':''}${mod} = **${total}**`);
-                        }}
-                    />
-                )}
-
-                {mode === 'VTT' && (
-                    <VirtualTabletopMemo 
-                        mapGrid={mapGrid} 
-                        setMapGrid={(g: string[][]) => broadcastMap(g, mapTokens, fogGrid)} 
-                        tokens={mapTokens} 
-                        setTokens={(t: any) => {
-                            const newVal = typeof t === 'function' ? t(mapTokens) : t;
-                            broadcastMap(mapGrid, newVal, fogGrid);
-                        }}
-                        fogGrid={fogGrid}
-                        setFogGrid={(fog: boolean[][]) => broadcastMap(mapGrid, mapTokens, fog)}
-                        characters={characters}
-                        monsters={monsters}
-                        mapConfig={mapConfig}
-                        setMapConfig={setMapConfig}
-                        activeTokenIds={activeTokenIds}
-                    />
-                )}
-                
-                {mode === 'DM' && (
-                <div className="h-full overflow-hidden">
-                    <DMToolsMemo 
-                        encounter={encounter} 
-                        setEncounter={(e: EncounterParticipant[]) => { setEncounter(e); }} 
-                        logs={logs} 
-                        addLog={addLogEntry}
-                        characters={characters}
-                        monsters={monsters}
-                        setMonsters={setMonsters}
-                        turnIndex={turnIndex}
-                        setTurnIndex={setTurnIndex}
-                        targetUid={targetUid}
-                        setTargetUid={setTargetUid}
-                    />
-                </div>
-                )}
-                
-                {mode === 'CHAT' && (
-                    <div className="h-full w-full p-2 md:p-4 overflow-hidden bg-stone-950 flex flex-col items-center">
-                        <div className="w-full max-w-4xl h-full flex flex-col">
-                           <Chat messages={chatMessages} onSendMessage={broadcastChat} username={username} isFullPage={true} />
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <AIChat isOpen={showAI} onClose={() => setShowAI(false)} characters={characters} encounter={encounter} />
-            <DiceTray onRoll={broadcastChat} />
-            <PrivacyPolicy isOpen={showPrivacy} onClose={() => setShowPrivacy(false)} />
-            <TermsOfService isOpen={showTerms} onClose={() => setShowTerms(false)} />
-            
-            {showNotepad && (
-                <div className="fixed top-[60px] right-4 md:right-20 w-[90%] md:w-80 bg-[#1c1917] border border-stone-800 shadow-2xl rounded-xl z-[60] flex flex-col overflow-hidden animate-in slide-in-from-top-5 ring-1 ring-white/10">
-                    <div className="bg-gradient-to-r from-yellow-900/20 to-stone-900 p-3 flex justify-between items-center border-b border-stone-800 cursor-move">
-                        <div className="flex items-center gap-2 text-yellow-500 font-bold text-sm">
-                            <FileText size={16}/> Bloco de Notas
-                        </div>
-                        <button onClick={() => setShowNotepad(false)} className="text-stone-500 hover:text-white transition-colors"><X size={16}/></button>
-                    </div>
-                    <textarea 
-                        className="w-full h-64 p-4 bg-[#0c0a09] resize-y outline-none text-stone-300 text-sm leading-relaxed font-mono placeholder-stone-700"
-                        placeholder="Anotações rápidas da sessão..."
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                    />
-                    <div className="bg-stone-900 p-1.5 text-[10px] text-stone-500 text-center border-t border-stone-800">
-                        Sincronizado automaticamente
-                    </div>
-                </div>
-            )}
-          </main>
-
-          {/* ... (Modals remain mostly same but ensure they match dark theme) ... */}
-          {showSaveModal && (
-              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
-                  {/* ... content ... */}
-                  <div className="bg-[#1a1a1d] border border-stone-700 p-6 rounded-lg w-full max-w-md shadow-2xl relative">
-                      <button onClick={() => setShowSaveModal(false)} className="absolute top-2 right-2 text-stone-500 hover:text-white"><X size={20}/></button>
-                      <h2 className={`text-xl font-bold text-stone-200 mb-4 flex items-center gap-2`}><Save size={20} className={th.text}/> Gerenciar Campanha</h2>
-                      <div className="space-y-4">
-                          <input className="w-full bg-[#222] border border-[#333] rounded p-2 text-white focus:border-amber-500 outline-none" value={saveFilename} onChange={e => setSaveFilename(e.target.value)} placeholder={campaignName || roomName} />
-                          <div className="grid grid-cols-2 gap-3">
-                              <button onClick={handleLocalSave} className="flex flex-col items-center justify-center p-3 bg-stone-800 hover:bg-stone-700 rounded border border-stone-600 gap-2 transition-all">
-                                  <Download className="text-blue-400" size={24}/>
-                                  <span className="text-xs font-bold text-stone-300">Download Local</span>
-                              </button>
-                              <button onClick={executeSave} disabled={!isDriveReady || isDriveLoading} className={`flex flex-col items-center justify-center p-3 rounded gap-2 transition-all group ${isDriveReady ? 'bg-green-900/30 border border-green-700 hover:bg-green-900/50' : 'bg-stone-800/50 border border-stone-700 opacity-50 cursor-not-allowed'}`}>
-                                  {isDriveLoading ? <Loader2 className="animate-spin text-green-400" size={24}/> : <Cloud className={isDriveReady ? "text-green-400 group-hover:scale-110 transition-transform" : "text-stone-500"} size={24}/>}
-                                  <span className="text-xs font-bold text-stone-300">Google Drive</span>
-                              </button>
-                          </div>
-                          <div className="border-t border-stone-700 pt-4">
-                              <div className="grid grid-cols-2 gap-3">
-                                  <label className="flex flex-col items-center justify-center p-3 bg-stone-800 hover:bg-stone-700 rounded border border-stone-600 gap-2 cursor-pointer transition-all">
-                                      <FileUp className={th.text} size={24}/>
-                                      <span className="text-xs font-bold text-stone-300">Upload Local</span>
-                                      <input type="file" hidden accept=".json" onChange={handleLocalLoad} />
-                                  </label>
-                                  <button onClick={handlePickFromDrive} disabled={!isDriveReady || isDriveLoading} className={`flex flex-col items-center justify-center p-3 rounded border gap-2 transition-all ${isDriveReady ? 'bg-purple-900/30 border-purple-700 hover:bg-purple-900/50' : 'bg-stone-800/50 opacity-50 cursor-not-allowed'}`}>
-                                      <Globe className="text-purple-400" size={24}/>
-                                      <span className="text-xs font-bold text-stone-300">Abrir Drive</span>
-                                  </button>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          )}
-
-          {showConfigModal && (
-              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">
-                  <div className="bg-[#1a1a1d] border border-stone-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
-                      <h3 className="text-xl font-bold text-white mb-4">Configurações</h3>
-                      <div className="space-y-4">
-                          <div>
-                              <label className="block text-stone-400 text-sm mb-2">Tema</label>
-                              <div className="flex gap-2">
-                                  <button onClick={() => setTheme('dark')} className={`flex-1 py-2 rounded border ${theme === 'dark' ? 'bg-stone-700 border-stone-500 text-white' : 'bg-[#222] border-[#333] text-stone-500'}`}><Moon size={16} className="mx-auto"/></button>
-                                  <button onClick={() => setTheme('light')} className={`flex-1 py-2 rounded border ${theme === 'light' ? 'bg-stone-200 border-stone-300 text-black' : 'bg-[#222] border-[#333] text-stone-500'}`}><Sun size={16} className="mx-auto"/></button>
-                              </div>
-                          </div>
-                          <div>
-                              <label className="block text-stone-400 text-sm mb-2">Senha da Sala (Mestre)</label>
-                              <div className="flex gap-2">
-                                  <input type="text" className="flex-1 bg-[#222] border border-stone-600 rounded p-2 text-white focus:border-amber-500 outline-none" value={campaignPassword} onChange={e => setCampaignPassword(e.target.value)} placeholder="Opcional" />
-                              </div>
-                          </div>
-                          
-                          <div className="border-t border-stone-700 pt-4 mt-2 space-y-2">
-                              <button onClick={() => setShowPrivacy(true)} className="w-full flex items-center justify-center gap-2 p-3 bg-stone-800 hover:bg-stone-700 rounded-lg text-stone-300 hover:text-white transition-colors border border-stone-700">
-                                <ShieldCheck size={18}/> Política de Privacidade
-                              </button>
-                              <button onClick={() => setShowTerms(true)} className="w-full flex items-center justify-center gap-2 p-3 bg-stone-800 hover:bg-stone-700 rounded-lg text-stone-300 hover:text-white transition-colors border border-stone-700">
-                                <Scale size={18}/> Termos de Uso
-                              </button>
-                          </div>
-                      </div>
-                      <button onClick={() => setShowConfigModal(false)} className="w-full mt-4 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded shadow-lg">Concluído</button>
-                  </div>
-              </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Monster, EncounterParticipant, LogEntry, Character } from '../types';
 import { SPELLS_DB, COMMON_WEAPONS } from '../constants';
-import { Search, Shield, Ghost, Sword, Play, ArrowDownUp, Dices, Crosshair, Minus, ChevronsUp, ChevronsDown, Trash2, Activity, Sparkles, Wand2, ScrollText, Star, X, Plus, Pencil, Users, Axe, Book, Zap } from 'lucide-react';
+import { Search, Shield, Ghost, Sword, Play, ArrowDownUp, Dices, Crosshair, Minus, ChevronsUp, ChevronsDown, Trash2, Activity, Sparkles, Wand2, ScrollText, Star, X, Plus, Pencil, Users, Axe, Book, Zap, Maximize, Minimize } from 'lucide-react';
 
 interface Props {
   encounter: EncounterParticipant[];
@@ -27,7 +27,7 @@ const CR_XP: Record<string, number> = {
     '21': 33000, '22': 41000, '23': 50000, '24': 62000, '30': 155000
 };
 
-export const DMTools: React.FC<Props> = ({ encounter, setEncounter, logs, addLog, characters, monsters, setMonsters, turnIndex, setTurnIndex, targetUid, setTargetUid }) => {
+export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = [], addLog, characters = [], monsters = [], setMonsters, turnIndex, setTurnIndex, targetUid, setTargetUid }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [libraryTab, setLibraryTab] = useState<'party' | 'bestiary' | 'spells' | 'weapons' | 'abilities'>('party');
   
@@ -57,6 +57,7 @@ export const DMTools: React.FC<Props> = ({ encounter, setEncounter, logs, addLog
   // Combat State
   const [rollMode, setRollMode] = useState<'normal' | 'adv' | 'dis'>('normal');
   const [sessionXp, setSessionXp] = useState(0);
+  const [isCombatFullscreen, setIsCombatFullscreen] = useState(false);
 
   const conditionsList = [
     "Agarrado", "Amedrontado", "Atordoado", "Caído", "Cego", 
@@ -68,25 +69,26 @@ export const DMTools: React.FC<Props> = ({ encounter, setEncounter, logs, addLog
   // --- Helper: Parse Character Actions (5e Rules Implemented) ---
   const getCharacterActions = (char: Character): { n: string; hit: number; dmg: string }[] => {
     const actions: { n: string; hit: number; dmg: string }[] = [];
-    
+    if (!char) return actions;
+
     // 1. Calculate Base Stats
-    const prof = Math.ceil(1 + (char.level / 4));
-    const strMod = Math.floor((char.attributes.str - 10) / 2);
-    const dexMod = Math.floor((char.attributes.dex - 10) / 2);
-    const chaMod = Math.floor((char.attributes.cha - 10) / 2);
+    const prof = Math.ceil(1 + ((char.level || 1) / 4));
+    const strMod = Math.floor(((char.attributes?.str || 10) - 10) / 2);
+    const dexMod = Math.floor(((char.attributes?.dex || 10) - 10) / 2);
+    const chaMod = Math.floor(((char.attributes?.cha || 10) - 10) / 2);
     
     // Spell Casting
-    const castingStatStr = char.spells.castingStat || 'int';
+    const castingStatStr = char.spells?.castingStat || 'int';
     // @ts-ignore
-    const castingMod = Math.floor(((char.attributes[castingStatStr as keyof typeof char.attributes] || 10) - 10) / 2);
+    const castingMod = Math.floor(((char.attributes?.[castingStatStr as keyof typeof char.attributes] || 10) - 10) / 2);
     const spellHit = prof + castingMod;
 
     // Check Special Classes/Subclasses
-    const isMonk = char.class.toLowerCase() === 'monge';
+    const isMonk = char.class?.toLowerCase() === 'monge';
     const isHexblade = char.subclass?.toLowerCase().includes('hexblade');
 
     // 2. Parse Weapons from Inventory
-    const invLines = char.inventory.split('\n');
+    const invLines = (char.inventory || "").split('\n');
     invLines.forEach(line => {
         // Regex para capturar nome e dano do formato padrão "- Espada | Dano: 1d8 | ..."
         const structMatch = line.match(/(?:-\s*)?(.*?)\s*\|\s*Dano:\s*(\d+d\d+)/i);
@@ -135,7 +137,7 @@ export const DMTools: React.FC<Props> = ({ encounter, setEncounter, logs, addLog
     let unarmedMod = strMod;
     
     // Racial Natural Weapons
-    const r = char.race.toLowerCase();
+    const r = (char.race || "").toLowerCase();
     if (r.includes('tabaxi') || r.includes('leonino') || r.includes('aarakocra')) unarmedDmg = "1d4";
     if (r.includes('lagarto') || r.includes('minotauro')) unarmedDmg = "1d6";
 
@@ -158,7 +160,7 @@ export const DMTools: React.FC<Props> = ({ encounter, setEncounter, logs, addLog
     }
 
     // 4. Parse Spells
-    if (char.spells.known) {
+    if (char.spells?.known) {
         const spellLines = char.spells.known.split('\n');
         spellLines.forEach(line => {
              const nameMatch = line.match(/(?:\[.*?\]\s*)?(.*?):/);
@@ -194,11 +196,11 @@ export const DMTools: React.FC<Props> = ({ encounter, setEncounter, logs, addLog
   };
 
   const addCharacterToEncounter = (char: Character) => {
-    const dexMod = Math.floor((char.attributes.dex - 10) / 2);
+    const dexMod = Math.floor(((char.attributes?.dex || 10) - 10) / 2);
     const charActions = getCharacterActions(char);
     
     const charSpells: string[] = [];
-    if (char.spells.known) {
+    if (char.spells?.known) {
          char.spells.known.split('\n').forEach(l => {
              const m = l.match(/(?:\[.*?\]\s*)?(.*?):/);
              if (m) charSpells.push(m[1].trim());
@@ -544,10 +546,10 @@ export const DMTools: React.FC<Props> = ({ encounter, setEncounter, logs, addLog
   const groupedMonsters = groupMonstersByCR(filteredMonsters);
 
   return (
-    <div className="flex flex-col h-full bg-[#121212] text-stone-200 font-lato">
+    <div className={`flex flex-col h-full bg-[#121212] text-stone-200 font-lato ${isCombatFullscreen ? 'fixed top-0 left-0 w-screen h-screen z-[100]' : 'relative'}`}>
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: Library */}
-        <div className="w-80 bg-[#1a1a1d] border-r border-[#2a2a2e] flex flex-col p-4 shadow-xl z-10">
+        {/* Left: Library - Hidden in Fullscreen */}
+        <div className={`w-80 bg-[#1a1a1d] border-r border-[#2a2a2e] flex flex-col p-4 shadow-xl z-10 transition-all ${isCombatFullscreen ? 'hidden' : 'block'}`}>
            {/* Tabs */}
            <div className="flex bg-[#0f0f11] p-1 rounded-lg mb-4 border border-[#333]">
                 {[
@@ -670,10 +672,19 @@ export const DMTools: React.FC<Props> = ({ encounter, setEncounter, logs, addLog
         </div>
 
         {/* Center: Encounter */}
-        <div className="flex-1 bg-[#0c0c0e] p-6 overflow-y-auto relative bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#1f1f23] to-[#0c0c0e]">
+        <div className={`flex-1 bg-[#0c0c0e] p-6 overflow-y-auto relative bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#1f1f23] to-[#0c0c0e] ${isCombatFullscreen ? 'w-[70%] border-r border-[#333]' : ''}`}>
            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
              <div className="flex flex-col">
-                <h2 className="text-3xl font-cinzel text-amber-500 drop-shadow-md">Combate Ativo</h2>
+                <div className="flex items-center gap-3">
+                    <h2 className="text-3xl font-cinzel text-amber-500 drop-shadow-md">Combate Ativo</h2>
+                    <button 
+                        onClick={() => setIsCombatFullscreen(!isCombatFullscreen)} 
+                        className="p-1.5 bg-[#1a1a1d] hover:bg-[#333] border border-[#333] rounded-lg text-stone-400 hover:text-white transition-all shadow-md"
+                        title={isCombatFullscreen ? "Sair da Tela Cheia" : "Modo Foco (Tela Cheia)"}
+                    >
+                        {isCombatFullscreen ? <Minimize size={18}/> : <Maximize size={18}/>}
+                    </button>
+                </div>
                 <div className="text-xs text-stone-400 mt-1 flex items-center gap-2 h-5">
                     {targetUid ? (
                         <span className="text-red-400 font-bold flex items-center gap-1 animate-pulse"><Crosshair size={14}/> Alvo: {encounter.find((e: EncounterParticipant) => e.uid === targetUid)?.name} (CA {encounter.find((e: EncounterParticipant) => e.uid === targetUid)?.ac})</span>
@@ -710,7 +721,7 @@ export const DMTools: React.FC<Props> = ({ encounter, setEncounter, logs, addLog
                    <p className="text-sm">Adicione heróis ou monstros da biblioteca à esquerda.</p>
                </div>
            ) : (
-               <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-4 pb-20">
+               <div className={`grid grid-cols-1 xl:grid-cols-2 ${isCombatFullscreen ? '2xl:grid-cols-4' : '2xl:grid-cols-3'} gap-4 pb-20`}>
                   {encounter.map((participant: EncounterParticipant, idx: number) => {
                      const isTarget = targetUid === participant.uid;
                      const isTurn = turnIndex === idx;
@@ -821,7 +832,7 @@ export const DMTools: React.FC<Props> = ({ encounter, setEncounter, logs, addLog
         </div>
 
         {/* Right: Logs */}
-        <div className="w-72 bg-[#161619] border-l border-[#2a2a2e] flex flex-col shadow-xl z-10">
+        <div className={`${isCombatFullscreen ? 'w-[30%] min-w-[400px]' : 'w-72'} bg-[#161619] border-l border-[#2a2a2e] flex flex-col shadow-xl z-10 transition-all`}>
             <div className="p-3 border-b border-[#2a2a2e] bg-[#1a1a1d]">
                 <h3 className="font-cinzel text-stone-400 text-sm flex items-center gap-2"><ScrollText size={16} className="text-amber-600"/> Histórico</h3>
             </div>
@@ -849,7 +860,7 @@ export const DMTools: React.FC<Props> = ({ encounter, setEncounter, logs, addLog
       
       {/* Modals */}
       {conditionModalUid && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setConditionModalUid(null)}>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4" onClick={() => setConditionModalUid(null)}>
               <div className="bg-[#1a1a1d] border border-[#333] rounded-xl p-6 w-96 shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                   <h3 className="text-lg font-cinzel font-bold text-stone-200 mb-4 flex items-center gap-2 border-b border-[#333] pb-2"><Activity size={20} className="text-amber-500"/> Condições</h3>
                   <div className="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto custom-scrollbar">
@@ -868,7 +879,7 @@ export const DMTools: React.FC<Props> = ({ encounter, setEncounter, logs, addLog
 
       {/* Modal Criar Monstro */}
       {customModalOpen && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[110] p-4">
               <div className="bg-[#1a1a1d] border border-[#333] rounded-xl w-full max-w-lg p-6 shadow-2xl animate-in slide-in-from-bottom-10">
                   <div className="flex justify-between items-center mb-6 border-b border-[#333] pb-2">
                       <h3 className="text-xl font-cinzel font-bold text-amber-500 flex items-center gap-2"><Ghost size={24}/> {editingMonsterId ? 'Editar Criatura' : 'Criar Criatura'}</h3>
