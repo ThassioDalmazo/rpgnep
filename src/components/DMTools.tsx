@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Monster, EncounterParticipant, LogEntry, Character } from '../types';
 import { SPELLS_DB, COMMON_WEAPONS } from '../constants';
-import { Search, Shield, Ghost, Sword, Play, ArrowDownUp, Dices, Crosshair, Minus, ChevronsUp, ChevronsDown, Trash2, Activity, Sparkles, Wand2, ScrollText, Star, X, Plus, Pencil, Users, Axe, Book, Zap, Maximize, Minimize } from 'lucide-react';
+import { Search, Shield, Ghost, Sword, Play, ArrowDownUp, Dices, Crosshair, Minus, ChevronsUp, ChevronsDown, Trash2, Activity, Sparkles, Wand2, ScrollText, Star, X, Plus, Pencil, Users, Axe, Book, Zap } from 'lucide-react';
 
 interface Props {
   encounter: EncounterParticipant[];
@@ -57,7 +57,6 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
   // Combat State
   const [rollMode, setRollMode] = useState<'normal' | 'adv' | 'dis'>('normal');
   const [sessionXp, setSessionXp] = useState(0);
-  const [isCombatFullscreen, setIsCombatFullscreen] = useState(false);
 
   const conditionsList = [
     "Agarrado", "Amedrontado", "Atordoado", "Caído", "Cego", 
@@ -66,12 +65,11 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
     "Petrificado", "Surdo"
   ];
 
-  // --- Helper: Parse Character Actions (5e Rules Implemented) ---
+  // Helper Functions
   const getCharacterActions = (char: Character): { n: string; hit: number; dmg: string }[] => {
     const actions: { n: string; hit: number; dmg: string }[] = [];
     if (!char) return actions;
 
-    // 1. Calculate Base Stats
     const prof = Math.ceil(1 + ((char.level || 1) / 4));
     const strMod = Math.floor(((char.attributes?.str || 10) - 10) / 2);
     const dexMod = Math.floor(((char.attributes?.dex || 10) - 10) / 2);
@@ -83,60 +81,37 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
     const castingMod = Math.floor(((char.attributes?.[castingStatStr as keyof typeof char.attributes] || 10) - 10) / 2);
     const spellHit = prof + castingMod;
 
-    // Check Special Classes/Subclasses
     const isMonk = char.class?.toLowerCase() === 'monge';
     const isHexblade = char.subclass?.toLowerCase().includes('hexblade');
 
-    // 2. Parse Weapons from Inventory
     const invLines = (char.inventory || "").split('\n');
     invLines.forEach(line => {
-        // Regex para capturar nome e dano do formato padrão "- Espada | Dano: 1d8 | ..."
         const structMatch = line.match(/(?:-\s*)?(.*?)\s*\|\s*Dano:\s*(\d+d\d+)/i);
-        
         if (structMatch) {
             const name = structMatch[1].trim();
             const dmgBase = structMatch[2];
             
-            // Detect Properties from the full line
             const lowerLine = line.toLowerCase();
             const isFinesse = lowerLine.includes('acuidade') || lowerLine.includes('sutil');
             const isRanged = lowerLine.includes('distância') || lowerLine.includes('arco') || lowerLine.includes('besta');
             const isThrown = lowerLine.includes('arremesso');
             
-            // Attribute Selection Logic (5e)
-            let mod = strMod; // Default to Strength
+            let mod = strMod;
+            if (isHexblade && !lowerLine.includes('duas mãos')) mod = chaMod;
+            else if (isRanged && !isThrown) mod = dexMod;
+            else if (isFinesse || (isMonk && !lowerLine.includes('pesada'))) mod = Math.max(strMod, dexMod);
+            else if (isThrown) mod = strMod;
 
-            if (isHexblade && !lowerLine.includes('duas mãos')) {
-                // Hexblade usa CHA
-                mod = chaMod;
-            } else if (isRanged && !isThrown) {
-                // Ranged weapons (Bow, Crossbow) use DEX
-                mod = dexMod;
-            } else if (isFinesse || (isMonk && !lowerLine.includes('pesada') && !lowerLine.includes('duas mãos'))) {
-                // Finesse or Monk Weapon: Choose higher
-                mod = Math.max(strMod, dexMod);
-            } else if (isThrown) {
-                // Thrown uses STR unless Finesse is present
-                mod = strMod;
-            }
-
-            // Proficiência
             const hitBonus = prof + mod;
             const dmgBonus = mod; 
 
-            actions.push({ 
-                n: name, 
-                hit: hitBonus, 
-                dmg: `${dmgBase}${dmgBonus !== 0 ? (dmgBonus > 0 ? '+' : '') + dmgBonus : ''}` 
-            });
+            actions.push({ n: name, hit: hitBonus, dmg: `${dmgBase}${dmgBonus !== 0 ? (dmgBonus > 0 ? '+' : '') + dmgBonus : ''}` });
         }
     });
 
-    // 3. Add Unarmed Strike
     let unarmedDmg = "1d4"; 
     let unarmedMod = strMod;
     
-    // Racial Natural Weapons
     const r = (char.race || "").toLowerCase();
     if (r.includes('tabaxi') || r.includes('leonino') || r.includes('aarakocra')) unarmedDmg = "1d4";
     if (r.includes('lagarto') || r.includes('minotauro')) unarmedDmg = "1d6";
@@ -146,28 +121,20 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
         if (char.level >= 5) die = 6;
         if (char.level >= 11) die = 8;
         if (char.level >= 17) die = 10;
-        
         unarmedDmg = `1d${die}`;
         unarmedMod = Math.max(strMod, dexMod);
     }
 
     if (!actions.some(a => a.n.toLowerCase().includes('desarmado') || a.n.toLowerCase().includes('artes marciais'))) {
-        actions.push({ 
-            n: isMonk ? 'Artes Marciais' : 'Desarmado', 
-            hit: prof + unarmedMod, 
-            dmg: `${unarmedDmg}${unarmedMod >= 0 ? '+' : ''}${unarmedMod}` 
-        });
+        actions.push({ n: isMonk ? 'Artes Marciais' : 'Desarmado', hit: prof + unarmedMod, dmg: `${unarmedDmg}${unarmedMod >= 0 ? '+' : ''}${unarmedMod}` });
     }
 
-    // 4. Parse Spells
     if (char.spells?.known) {
         const spellLines = char.spells.known.split('\n');
         spellLines.forEach(line => {
              const nameMatch = line.match(/(?:\[.*?\]\s*)?(.*?):/);
              const spellName = nameMatch ? nameMatch[1].trim() : line.trim();
-             
              const dbSpell = SPELLS_DB[spellName] || customSpells[spellName] || Object.values(SPELLS_DB).find((s: any) => line.includes(s.desc.substring(0, 10)));
-             
              if (dbSpell) {
                  const dmgMatch = dbSpell.desc.match(/(\d+d\d+)/);
                  if (dmgMatch && !dbSpell.desc.toLowerCase().includes('cura')) {
@@ -176,7 +143,6 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
              }
         });
     }
-
     return actions;
   };
 
@@ -198,7 +164,6 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
   const addCharacterToEncounter = (char: Character) => {
     const dexMod = Math.floor(((char.attributes?.dex || 10) - 10) / 2);
     const charActions = getCharacterActions(char);
-    
     const charSpells: string[] = [];
     if (char.spells?.known) {
          char.spells.known.split('\n').forEach(l => {
@@ -224,7 +189,7 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
       spells: charSpells
     };
     setEncounter([...encounter, participant]);
-    addLog('Entrada', `${char.name} (PJ) entrou no combate com ${charActions.length} ações detectadas.`, 'info');
+    addLog('Entrada', `${char.name} (PJ) entrou no combate.`, 'info');
   };
 
   const removeFromEncounter = (uid: number) => {
@@ -277,13 +242,8 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
     let d20 = r1;
     let rollDetails = `(${r1})`;
 
-    if (rollMode === 'adv') {
-      d20 = Math.max(r1, r2);
-      rollDetails = `(Adv: ${r1}, ${r2})`;
-    } else if (rollMode === 'dis') {
-      d20 = Math.min(r1, r2);
-      rollDetails = `(Des: ${r1}, ${r2})`;
-    }
+    if (rollMode === 'adv') { d20 = Math.max(r1, r2); rollDetails = `(Adv: ${r1}, ${r2})`; } 
+    else if (rollMode === 'dis') { d20 = Math.min(r1, r2); rollDetails = `(Des: ${r1}, ${r2})`; }
 
     const totalHit = d20 + hitBonus;
     const isCrit = d20 === 20;
@@ -294,17 +254,10 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
     const target = encounter.find(e => e.uid === targetUid);
 
     if (target) {
-        if (isCrit) {
-            hitResult = `CRÍTICO! Acerta ${target.name}`;
-        } else if (isFail) {
-            hitResult = `FALHA! Erra ${target.name}`;
-        } else if (totalHit >= target.ac) {
-            hitResult = `ACERTA ${target.name} (CA ${target.ac})`;
-            hitColor = 'info'; 
-        } else {
-            hitResult = `ERRA ${target.name} (CA ${target.ac})`;
-            hitColor = 'fail'; 
-        }
+        if (isCrit) hitResult = `CRÍTICO! Acerta ${target.name}`;
+        else if (isFail) hitResult = `FALHA! Erra ${target.name}`;
+        else if (totalHit >= target.ac) { hitResult = `ACERTA ${target.name} (CA ${target.ac})`; hitColor = 'info'; } 
+        else { hitResult = `ERRA ${target.name} (CA ${target.ac})`; hitColor = 'fail'; }
     }
 
     let dmgTotal = 0;
@@ -337,13 +290,9 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
                 const mod = parseInt(staticMatch[2] || '0');
                 dmgTotal = isCrit ? (base * 2) + mod : base + mod; 
                 dmgRolls = `[Fixo]`; 
-            } else {
-                dmgRolls = dmg; 
-            }
+            } else { dmgRolls = dmg; }
         }
-    } else {
-        dmgRolls = dmg; 
-    }
+    } else { dmgRolls = dmg; }
 
     const title = `${attackerName} usa ${actionName}`;
     const details = `${hitResult ? `>> ${hitResult} <<\n` : ''}Acerto: ${d20}${rollDetails} + ${hitBonus} = ${totalHit}${dmgTotal > 0 ? `\nDano: ${dmgTotal} ${dmgRolls}` : `\nEfeito: ${dmgRolls}`}`;
@@ -353,11 +302,8 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
 
   const useSpell = (casterName: string, spellName: string) => {
     const spell = SPELLS_DB[spellName] || customSpells[spellName] || customAbilities[spellName];
-    if (spell) {
-        addLog(`${casterName} usa ${spellName}`, `${spell.level} | ${spell.desc}`, 'magic');
-    } else {
-        addLog(`${casterName} usa ${spellName}`, "Conjuração realizada.", 'magic');
-    }
+    if (spell) addLog(`${casterName} usa ${spellName}`, `${spell.level} | ${spell.desc}`, 'magic');
+    else addLog(`${casterName} usa ${spellName}`, "Conjuração realizada.", 'magic');
   };
 
   const sortInitiative = () => {
@@ -368,10 +314,7 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
   };
 
   const rerollInitiative = () => {
-      setEncounter(encounter.map(e => ({
-          ...e,
-          initiative: Math.floor(Math.random() * 20) + 1
-      })));
+      setEncounter(encounter.map(e => ({ ...e, initiative: Math.floor(Math.random() * 20) + 1 })));
       addLog('Sistema', 'Iniciativa re-rolada para todos.', 'info');
   };
 
@@ -383,77 +326,31 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
   };
 
   const addActionToTarget = (action: {n: string, hit: number, dmg: string}) => {
-      if (!targetUid) {
-          alert("Selecione um combatente (ícone de alvo) para adicionar esta ação a ele.");
-          return;
-      }
-      setEncounter(encounter.map(e => {
-          if (e.uid === targetUid) {
-              return { ...e, actions: [...e.actions, action] };
-          }
-          return e;
-      }));
+      if (!targetUid) { alert("Selecione um combatente para adicionar esta ação a ele."); return; }
+      setEncounter(encounter.map(e => e.uid === targetUid ? { ...e, actions: [...e.actions, action] } : e));
       addLog('Sistema', `Adicionou ${action.n} a ${encounter.find(e => e.uid === targetUid)?.name}`, 'info');
   };
 
   const addSpellToTarget = (name: string) => {
-      if (!targetUid) {
-          alert("Selecione um combatente para adicionar esta magia.");
-          return;
-      }
-      setEncounter(encounter.map(e => {
-          if (e.uid === targetUid) {
-              const newSpells = e.spells ? [...e.spells, name] : [name];
-              return { ...e, spells: newSpells };
-          }
-          return e;
-      }));
+      if (!targetUid) { alert("Selecione um combatente para adicionar esta magia."); return; }
+      setEncounter(encounter.map(e => e.uid === targetUid ? { ...e, spells: e.spells ? [...e.spells, name] : [name] } : e));
       addLog('Sistema', `Adicionou magia ${name} a ${encounter.find(e => e.uid === targetUid)?.name}`, 'info');
   };
 
   const openEditMonster = (mob: Monster) => {
-      setNewMonster({
-          name: mob.name,
-          type: mob.type,
-          cr: mob.cr,
-          ac: mob.ac,
-          hp: mob.hp,
-          actions: mob.actions,
-          spells: mob.spells
-      });
+      setNewMonster({ name: mob.name, type: mob.type, cr: mob.cr, ac: mob.ac, hp: mob.hp, actions: mob.actions, spells: mob.spells });
       setEditingMonsterId(mob.id);
       setCustomModalOpen(true);
   };
 
   const saveCustomMonster = () => {
     if (!newMonster.name) return;
-    
     if (editingMonsterId) {
-        setMonsters(monsters.map(m => m.id === editingMonsterId ? {
-            ...m,
-            name: newMonster.name || m.name,
-            type: newMonster.type || m.type,
-            cr: newMonster.cr || m.cr,
-            ac: newMonster.ac || m.ac,
-            hp: newMonster.hp || m.hp,
-            actions: newMonster.actions || m.actions,
-            spells: newMonster.spells || m.spells
-        } : m));
+        setMonsters(monsters.map(m => m.id === editingMonsterId ? { ...m, ...newMonster } as Monster : m));
     } else {
-        const m: Monster = {
-          id: Date.now(),
-          name: newMonster.name,
-          type: newMonster.type || 'Desconhecido',
-          cr: newMonster.cr || '0',
-          ac: newMonster.ac || 10,
-          hp: newMonster.hp || 10,
-          speed: '9m',
-          actions: newMonster.actions && newMonster.actions.length > 0 ? newMonster.actions : [{n: 'Ataque Básico', hit: 3, dmg: '1d4+1'}],
-          spells: newMonster.spells
-        };
+        const m: Monster = { id: Date.now(), name: newMonster.name, type: newMonster.type || 'Desconhecido', cr: newMonster.cr || '0', ac: newMonster.ac || 10, hp: newMonster.hp || 10, speed: '9m', actions: newMonster.actions && newMonster.actions.length > 0 ? newMonster.actions : [{n: 'Ataque Básico', hit: 3, dmg: '1d4+1'}], spells: newMonster.spells };
         setMonsters([...monsters, m]);
     }
-    
     setCustomModalOpen(false);
     setEditingMonsterId(null);
     setNewMonster({ name: '', hp: 10, ac: 10, cr: '1/8', actions: [], spells: [] });
@@ -461,51 +358,21 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
   
   const handleCreateLibItem = () => {
       if (!newLibItem.name) return;
-      
-      if (libraryTab === 'spells') {
-          setCustomSpells({
-              ...customSpells,
-              [newLibItem.name]: {
-                  level: newLibItem.stat1 || 'Truque',
-                  desc: newLibItem.stat2 || 'Efeito Mágico'
-              }
-          });
-      } else if (libraryTab === 'weapons') {
-          setCustomWeapons([
-              ...customWeapons,
-              {
-                  n: newLibItem.name,
-                  dmg: newLibItem.stat1 || '1d4',
-                  prop: newLibItem.stat2 || 'Simples'
-              }
-          ]);
-      } else if (libraryTab === 'abilities') {
-          setCustomAbilities({
-              ...customAbilities,
-              [newLibItem.name]: {
-                  level: 'Habilidade',
-                  desc: newLibItem.stat2 || 'Efeito Especial'
-              }
-          });
-      }
+      if (libraryTab === 'spells') setCustomSpells({ ...customSpells, [newLibItem.name]: { level: newLibItem.stat1 || 'Truque', desc: newLibItem.stat2 || 'Efeito Mágico' } });
+      else if (libraryTab === 'weapons') setCustomWeapons([ ...customWeapons, { n: newLibItem.name, dmg: newLibItem.stat1 || '1d4', prop: newLibItem.stat2 || 'Simples' } ]);
+      else if (libraryTab === 'abilities') setCustomAbilities({ ...customAbilities, [newLibItem.name]: { level: 'Habilidade', desc: newLibItem.stat2 || 'Efeito Especial' } });
       setIsCreating(false);
       setNewLibItem({name: '', stat1: '', stat2: ''});
   };
 
   const addTempAction = () => {
     if (!actionInput.n) return;
-    setNewMonster(prev => ({
-        ...prev,
-        actions: [...(prev.actions || []), { n: actionInput.n, hit: actionInput.hit, dmg: actionInput.dmg }]
-    }));
+    setNewMonster(prev => ({ ...prev, actions: [...(prev.actions || []), { n: actionInput.n, hit: actionInput.hit, dmg: actionInput.dmg }] }));
     setActionInput({ n: '', hit: 0, dmg: '' });
   };
 
   const removeTempAction = (index: number) => {
-    setNewMonster(prev => ({
-        ...prev,
-        actions: (prev.actions || []).filter((_, i) => i !== index)
-    }));
+    setNewMonster(prev => ({ ...prev, actions: (prev.actions || []).filter((_, i) => i !== index) }));
   };
 
   const displayedSpells = [...(Object.entries(SPELLS_DB) as [string, {level: string, desc: string}][]).filter(([_, s]) => s.level !== 'Habilidade'), ...Object.entries(customSpells)]
@@ -525,19 +392,13 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
   };
 
   const parseCR = (cr: string) => {
-      if (cr.includes('/')) {
-          const [n, d] = cr.split('/');
-          return parseInt(n) / parseInt(d);
-      }
+      if (cr.includes('/')) { const [n, d] = cr.split('/'); return parseInt(n) / parseInt(d); }
       return parseFloat(cr);
   };
 
   const groupMonstersByCR = (mobs: Monster[]) => {
       const grouped: Record<string, Monster[]> = {};
-      mobs.forEach(m => {
-          if (!grouped[m.cr]) grouped[m.cr] = [];
-          grouped[m.cr].push(m);
-      });
+      mobs.forEach(m => { if (!grouped[m.cr]) grouped[m.cr] = []; grouped[m.cr].push(m); });
       const sortedKeys = Object.keys(grouped).sort((a, b) => parseCR(a) - parseCR(b));
       return sortedKeys.map(key => ({ cr: key, items: grouped[key] }));
   };
@@ -546,10 +407,10 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
   const groupedMonsters = groupMonstersByCR(filteredMonsters);
 
   return (
-    <div className={`flex flex-col h-full bg-[#121212] text-stone-200 font-lato ${isCombatFullscreen ? 'fixed top-0 left-0 w-screen h-screen z-[100]' : 'relative'}`}>
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left: Library - Hidden in Fullscreen */}
-        <div className={`w-80 bg-[#1a1a1d] border-r border-[#2a2a2e] flex flex-col p-4 shadow-xl z-10 transition-all ${isCombatFullscreen ? 'hidden' : 'block'}`}>
+    <div className="flex flex-col h-full bg-[#121212] text-stone-200 font-lato overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+        {/* Left: Library */}
+        <div className="w-full md:w-80 bg-[#1a1a1d] border-r border-[#2a2a2e] flex flex-col p-4 shadow-xl z-10 md:h-full h-1/3 shrink-0">
            {/* Tabs */}
            <div className="flex bg-[#0f0f11] p-1 rounded-lg mb-4 border border-[#333]">
                 {[
@@ -672,18 +533,11 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
         </div>
 
         {/* Center: Encounter */}
-        <div className={`flex-1 bg-[#0c0c0e] p-6 overflow-y-auto relative bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#1f1f23] to-[#0c0c0e] ${isCombatFullscreen ? 'w-[70%] border-r border-[#333]' : ''}`}>
+        <div className="flex-1 bg-[#0c0c0e] p-6 overflow-y-auto relative bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#1f1f23] to-[#0c0c0e] border-x border-[#333]">
            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
              <div className="flex flex-col">
                 <div className="flex items-center gap-3">
                     <h2 className="text-3xl font-cinzel text-amber-500 drop-shadow-md">Combate Ativo</h2>
-                    <button 
-                        onClick={() => setIsCombatFullscreen(!isCombatFullscreen)} 
-                        className="p-1.5 bg-[#1a1a1d] hover:bg-[#333] border border-[#333] rounded-lg text-stone-400 hover:text-white transition-all shadow-md"
-                        title={isCombatFullscreen ? "Sair da Tela Cheia" : "Modo Foco (Tela Cheia)"}
-                    >
-                        {isCombatFullscreen ? <Minimize size={18}/> : <Maximize size={18}/>}
-                    </button>
                 </div>
                 <div className="text-xs text-stone-400 mt-1 flex items-center gap-2 h-5">
                     {targetUid ? (
@@ -721,7 +575,7 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
                    <p className="text-sm">Adicione heróis ou monstros da biblioteca à esquerda.</p>
                </div>
            ) : (
-               <div className={`grid grid-cols-1 xl:grid-cols-2 ${isCombatFullscreen ? '2xl:grid-cols-4' : '2xl:grid-cols-3'} gap-4 pb-20`}>
+               <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-4 pb-20">
                   {encounter.map((participant: EncounterParticipant, idx: number) => {
                      const isTarget = targetUid === participant.uid;
                      const isTurn = turnIndex === idx;
@@ -832,7 +686,7 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
         </div>
 
         {/* Right: Logs */}
-        <div className={`${isCombatFullscreen ? 'w-[30%] min-w-[400px]' : 'w-72'} bg-[#161619] border-l border-[#2a2a2e] flex flex-col shadow-xl z-10 transition-all`}>
+        <div className="w-full md:w-72 bg-[#161619] border-l border-[#2a2a2e] flex flex-col shadow-xl z-10 md:h-full h-1/3 shrink-0">
             <div className="p-3 border-b border-[#2a2a2e] bg-[#1a1a1d]">
                 <h3 className="font-cinzel text-stone-400 text-sm flex items-center gap-2"><ScrollText size={16} className="text-amber-600"/> Histórico</h3>
             </div>

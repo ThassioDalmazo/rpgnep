@@ -1,6 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-/* Added Monster to the imports from ./types */
+import React, { useState, useEffect, useRef } from 'react';
 import { AppMode, Character, EncounterParticipant, LogEntry, Token, CampaignData, ChatMessage, MapConfig, Monster } from './types';
 import { CharacterSheet } from './components/CharacterSheet';
 import { DMTools } from './components/DMTools';
@@ -11,15 +10,13 @@ import { NPCManager } from './components/NPCManager';
 import { DiceTray } from './components/DiceTray';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
-// Fix: Added missing icons X, Download, FileUp and aliased Map as MapIcon to support both usage styles in the app
-import { Dices, User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, CloudLightning, Loader2, Map, Map as MapIcon, Settings, CheckCircle2, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, PenTool, LayoutDashboard, Menu, Shield, Scale } from 'lucide-react';
+import { User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, Loader2, Map as MapIcon, Settings, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, LayoutDashboard, Menu } from 'lucide-react';
 import { DEFAULT_MONSTERS, INITIAL_CHAR } from './constants';
 
 import { auth, googleProvider, db, isDriveConfigured } from './firebaseConfig';
 
 // Modular Firebase Auth Imports
 import { 
-  getRedirectResult, 
   onAuthStateChanged, 
   signInWithPopup, 
   signInWithRedirect, 
@@ -56,14 +53,8 @@ const sanitizeCharacter = (char: any): Character => {
   };
 };
 
-// Função auxiliar para converter JSON legado ou validar JSON novo
 const processImportedCharacter = (json: any): Character | null => {
-    // 1. Formato RPGNEP Moderno
-    if (json.id && json.attributes && json.attributes.str !== undefined) {
-        return sanitizeCharacter(json);
-    }
-
-    // 2. Formato Legado (Detectado pelos campos específicos)
+    if (json.id && json.attributes && json.attributes.str !== undefined) return sanitizeCharacter(json);
     if (json.nome_personagem || json.attr_for) {
         const safeInt = (v: any) => parseInt(v) || 0;
         const converted: Character = {
@@ -126,8 +117,6 @@ const processImportedCharacter = (json: any): Character | null => {
             },
             imageUrl: json.avatar_url || ""
         };
-
-        // Mapear perícias
         const skillMap: Record<string, string> = {
             'acrobacia': 'acrobacia', 'adestrar': 'adestrar', 'arcanismo': 'arcanismo',
             'atletismo': 'atletismo', 'atuacao': 'atuacao', 'enganacao': 'enganacao',
@@ -136,16 +125,11 @@ const processImportedCharacter = (json: any): Character | null => {
             'natureza': 'natureza', 'percepcao': 'percepcao', 'persuasao': 'persuasao',
             'prestidigitacao': 'prestidigitacao', 'religiao': 'religiao', 'sobrevivencia': 'sobrevivencia'
         };
-        
         Object.keys(skillMap).forEach(k => {
-            if (json[`prof_${k}`] !== undefined) {
-                converted.skills[skillMap[k]] = !!json[`prof_${k}`];
-            }
+            if (json[`prof_${k}`] !== undefined) converted.skills[skillMap[k]] = !!json[`prof_${k}`];
         });
-
         return converted;
     }
-
     return null;
 };
 
@@ -164,7 +148,7 @@ const DEFAULT_MAP_CONFIG: MapConfig = {
     gridColor: '#ffffff',
     gridOpacity: 0.15,
     gridStyle: 'line',
-    tileSize: 32, // Resolução padrão
+    tileSize: 32, 
     bgUrl: null,
     bgX: 0,
     bgY: 0,
@@ -191,7 +175,7 @@ export default function App() {
   const [accentColor, setAccentColor] = useState<ThemeColor>('amber');
   
   const [characters, setCharacters] = useState<Character[]>([{ ...INITIAL_CHAR, id: generateId() }]);
-  const [npcs, setNpcs] = useState<Character[]>([]); // Estado dos NPCs
+  const [npcs, setNpcs] = useState<Character[]>([]); 
   const [monsters, setMonsters] = useState<Monster[]>(DEFAULT_MONSTERS);
   const [activeCharIndex, setActiveCharIndex] = useState(0);
   const [encounter, setEncounter] = useState<EncounterParticipant[]>([]);
@@ -211,8 +195,8 @@ export default function App() {
   const [driveStatus, setDriveStatus] = useState<'disconnected' | 'connected' | 'saving' | 'error'>('disconnected');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false); // Estado para o modal de privacidade
-  const [showTerms, setShowTerms] = useState(false); // Estado para o modal de Termos de Uso
+  const [showPrivacy, setShowPrivacy] = useState(false); 
+  const [showTerms, setShowTerms] = useState(false); 
   const [showAI, setShowAI] = useState(false);
   const [showNotepad, setShowNotepad] = useState(false);
   const [isDriveLoading, setIsDriveLoading] = useState(false);
@@ -234,24 +218,14 @@ export default function App() {
     else document.documentElement.classList.remove('dark');
   }, [theme]);
 
-  // Função centralizada para tratar erros de autenticação
   const handleAuthError = (e: any) => {
       console.error("Auth Error:", e);
       setIsSyncing(false);
-      
       let errorMessage = `Erro ao conectar: ${e.message}`;
-      
-      if (e.code === 'auth/popup-closed-by-user') {
-          errorMessage = 'Janela de login foi fechada antes da conclusão.';
-      } else if (e.code === 'auth/unauthorized-domain') {
-          const currentDomain = window.location.hostname;
-          errorMessage = `DOMÍNIO NÃO AUTORIZADO (${currentDomain}).\n\nPara corrigir:\n1. Acesse o Firebase Console.\n2. Vá em Authentication > Settings > Authorized Domains.\n3. Adicione "${currentDomain}" à lista.`;
-      } else if (e.code === 'auth/operation-not-allowed') {
-          errorMessage = 'O método de login (Google) não está ativado no Firebase Console.';
-      } else if (e.code === 'auth/network-request-failed') {
-          errorMessage = 'Erro de conexão. Verifique sua internet.';
-      }
-
+      if (e.code === 'auth/popup-closed-by-user') errorMessage = 'Janela de login foi fechada antes da conclusão.';
+      else if (e.code === 'auth/unauthorized-domain') errorMessage = `DOMÍNIO NÃO AUTORIZADO (${window.location.hostname}).`;
+      else if (e.code === 'auth/operation-not-allowed') errorMessage = 'O método de login (Google) não está ativado no Firebase Console.';
+      else if (e.code === 'auth/network-request-failed') errorMessage = 'Erro de conexão. Verifique sua internet.';
       setAuthError(errorMessage);
   };
 
@@ -262,10 +236,7 @@ export default function App() {
       setRoomName(sharedRoom);
       setIsJoiningViaLink(true);
     }
-
     if (!auth) return;
-    
-    // Auth State Observer using Modular syntax
     const unsubscribe = onAuthStateChanged(auth as Auth, (user) => {
       if (user) setCurrentUser(user);
       else setViewState('LAUNCHER');
@@ -507,13 +478,7 @@ export default function App() {
     e.preventDefault();
     setIsSyncing(true);
     setAuthError('');
-    
-    if (!auth || !googleProvider) {
-        setIsSyncing(false);
-        setAuthError("Erro Crítico: Configuração do Firebase incompleta.");
-        return;
-    }
-
+    if (!auth || !googleProvider) { setIsSyncing(false); setAuthError("Erro Crítico: Configuração do Firebase incompleta."); return; }
     try {
       if (!currentUser) {
           if (method === 'popup') await signInWithPopup(auth as Auth, googleProvider);
@@ -521,9 +486,7 @@ export default function App() {
       }
       setIsSyncing(false);
       attemptJoinRoom();
-    } catch (e: any) { 
-        handleAuthError(e);
-    }
+    } catch (e: any) { handleAuthError(e); }
   };
 
   const handleAnonymousLogin = async () => {
@@ -536,7 +499,6 @@ export default function App() {
       } catch (e: any) {
           if (e.code !== 'auth/admin-restricted-operation') handleAuthError(e);
           else {
-              // Fallback for projects where anonymous auth is disabled
               setCurrentUser({ uid: 'offline', displayName: 'Viajante', isAnonymous: true } as any);
               setIsSyncing(false);
               setViewState('APP');
@@ -591,8 +553,6 @@ export default function App() {
     reader.onload = (ev) => {
       try {
         const json = JSON.parse(ev.target?.result as string);
-        
-        // Verifica se é uma campanha completa (possui array de personagens)
         if (json.characters && Array.isArray(json.characters)) {
             const data = json as CampaignData;
             if (data.name) setCampaignName(data.name);
@@ -614,21 +574,15 @@ export default function App() {
             if (data.notes) setNotes(data.notes);
             alert("Mesa carregada com sucesso!");
             setUnsavedChanges(false);
-        } 
-        // Verifica se é uma Ficha Individual (Legada ou Nova)
-        else {
+        } else {
             const importedChar = processImportedCharacter(json);
             if (importedChar) {
-                // Adiciona o personagem à lista atual
                 setCharacters(prev => [...prev, importedChar]);
-                // Opcional: focar no novo personagem
                 setActiveCharIndex(characters.length);
                 alert(`Personagem "${importedChar.name}" importado com sucesso!`);
-            } else {
-                throw new Error("Formato não reconhecido");
-            }
+            } else { throw new Error("Formato não reconhecido"); }
         }
-      } catch (err) { alert("Erro ao carregar arquivo. O formato parece inválido ou corrompido."); console.error(err); }
+      } catch (err) { alert("Erro ao carregar arquivo."); console.error(err); }
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -646,9 +600,7 @@ export default function App() {
                   setCharacters(prev => [...prev, importedChar]);
                   setActiveCharIndex(characters.length);
                   alert(`Personagem "${importedChar.name}" adicionado!`);
-              } else {
-                  alert("Arquivo inválido: Não parece ser uma ficha de personagem.");
-              }
+              } else { alert("Arquivo inválido."); }
           } catch(err) { console.error(err); alert("Erro ao ler arquivo."); }
       };
       reader.readAsText(file);
@@ -656,28 +608,18 @@ export default function App() {
   };
 
   const executeSave = async () => {
-    if (!isDriveConfigured()) { 
-        alert("Erro: O Google Drive não está configurado corretamente.");
-        return; 
-    }
+    if (!isDriveConfigured()) { alert("Erro: Google Drive não configurado."); return; }
     setIsDriveLoading(true);
     setDriveStatus('saving');
     try {
       const data: CampaignData = { version: '2.0', timestamp: Date.now(), name: campaignName || roomName, characters, npcs, encounter, logs, map: { grid: mapGrid, tokens: mapTokens, fog: fogGrid, config: mapConfig }, monsters, combat: { turnIndex, targetUid }, notes };
-      // Cast to any to avoid 'unknown' type error
       const fileData = await saveFileToDrive(saveFilename || campaignName || roomName, data) as any;
-      
       alert('Campanha salva com sucesso no Google Drive!');
       if (fileData && fileData.webViewLink) window.open(fileData.webViewLink, '_blank');
-
       setShowSaveModal(false);
       setUnsavedChanges(false);
       setDriveStatus('connected');
-    } catch (e: any) { 
-        console.error("Drive Save Error:", e);
-        setDriveStatus('error');
-        alert(`Erro ao salvar no Drive: ${e.message || e.error}`); 
-    }
+    } catch (e: any) { console.error("Drive Save Error:", e); setDriveStatus('error'); alert(`Erro ao salvar no Drive: ${e.message || e.error}`); }
     setIsDriveLoading(false);
   };
 
@@ -710,19 +652,9 @@ export default function App() {
             setShowSaveModal(false);
             setUnsavedChanges(false);
             setDriveStatus('connected');
-        } else {
-            throw new Error("Formato inválido");
-        }
+        } else { throw new Error("Formato inválido"); }
       }
-    } catch (e: any) { 
-        if (e !== "CANCELLED") {
-            console.error(e); 
-            setDriveStatus('error');
-            alert("Erro ao carregar do Drive: " + e); 
-        } else {
-            setDriveStatus('connected');
-        }
-    }
+    } catch (e: any) { if (e !== "CANCELLED") { console.error(e); setDriveStatus('error'); alert("Erro ao carregar do Drive: " + e); } else { setDriveStatus('connected'); } }
     setIsDriveLoading(false);
   };
 
@@ -733,17 +665,8 @@ export default function App() {
 
   const handleShare = async () => {
       const link = getInviteLink();
-      const shareData = {
-          title: `RPGNEP - ${campaignName}`,
-          text: `Venha jogar RPG comigo na mesa "${campaignName}"!`,
-          url: link
-      };
-      if (navigator.share) {
-          try { await navigator.share(shareData); } catch (e) { /* ignore abort */ }
-      } else {
-          navigator.clipboard.writeText(link);
-          alert(`Link de convite copiado!\n\n${link}`);
-      }
+      const shareData = { title: `RPGNEP - ${campaignName}`, text: `Venha jogar RPG comigo na mesa "${campaignName}"!`, url: link };
+      if (navigator.share) { try { await navigator.share(shareData); } catch (e) { /* ignore abort */ } } else { navigator.clipboard.writeText(link); alert(`Link de convite copiado!\n\n${link}`); }
   };
 
   const handleEmailInvite = () => {
@@ -754,16 +677,11 @@ export default function App() {
   };
 
   const activeChar = characters[activeCharIndex] || characters[0];
-
-  // Logic to identify active tokens based on turn
   const activeParticipant = encounter[turnIndex];
   const activeTokenIds = React.useMemo(() => {
       if (!activeParticipant) return [];
       return mapTokens.filter(t => {
-          if (t.linkedId) {
-              return t.linkedId == activeParticipant.id;
-          }
-          // Fallback matching by name for legacy
+          if (t.linkedId) return t.linkedId == activeParticipant.id;
           return t.name === activeParticipant.name;
       }).map(t => t.id);
   }, [encounter, turnIndex, mapTokens]);
@@ -772,7 +690,7 @@ export default function App() {
     <div className={`h-screen w-screen flex flex-col overflow-hidden ${theme === 'dark' ? 'dark bg-stone-950' : 'bg-stone-100'}`}>
       {viewState === 'LAUNCHER' ? (
         <div className="flex h-full w-full bg-[#0c0a09] relative overflow-hidden">
-          {/* Launcher UI... */}
+          {/* Launcher UI... (Identical to previous) */}
           <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12 overflow-hidden">
               <div className="absolute inset-0 bg-[url('https://drive.google.com/thumbnail?id=1LBa-K4kKe0YzK57xOd8MprAiGQRdUAvX&sz=s3000')] bg-cover bg-center opacity-60"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0c0a09]"></div>
@@ -781,9 +699,7 @@ export default function App() {
                       <img src="/favicon.png" alt="Logo" className="w-16 h-16 drop-shadow-lg" onError={(e) => { e.currentTarget.style.display='none'; }} />
                       <h1 className="text-6xl font-cinzel font-bold text-stone-100 tracking-tighter drop-shadow-lg">RPGNEP</h1>
                   </div>
-                  <p className="text-xl text-stone-300 max-w-md leading-relaxed font-serif italic drop-shadow-md">
-                      "Onde lendas são forjadas e destinos rolados."
-                  </p>
+                  <p className="text-xl text-stone-300 max-w-md leading-relaxed font-serif italic drop-shadow-md">"Onde lendas são forjadas e destinos rolados."</p>
               </div>
               <div className="relative z-10 text-stone-500 text-sm flex gap-4 items-center">
                   <span>v2.1 • Ultimate</span>
@@ -815,14 +731,7 @@ export default function App() {
                     {!showPasswordPrompt ? (
                         <form onSubmit={(e) => handleLogin(e, 'popup')} className="space-y-5">
                             <div className="relative group">
-                                <input 
-                                    className={`w-full bg-[#202022] border border-stone-700 rounded-lg p-4 text-white focus:border-${accentColor}-500 outline-none transition-all placeholder-stone-600 focus:bg-[#252528]`} 
-                                    id="room" 
-                                    placeholder="Nome da Sala (ex: Mesa do Dragão)" 
-                                    value={roomName} 
-                                    onChange={e => setRoomName(e.target.value)} 
-                                    readOnly={isJoiningViaLink}
-                                />
+                                <input className={`w-full bg-[#202022] border border-stone-700 rounded-lg p-4 text-white focus:border-${accentColor}-500 outline-none transition-all placeholder-stone-600 focus:bg-[#252528]`} id="room" placeholder="Nome da Sala (ex: Mesa do Dragão)" value={roomName} onChange={e => setRoomName(e.target.value)} readOnly={isJoiningViaLink} />
                             </div>
                             {isSyncing ? (
                                 <div className="flex gap-2">
@@ -854,14 +763,7 @@ export default function App() {
                             <div className="text-center text-stone-400 text-sm">Esta sala é protegida por senha.</div>
                             <div className="relative group">
                                 <Key className="absolute left-3 top-4 text-stone-500" size={20} />
-                                <input 
-                                    type="password"
-                                    className={`w-full bg-[#202022] border border-stone-700 rounded-lg p-4 pl-10 text-white focus:border-${accentColor}-500 outline-none transition-all placeholder-stone-600 focus:bg-[#252528]`} 
-                                    placeholder="Senha da Campanha" 
-                                    value={passwordInput} 
-                                    onChange={e => setPasswordInput(e.target.value)} 
-                                    onKeyDown={e => e.key === 'Enter' && verifyPassword()}
-                                />
+                                <input type="password" className={`w-full bg-[#202022] border border-stone-700 rounded-lg p-4 pl-10 text-white focus:border-${accentColor}-500 outline-none transition-all placeholder-stone-600 focus:bg-[#252528]`} placeholder="Senha da Campanha" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyPassword()} />
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => setShowPasswordPrompt(false)} className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold py-3 rounded-lg">Voltar</button>
@@ -877,12 +779,7 @@ export default function App() {
                     )}
 
                     {!showPasswordPrompt && (
-                        <button 
-                            type="button" 
-                            onClick={handleDemoMode} 
-                            disabled={isSyncing} 
-                            className="w-full mt-6 bg-transparent hover:bg-stone-800 text-stone-400 font-bold py-3 rounded-lg transition-all border border-stone-700 flex items-center justify-center gap-2 text-sm hover:text-white"
-                        >
+                        <button type="button" onClick={handleDemoMode} disabled={isSyncing} className="w-full mt-6 bg-transparent hover:bg-stone-800 text-stone-400 font-bold py-3 rounded-lg transition-all border border-stone-700 flex items-center justify-center gap-2 text-sm hover:text-white">
                             <PlayCircle size={16} /> MODO DEMONSTRAÇÃO
                         </button>
                     )}
@@ -1134,6 +1031,18 @@ export default function App() {
                         setTokens={(t: any) => {
                             const newVal = typeof t === 'function' ? t(mapTokens) : t;
                             broadcastMap(mapGrid, newVal, fogGrid);
+                            
+                            // Check for HP changes to sync back to Encounter
+                            newVal.forEach((token: Token) => {
+                                if (token.linkedId) {
+                                    setEncounter(prevEnc => prevEnc.map(p => {
+                                        if (p.uid === token.linkedId && (p.hpCurrent !== token.hp)) {
+                                            return { ...p, hpCurrent: token.hp };
+                                        }
+                                        return p;
+                                    }));
+                                }
+                            });
                         }}
                         fogGrid={fogGrid}
                         setFogGrid={(fog: boolean[][]) => broadcastMap(mapGrid, mapTokens, fog)}
@@ -1149,7 +1058,17 @@ export default function App() {
                 <div className="h-full overflow-hidden">
                     <DMToolsMemo 
                         encounter={encounter} 
-                        setEncounter={(e: EncounterParticipant[]) => { setEncounter(e); }} 
+                        setEncounter={(e: EncounterParticipant[]) => { 
+                            setEncounter(e);
+                            // Sync HP to tokens
+                            setMapTokens(prev => prev.map(t => {
+                                const p = e.find(part => part.uid === t.linkedId);
+                                if (p && (t.hp !== p.hpCurrent)) {
+                                    return { ...t, hp: p.hpCurrent };
+                                }
+                                return t;
+                            }));
+                        }} 
                         logs={logs} 
                         addLog={addLogEntry}
                         characters={characters}

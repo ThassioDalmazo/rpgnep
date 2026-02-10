@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Token, Character, Monster, MapConfig } from '../types';
-import { Pencil, Eraser, PaintBucket, Ruler, Undo2, Redo2, Trash2, Download, Swords, Plus, Users, Minus, Upload, Eye, EyeOff, Edit, Copy, Shield, X, Hand, Target, Circle, Triangle, Palette, Loader2, Save, Scaling, ArrowRightLeft, RotateCw, CheckCircle2, Flame, PencilRuler, LayoutGrid, Snowflake, CloudFog, Zap, Filter, Sun, CloudRain, Box, ChevronRight, ChevronLeft, Map as MapIcon, Move, Maximize, AlertTriangle, Square, RotateCcw, ChevronsUp, ChevronsDown } from 'lucide-react';
+import { Pencil, Eraser, PaintBucket, Ruler, Undo2, Redo2, Trash2, Download, Swords, Plus, Users, Minus, Upload, Eye, EyeOff, Edit, Copy, Shield, X, Hand, Target, Circle, Triangle, Palette, Loader2, Save, Scaling, ArrowRightLeft, RotateCw, CheckCircle2, Flame, PencilRuler, LayoutGrid, Snowflake, CloudFog, Zap, Filter, Sun, CloudRain, Box, ChevronRight, ChevronLeft, Map as MapIcon, Move, Maximize, AlertTriangle, Square, RotateCcw, ChevronsUp, ChevronsDown, FileJson } from 'lucide-react';
 
 interface Props {
   mapGrid: string[][];
@@ -22,6 +22,15 @@ interface CustomAsset {
     url: string;
     name: string;
     type?: 'upload' | 'edited';
+}
+
+interface MapSaveData {
+    version: string;
+    timestamp: number;
+    mapGrid: string[][];
+    fogGrid: boolean[][];
+    tokens: Token[];
+    mapConfig?: MapConfig;
 }
 
 type WeatherType = 'none' | 'rain' | 'snow' | 'ember' | 'fog';
@@ -141,6 +150,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   const containerRef = useRef<HTMLDivElement>(null);
   const editCanvasRef = useRef<HTMLCanvasElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
+  const mapInputRef = useRef<HTMLInputElement>(null);
   const particlesRef = useRef<any[]>([]);
   
   const gridW = mapGrid[0]?.length || 50;
@@ -666,6 +676,46 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
             console.error(e);
         }
     }
+  };
+
+  // --- JSON EXPORT/IMPORT ---
+  const saveMapToJson = () => {
+      const data: MapSaveData = {
+          version: 'rpgnep-map-v1',
+          timestamp: Date.now(),
+          mapGrid,
+          fogGrid,
+          tokens,
+          mapConfig: propMapConfig
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mapa-rpgnep-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+  };
+
+  const loadMapFromJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+          try {
+              const json = JSON.parse(ev.target?.result as string);
+              if (json.mapGrid) setMapGrid(json.mapGrid);
+              if (json.fogGrid) setFogGrid(json.fogGrid);
+              if (json.tokens) setTokens(json.tokens);
+              if (json.mapConfig && propSetMapConfig) propSetMapConfig(json.mapConfig);
+              alert("Mapa carregado com sucesso!");
+          } catch (err) {
+              alert("Erro ao ler o arquivo de mapa.");
+              console.error(err);
+          }
+      };
+      reader.readAsText(file);
+      e.target.value = ''; // Reset input
   };
 
   const fillFog = (visible: boolean) => setFogGrid(Array(gridH).fill(null).map(() => Array(gridW).fill(!visible)));
@@ -1278,10 +1328,10 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
 
   return (
     <div className="flex h-full bg-[#0a0a10] text-[#e8e8ff] font-lato overflow-hidden relative" onContextMenu={e => e.preventDefault()}>
-        {!sidebarOpen && ( <button onClick={() => setSidebarOpen(true)} className="absolute top-2 left-2 md:top-4 md:left-4 z-30 p-2 bg-[#181822] border border-[#444] rounded-lg text-[#ffb74d] hover:bg-[#252535] shadow-lg opacity-80 hover:opacity-100"><ChevronRight size={20} /></button> )}
+        {!sidebarOpen && ( <button onClick={() => setSidebarOpen(true)} className="absolute top-4 left-4 z-30 p-2 bg-[#181822] border border-[#444] rounded-lg text-[#ffb74d] hover:bg-[#252535] shadow-lg opacity-80 hover:opacity-100"><ChevronRight size={20} /></button> )}
         
         {/* RESPONSIVE SIDEBAR: Drawer on Mobile, Sidebar on Desktop */}
-        <div className={`fixed inset-0 z-50 md:static md:z-20 bg-[#181822] md:bg-transparent md:flex md:flex-col md:border-r-[3px] md:border-[#2a2a3a] md:shadow-2xl md:shrink-0 transition-all duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0 w-full md:w-[300px]' : '-translate-x-full w-0 md:opacity-0 md:overflow-hidden'}`}>
+        <div className={`fixed inset-0 md:static z-50 md:z-20 bg-[#181822] md:bg-transparent md:flex md:flex-col md:border-r-[3px] md:border-[#2a2a3a] md:shadow-2xl md:shrink-0 transition-all duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0 w-full md:w-[300px]' : '-translate-x-full w-0 md:opacity-0 md:overflow-hidden'}`}>
             <div className="flex items-center justify-between p-3 border-b border-[#2a2a3a] bg-[#181822]"><h1 className="font-cinzel text-[#ffb74d] text-base tracking-[2px] truncate">FERRAMENTAS</h1><button onClick={() => setSidebarOpen(false)} className="p-1 text-stone-500 hover:text-white"><ChevronLeft size={18} /></button></div>
             <div className="flex-1 overflow-y-auto p-2 custom-scrollbar bg-[#181822]">
                 {/* ... (Sidebar buttons logic remains same until Map Tab) ... */}
@@ -1297,7 +1347,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
 
                 {sidebarTab === 'tools' && !isGameMode && (
                     <div className="space-y-4">
-                        <div className="flex overflow-x-auto gap-2 p-1 md:grid md:grid-cols-4 md:gap-1">
+                        <div className="grid grid-cols-4 gap-1">
                             {[
                                 { id: 'pencil', icon: Pencil, title: 'Lápis' }, { id: 'eraser', icon: Eraser, title: 'Borracha' },
                                 { id: 'fill', icon: PaintBucket, title: 'Balde' }, { id: 'move', icon: Move, title: 'Mover' },
@@ -1305,7 +1355,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                                 { id: 'fog-hide', icon: EyeOff, title: 'Esconder (Névoa)' }, { id: 'fog-reveal', icon: Eye, title: 'Revelar (Névoa)' },
                                 { id: 'ruler', icon: Ruler, title: 'Régua' }, { id: 'hand', icon: Hand, title: 'Panorâmica' }
                             ].map(t => (
-                                <button key={t.id} onClick={() => setTool(t.id as any)} className={`p-2 rounded border flex items-center justify-center transition-all shrink-0 min-w-[40px] md:min-w-0 ${tool === t.id ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#252535] border-[#333] text-stone-400 hover:text-white'}`} title={t.title}>
+                                <button key={t.id} onClick={() => setTool(t.id as any)} className={`p-2 rounded border flex items-center justify-center transition-all ${tool === t.id ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#252535] border-[#333] text-stone-400 hover:text-white'}`} title={t.title}>
                                     <t.icon size={18} />
                                 </button>
                             ))}
@@ -1462,7 +1512,6 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                                 <span className="text-stone-400">Cor</span>
                                 <input type="color" value={gridColor} onChange={e => setGridColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"/>
                             </div>
-                            {/* NOVA INTERFACE DE RESOLUÇÃO */}
                             <div className="flex items-center justify-between border-t border-[#333] pt-2 mt-2">
                                 <span className="text-stone-400 font-bold text-[#ffb74d]">Resolução (Px)</span>
                                 <div className="flex items-center gap-2">
@@ -1555,6 +1604,19 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                             )}
                         </div>
 
+                        <div className="border-t border-[#333] pt-2 space-y-2">
+                            <span className="block font-bold text-[#ffb74d] uppercase mb-1">Gerenciar Arquivo</span>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button onClick={saveMapToJson} className="p-2 bg-green-700/20 text-green-400 hover:bg-green-700/40 rounded flex flex-col items-center justify-center gap-1 text-[10px] font-bold border border-green-700/30">
+                                    <FileJson size={16} /> Salvar (JSON)
+                                </button>
+                                <label className="p-2 bg-blue-700/20 text-blue-400 hover:bg-blue-700/40 rounded flex flex-col items-center justify-center gap-1 text-[10px] font-bold border border-blue-700/30 cursor-pointer">
+                                    <Upload size={16} /> Carregar (JSON)
+                                    <input type="file" hidden accept=".json" onChange={loadMapFromJson} ref={mapInputRef} />
+                                </label>
+                            </div>
+                        </div>
+
                         <div className="border-t border-[#333] pt-2">
                             <button onClick={clearMap} className="w-full py-2 bg-red-900/20 text-red-500 hover:bg-red-900/40 rounded flex items-center justify-center gap-2 font-bold mb-2">
                                 <Trash2 size={16}/> Limpar Tudo
@@ -1588,7 +1650,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
             </div>
             
             <div className="p-3 border-t border-[#2a2a3a] bg-[#1a1a24]">
-                <button onClick={exportMap} className="w-full py-2 bg-green-700 hover:bg-green-600 text-white rounded flex items-center justify-center gap-2 font-bold text-xs"><Download size={14}/> EXPORTAR MAPA</button>
+                <button onClick={exportMap} className="w-full py-2 bg-green-700 hover:bg-green-600 text-white rounded flex items-center justify-center gap-2 font-bold text-xs"><Download size={14}/> EXPORTAR IMAGEM (PNG)</button>
             </div>
         </div>
         
@@ -1870,14 +1932,14 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
         </div>
         
         {/* Token Bench */}
-        <div className="absolute bottom-0 left-0 w-full h-16 md:h-20 bg-[#181822] border-t border-[#333] z-20 flex items-center px-4 gap-4 overflow-x-auto custom-scrollbar">
+        <div className="absolute bottom-[60px] md:bottom-0 left-0 w-full h-20 bg-[#181822] border-t border-[#333] z-20 flex items-center px-4 gap-4 overflow-x-auto custom-scrollbar">
             {!isGameMode && (
                 <>
-                    <button onClick={() => addTokenToBench(false)} className="flex flex-col items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded border border-dashed border-[#444] text-stone-500 hover:text-[#ffb74d] hover:border-[#ffb74d] shrink-0">
+                    <button onClick={() => addTokenToBench(false)} className="flex flex-col items-center justify-center w-16 h-16 rounded border border-dashed border-[#444] text-stone-500 hover:text-[#ffb74d] hover:border-[#ffb74d] shrink-0">
                         <Plus size={20}/>
                         <span className="text-[9px] font-bold mt-1">NPC</span>
                     </button>
-                    <button onClick={() => handleAddPropFromSelection()} className="flex flex-col items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded border border-dashed border-[#444] text-stone-500 hover:text-blue-400 hover:border-blue-400 shrink-0">
+                    <button onClick={() => handleAddPropFromSelection()} className="flex flex-col items-center justify-center w-16 h-16 rounded border border-dashed border-[#444] text-stone-500 hover:text-blue-400 hover:border-blue-400 shrink-0">
                         <Plus size={20}/>
                         <span className="text-[9px] font-bold mt-1">Objeto</span>
                     </button>
@@ -1890,7 +1952,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                     draggable
                     onDragStart={(e) => handleBenchDragStart(e, token)}
                     onContextMenu={(e) => handleBenchContextMenu(e, token.id)}
-                    className="relative w-12 h-12 md:w-14 md:h-14 bg-[#222] rounded-full border-2 border-[#444] hover:border-[#ffb74d] cursor-grab active:cursor-grabbing flex items-center justify-center shrink-0 group transition-all"
+                    className="relative w-14 h-14 bg-[#222] rounded-full border-2 border-[#444] hover:border-[#ffb74d] cursor-grab active:cursor-grabbing flex items-center justify-center shrink-0 group transition-all"
                 >
                     {token.image ? (
                         <img src={token.image} className="w-full h-full object-cover rounded-full pointer-events-none" />

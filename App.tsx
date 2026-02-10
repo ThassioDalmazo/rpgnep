@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-/* Added Monster to the imports from ./types */
+
+import React, { useState, useEffect, useRef } from 'react';
 import { AppMode, Character, EncounterParticipant, LogEntry, Token, CampaignData, ChatMessage, MapConfig, Monster } from './types';
 import { CharacterSheet } from './components/CharacterSheet';
 import { DMTools } from './components/DMTools';
@@ -10,7 +10,7 @@ import { NPCManager } from './components/NPCManager';
 import { DiceTray } from './components/DiceTray';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
-import { Dices, User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, CloudLightning, Loader2, Map, Map as MapIcon, Settings, CheckCircle2, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, PenTool, LayoutDashboard, Menu, Shield, Scale } from 'lucide-react';
+import { User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, Loader2, Map as MapIcon, Settings, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, LayoutDashboard, Menu } from 'lucide-react';
 import { DEFAULT_MONSTERS, INITIAL_CHAR } from './constants';
 
 import { auth, googleProvider, db, isDriveConfigured } from './firebaseConfig';
@@ -53,14 +53,8 @@ const sanitizeCharacter = (char: any): Character => {
   };
 };
 
-// Função auxiliar para converter JSON legado ou validar JSON novo
 const processImportedCharacter = (json: any): Character | null => {
-    // 1. Formato RPGNEP Moderno
-    if (json.id && json.attributes && json.attributes.str !== undefined) {
-        return sanitizeCharacter(json);
-    }
-
-    // 2. Formato Legado (Detectado pelos campos específicos)
+    if (json.id && json.attributes && json.attributes.str !== undefined) return sanitizeCharacter(json);
     if (json.nome_personagem || json.attr_for) {
         const safeInt = (v: any) => parseInt(v) || 0;
         const converted: Character = {
@@ -123,8 +117,6 @@ const processImportedCharacter = (json: any): Character | null => {
             },
             imageUrl: json.avatar_url || ""
         };
-
-        // Mapear perícias
         const skillMap: Record<string, string> = {
             'acrobacia': 'acrobacia', 'adestrar': 'adestrar', 'arcanismo': 'arcanismo',
             'atletismo': 'atletismo', 'atuacao': 'atuacao', 'enganacao': 'enganacao',
@@ -133,16 +125,11 @@ const processImportedCharacter = (json: any): Character | null => {
             'natureza': 'natureza', 'percepcao': 'percepcao', 'persuasao': 'persuasao',
             'prestidigitacao': 'prestidigitacao', 'religiao': 'religiao', 'sobrevivencia': 'sobrevivencia'
         };
-        
         Object.keys(skillMap).forEach(k => {
-            if (json[`prof_${k}`] !== undefined) {
-                converted.skills[skillMap[k]] = !!json[`prof_${k}`];
-            }
+            if (json[`prof_${k}`] !== undefined) converted.skills[skillMap[k]] = !!json[`prof_${k}`];
         });
-
         return converted;
     }
-
     return null;
 };
 
@@ -161,7 +148,7 @@ const DEFAULT_MAP_CONFIG: MapConfig = {
     gridColor: '#ffffff',
     gridOpacity: 0.15,
     gridStyle: 'line',
-    tileSize: 32, // Resolução padrão
+    tileSize: 32, 
     bgUrl: null,
     bgX: 0,
     bgY: 0,
@@ -183,12 +170,12 @@ export default function App() {
   const [passwordInput, setPasswordInput] = useState('');
   const [pendingRoomId, setPendingRoomId] = useState('');
 
-  const [mode, setMode] = useState<AppMode>('SHEET');
+  const [mode, setMode] = useState<AppMode | 'GM_DASHBOARD'>('SHEET');
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [accentColor, setAccentColor] = useState<ThemeColor>('amber');
   
   const [characters, setCharacters] = useState<Character[]>([{ ...INITIAL_CHAR, id: generateId() }]);
-  const [npcs, setNpcs] = useState<Character[]>([]); // Estado dos NPCs
+  const [npcs, setNpcs] = useState<Character[]>([]); 
   const [monsters, setMonsters] = useState<Monster[]>(DEFAULT_MONSTERS);
   const [activeCharIndex, setActiveCharIndex] = useState(0);
   const [encounter, setEncounter] = useState<EncounterParticipant[]>([]);
@@ -208,8 +195,8 @@ export default function App() {
   const [driveStatus, setDriveStatus] = useState<'disconnected' | 'connected' | 'saving' | 'error'>('disconnected');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false); // Estado para o modal de privacidade
-  const [showTerms, setShowTerms] = useState(false); // Estado para o modal de Termos de Uso
+  const [showPrivacy, setShowPrivacy] = useState(false); 
+  const [showTerms, setShowTerms] = useState(false); 
   const [showAI, setShowAI] = useState(false);
   const [showNotepad, setShowNotepad] = useState(false);
   const [isDriveLoading, setIsDriveLoading] = useState(false);
@@ -231,24 +218,14 @@ export default function App() {
     else document.documentElement.classList.remove('dark');
   }, [theme]);
 
-  // Função centralizada para tratar erros de autenticação
   const handleAuthError = (e: any) => {
       console.error("Auth Error:", e);
       setIsSyncing(false);
-      
       let errorMessage = `Erro ao conectar: ${e.message}`;
-      
-      if (e.code === 'auth/popup-closed-by-user') {
-          errorMessage = 'Janela de login foi fechada antes da conclusão.';
-      } else if (e.code === 'auth/unauthorized-domain') {
-          const currentDomain = window.location.hostname;
-          errorMessage = `DOMÍNIO NÃO AUTORIZADO (${currentDomain}).\n\nPara corrigir:\n1. Acesse o Firebase Console.\n2. Vá em Authentication > Settings > Authorized Domains.\n3. Adicione "${currentDomain}" à lista.`;
-      } else if (e.code === 'auth/operation-not-allowed') {
-          errorMessage = 'O método de login (Google) não está ativado no Firebase Console.';
-      } else if (e.code === 'auth/network-request-failed') {
-          errorMessage = 'Erro de conexão. Verifique sua internet.';
-      }
-
+      if (e.code === 'auth/popup-closed-by-user') errorMessage = 'Janela de login foi fechada antes da conclusão.';
+      else if (e.code === 'auth/unauthorized-domain') errorMessage = `DOMÍNIO NÃO AUTORIZADO (${window.location.hostname}).`;
+      else if (e.code === 'auth/operation-not-allowed') errorMessage = 'O método de login (Google) não está ativado no Firebase Console.';
+      else if (e.code === 'auth/network-request-failed') errorMessage = 'Erro de conexão. Verifique sua internet.';
       setAuthError(errorMessage);
   };
 
@@ -259,10 +236,7 @@ export default function App() {
       setRoomName(sharedRoom);
       setIsJoiningViaLink(true);
     }
-
     if (!auth) return;
-    
-    // Auth State Observer using Modular syntax
     const unsubscribe = onAuthStateChanged(auth as Auth, (user) => {
       if (user) setCurrentUser(user);
       else setViewState('LAUNCHER');
@@ -401,6 +375,52 @@ export default function App() {
     if (fog) setFogGrid(fog);
   };
 
+  const handleAddCombatant = (combatant: EncounterParticipant) => {
+      // 1. Add to Encounter
+      const newEncounter = [...encounter, combatant];
+      setEncounter(newEncounter);
+      addLogEntry('Entrada', `${combatant.name} entrou no combate.`, 'info');
+      
+      // 2. Spawn Token if not exists
+      // Try to find if token already exists linked to this UID
+      const existingToken = mapTokens.find(t => t.linkedId === combatant.uid);
+      
+      if (!existingToken) {
+          const centerX = Math.floor((mapGrid[0]?.length || 20) / 2);
+          const centerY = Math.floor((mapGrid.length || 20) / 2);
+          
+          const newToken: Token = {
+              id: Date.now(),
+              x: centerX,
+              y: centerY,
+              icon: combatant.type === 'Humanóide' ? '👤' : '💀',
+              hp: combatant.hpCurrent,
+              max: combatant.hpMax,
+              ac: combatant.ac,
+              color: '#ef4444',
+              size: 1,
+              width: 1,
+              height: 1,
+              name: combatant.name,
+              linkedId: combatant.uid,
+              linkedType: 'monster',
+              isProp: false
+          };
+          setMapTokens(prev => [...prev, newToken]);
+      }
+  };
+
+  const addLogEntry = (title: string, details: string, type?: LogEntry['type']) => {
+      const safeType = type || 'info';
+      const entry: LogEntry = { id: Date.now(), title, details, timestamp: new Date(), type: safeType, author: username };
+      setLogs(prev => [entry, ...prev]);
+      if (roomName && db) {
+          const cleanRoom = sanitizeRoomName(roomName);
+          const newLogRef = push(ref(db, `campaigns/${cleanRoom}/logs`));
+          set(newLogRef, { ...entry, timestamp: entry.timestamp.getTime() });
+      }
+  };
+
   const broadcastChat = (text: string) => {
     let finalAuthor = username;
     let finalText = text;
@@ -427,6 +447,9 @@ export default function App() {
                 const total = sum + mod;
                 finalText = `🎲 Rolou ${rollCmd}: [${rolls.join(', ')}]${mod ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''} = **${total}**`;
                 isSystemMsg = true;
+                
+                // ALSO ADD TO LOGS
+                addLogEntry('Dados', `${username} rolou ${rollCmd}: [${rolls.join(', ')}]${mod ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''} = ${total}`, 'dice');
             } else {
                 finalText = `⚠️ Comando de dados inválido: ${rollCmd}`;
                 isSystemMsg = true;
@@ -446,17 +469,6 @@ export default function App() {
         const newMsgRef = push(ref(db, `campaigns/${cleanRoom}/chat`));
         set(newMsgRef, msg);
     }
-  };
-
-  const addLogEntry = (title: string, details: string, type?: LogEntry['type']) => {
-      const safeType = type || 'info';
-      const entry: LogEntry = { id: Date.now(), title, details, timestamp: new Date(), type: safeType, author: username };
-      setLogs(prev => [entry, ...prev]);
-      if (roomName && db) {
-          const cleanRoom = sanitizeRoomName(roomName);
-          const newLogRef = push(ref(db, `campaigns/${cleanRoom}/logs`));
-          set(newLogRef, { ...entry, timestamp: entry.timestamp.getTime() });
-      }
   };
 
   const checkRoomPassword = async (room: string) => {
@@ -504,13 +516,7 @@ export default function App() {
     e.preventDefault();
     setIsSyncing(true);
     setAuthError('');
-    
-    if (!auth || !googleProvider) {
-        setIsSyncing(false);
-        setAuthError("Erro Crítico: Configuração do Firebase incompleta.");
-        return;
-    }
-
+    if (!auth || !googleProvider) { setIsSyncing(false); setAuthError("Erro Crítico: Configuração do Firebase incompleta."); return; }
     try {
       if (!currentUser) {
           if (method === 'popup') await signInWithPopup(auth as Auth, googleProvider);
@@ -518,9 +524,7 @@ export default function App() {
       }
       setIsSyncing(false);
       attemptJoinRoom();
-    } catch (e: any) { 
-        handleAuthError(e);
-    }
+    } catch (e: any) { handleAuthError(e); }
   };
 
   const handleAnonymousLogin = async () => {
@@ -533,7 +537,6 @@ export default function App() {
       } catch (e: any) {
           if (e.code !== 'auth/admin-restricted-operation') handleAuthError(e);
           else {
-              // Fallback for projects where anonymous auth is disabled
               setCurrentUser({ uid: 'offline', displayName: 'Viajante', isAnonymous: true } as any);
               setIsSyncing(false);
               setViewState('APP');
@@ -588,8 +591,6 @@ export default function App() {
     reader.onload = (ev) => {
       try {
         const json = JSON.parse(ev.target?.result as string);
-        
-        // Verifica se é uma campanha completa (possui array de personagens)
         if (json.characters && Array.isArray(json.characters)) {
             const data = json as CampaignData;
             if (data.name) setCampaignName(data.name);
@@ -611,21 +612,15 @@ export default function App() {
             if (data.notes) setNotes(data.notes);
             alert("Mesa carregada com sucesso!");
             setUnsavedChanges(false);
-        } 
-        // Verifica se é uma Ficha Individual (Legada ou Nova)
-        else {
+        } else {
             const importedChar = processImportedCharacter(json);
             if (importedChar) {
-                // Adiciona o personagem à lista atual
                 setCharacters(prev => [...prev, importedChar]);
-                // Opcional: focar no novo personagem
                 setActiveCharIndex(characters.length);
                 alert(`Personagem "${importedChar.name}" importado com sucesso!`);
-            } else {
-                throw new Error("Formato não reconhecido");
-            }
+            } else { throw new Error("Formato não reconhecido"); }
         }
-      } catch (err) { alert("Erro ao carregar arquivo. O formato parece inválido ou corrompido."); console.error(err); }
+      } catch (err) { alert("Erro ao carregar arquivo."); console.error(err); }
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -643,9 +638,7 @@ export default function App() {
                   setCharacters(prev => [...prev, importedChar]);
                   setActiveCharIndex(characters.length);
                   alert(`Personagem "${importedChar.name}" adicionado!`);
-              } else {
-                  alert("Arquivo inválido: Não parece ser uma ficha de personagem.");
-              }
+              } else { alert("Arquivo inválido."); }
           } catch(err) { console.error(err); alert("Erro ao ler arquivo."); }
       };
       reader.readAsText(file);
@@ -653,28 +646,18 @@ export default function App() {
   };
 
   const executeSave = async () => {
-    if (!isDriveConfigured()) { 
-        alert("Erro: O Google Drive não está configurado corretamente.");
-        return; 
-    }
+    if (!isDriveConfigured()) { alert("Erro: Google Drive não configurado."); return; }
     setIsDriveLoading(true);
     setDriveStatus('saving');
     try {
       const data: CampaignData = { version: '2.0', timestamp: Date.now(), name: campaignName || roomName, characters, npcs, encounter, logs, map: { grid: mapGrid, tokens: mapTokens, fog: fogGrid, config: mapConfig }, monsters, combat: { turnIndex, targetUid }, notes };
-      // Cast to any to avoid 'unknown' type error
       const fileData = await saveFileToDrive(saveFilename || campaignName || roomName, data) as any;
-      
       alert('Campanha salva com sucesso no Google Drive!');
       if (fileData && fileData.webViewLink) window.open(fileData.webViewLink, '_blank');
-
       setShowSaveModal(false);
       setUnsavedChanges(false);
       setDriveStatus('connected');
-    } catch (e: any) { 
-        console.error("Drive Save Error:", e);
-        setDriveStatus('error');
-        alert(`Erro ao salvar no Drive: ${e.message || e.error}`); 
-    }
+    } catch (e: any) { console.error("Drive Save Error:", e); setDriveStatus('error'); alert(`Erro ao salvar no Drive: ${e.message || e.error}`); }
     setIsDriveLoading(false);
   };
 
@@ -707,19 +690,9 @@ export default function App() {
             setShowSaveModal(false);
             setUnsavedChanges(false);
             setDriveStatus('connected');
-        } else {
-            throw new Error("Formato inválido");
-        }
+        } else { throw new Error("Formato inválido"); }
       }
-    } catch (e: any) { 
-        if (e !== "CANCELLED") {
-            console.error(e); 
-            setDriveStatus('error');
-            alert("Erro ao carregar do Drive: " + e); 
-        } else {
-            setDriveStatus('connected');
-        }
-    }
+    } catch (e: any) { if (e !== "CANCELLED") { console.error(e); setDriveStatus('error'); alert("Erro ao carregar do Drive: " + e); } else { setDriveStatus('connected'); } }
     setIsDriveLoading(false);
   };
 
@@ -730,17 +703,8 @@ export default function App() {
 
   const handleShare = async () => {
       const link = getInviteLink();
-      const shareData = {
-          title: `RPGNEP - ${campaignName}`,
-          text: `Venha jogar RPG comigo na mesa "${campaignName}"!`,
-          url: link
-      };
-      if (navigator.share) {
-          try { await navigator.share(shareData); } catch (e) { /* ignore abort */ }
-      } else {
-          navigator.clipboard.writeText(link);
-          alert(`Link de convite copiado!\n\n${link}`);
-      }
+      const shareData = { title: `RPGNEP - ${campaignName}`, text: `Venha jogar RPG comigo na mesa "${campaignName}"!`, url: link };
+      if (navigator.share) { try { await navigator.share(shareData); } catch (e) { /* ignore abort */ } } else { navigator.clipboard.writeText(link); alert(`Link de convite copiado!\n\n${link}`); }
   };
 
   const handleEmailInvite = () => {
@@ -751,16 +715,11 @@ export default function App() {
   };
 
   const activeChar = characters[activeCharIndex] || characters[0];
-
-  // Logic to identify active tokens based on turn
   const activeParticipant = encounter[turnIndex];
   const activeTokenIds = React.useMemo(() => {
       if (!activeParticipant) return [];
       return mapTokens.filter(t => {
-          if (t.linkedId) {
-              return t.linkedId == activeParticipant.id;
-          }
-          // Fallback matching by name for legacy
+          if (t.linkedId) return t.linkedId == activeParticipant.id;
           return t.name === activeParticipant.name;
       }).map(t => t.id);
   }, [encounter, turnIndex, mapTokens]);
@@ -769,18 +728,16 @@ export default function App() {
     <div className={`h-screen w-screen flex flex-col overflow-hidden ${theme === 'dark' ? 'dark bg-stone-950' : 'bg-stone-100'}`}>
       {viewState === 'LAUNCHER' ? (
         <div className="flex h-full w-full bg-[#0c0a09] relative overflow-hidden">
-          {/* Launcher UI... */}
+          {/* Launcher UI... (Identical to previous) */}
           <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12 overflow-hidden">
               <div className="absolute inset-0 bg-[url('https://drive.google.com/thumbnail?id=1LBa-K4kKe0YzK57xOd8MprAiGQRdUAvX&sz=s3000')] bg-cover bg-center opacity-60"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0c0a09]"></div>
               <div className="relative z-10 animate-in slide-in-from-left duration-700">
                   <div className="flex items-center gap-3 mb-6">
-                      <img src="/icon.png" alt="Logo" className="w-16 h-16 drop-shadow-lg" onError={(e) => { e.currentTarget.style.display='none'; }} />
+                      <img src="/favicon.png" alt="Logo" className="w-16 h-16 drop-shadow-lg" onError={(e) => { e.currentTarget.style.display='none'; }} />
                       <h1 className="text-6xl font-cinzel font-bold text-stone-100 tracking-tighter drop-shadow-lg">RPGNEP</h1>
                   </div>
-                  <p className="text-xl text-stone-300 max-w-md leading-relaxed font-serif italic drop-shadow-md">
-                      "Onde lendas são forjadas e destinos rolados."
-                  </p>
+                  <p className="text-xl text-stone-300 max-w-md leading-relaxed font-serif italic drop-shadow-md">"Onde lendas são forjadas e destinos rolados."</p>
               </div>
               <div className="relative z-10 text-stone-500 text-sm flex gap-4 items-center">
                   <span>v2.1 • Ultimate</span>
@@ -794,7 +751,7 @@ export default function App() {
           <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 bg-[#0c0a09] relative">
             <div className="w-full max-w-md space-y-8 animate-in zoom-in-95 duration-500">
                 <div className="lg:hidden text-center mb-8">
-                    <img src="/icon.png" alt="Logo" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" onError={(e) => { e.currentTarget.style.display='none'; }} />
+                    <img src="/favicon.png" alt="Logo" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" onError={(e) => { e.currentTarget.style.display='none'; }} />
                     <h1 className="text-4xl font-cinzel font-bold text-white">RPGNEP</h1>
                 </div>
 
@@ -812,14 +769,7 @@ export default function App() {
                     {!showPasswordPrompt ? (
                         <form onSubmit={(e) => handleLogin(e, 'popup')} className="space-y-5">
                             <div className="relative group">
-                                <input 
-                                    className={`w-full bg-[#202022] border border-stone-700 rounded-lg p-4 text-white focus:border-${accentColor}-500 outline-none transition-all placeholder-stone-600 focus:bg-[#252528]`} 
-                                    id="room" 
-                                    placeholder="Nome da Sala (ex: Mesa do Dragão)" 
-                                    value={roomName} 
-                                    onChange={e => setRoomName(e.target.value)} 
-                                    readOnly={isJoiningViaLink}
-                                />
+                                <input className={`w-full bg-[#202022] border border-stone-700 rounded-lg p-4 text-white focus:border-${accentColor}-500 outline-none transition-all placeholder-stone-600 focus:bg-[#252528]`} id="room" placeholder="Nome da Sala (ex: Mesa do Dragão)" value={roomName} onChange={e => setRoomName(e.target.value)} readOnly={isJoiningViaLink} />
                             </div>
                             {isSyncing ? (
                                 <div className="flex gap-2">
@@ -851,14 +801,7 @@ export default function App() {
                             <div className="text-center text-stone-400 text-sm">Esta sala é protegida por senha.</div>
                             <div className="relative group">
                                 <Key className="absolute left-3 top-4 text-stone-500" size={20} />
-                                <input 
-                                    type="password"
-                                    className={`w-full bg-[#202022] border border-stone-700 rounded-lg p-4 pl-10 text-white focus:border-${accentColor}-500 outline-none transition-all placeholder-stone-600 focus:bg-[#252528]`} 
-                                    placeholder="Senha da Campanha" 
-                                    value={passwordInput} 
-                                    onChange={e => setPasswordInput(e.target.value)} 
-                                    onKeyDown={e => e.key === 'Enter' && verifyPassword()}
-                                />
+                                <input type="password" className={`w-full bg-[#202022] border border-stone-700 rounded-lg p-4 pl-10 text-white focus:border-${accentColor}-500 outline-none transition-all placeholder-stone-600 focus:bg-[#252528]`} placeholder="Senha da Campanha" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && verifyPassword()} />
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => setShowPasswordPrompt(false)} className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold py-3 rounded-lg">Voltar</button>
@@ -874,12 +817,7 @@ export default function App() {
                     )}
 
                     {!showPasswordPrompt && (
-                        <button 
-                            type="button" 
-                            onClick={handleDemoMode} 
-                            disabled={isSyncing} 
-                            className="w-full mt-6 bg-transparent hover:bg-stone-800 text-stone-400 font-bold py-3 rounded-lg transition-all border border-stone-700 flex items-center justify-center gap-2 text-sm hover:text-white"
-                        >
+                        <button type="button" onClick={handleDemoMode} disabled={isSyncing} className="w-full mt-6 bg-transparent hover:bg-stone-800 text-stone-400 font-bold py-3 rounded-lg transition-all border border-stone-700 flex items-center justify-center gap-2 text-sm hover:text-white">
                             <PlayCircle size={16} /> MODO DEMONSTRAÇÃO
                         </button>
                     )}
@@ -909,7 +847,7 @@ export default function App() {
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setMode('SHEET')}>
                 <div className={`p-2 rounded-lg bg-gradient-to-br from-stone-800 to-stone-900 border border-white/10 group-hover:border-amber-500/50 transition-colors`}>
-                    <img src="/icon.png" alt="RPGNEP" className="w-6 h-6 object-contain group-hover:rotate-12 transition-transform duration-500" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500 transition-transform group-hover:rotate-180 duration-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
+                    <img src="/favicon.png" alt="RPGNEP" className="w-6 h-6 object-contain group-hover:rotate-12 transition-transform duration-500" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500 transition-transform group-hover:rotate-180 duration-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
                 </div>
                 <h1 className="text-xl font-cinzel font-bold text-stone-200 tracking-widest group-hover:text-white transition-colors bg-clip-text text-transparent bg-gradient-to-r from-stone-200 to-stone-400">RPGNEP</h1>
               </div>
@@ -920,11 +858,12 @@ export default function App() {
                     { id: 'NPC', icon: Users, label: 'NPCs' },
                     { id: 'VTT', icon: MapIcon, label: 'Mapa' },
                     { id: 'DM', icon: ShieldCheck, label: 'Mestre' },
+                    { id: 'GM_DASHBOARD', icon: LayoutDashboard, label: 'GM Mode' },
                     { id: 'CHAT', icon: MessageSquare, label: 'Chat' }
                 ].map((item) => (
                     <button 
                         key={item.id}
-                        onClick={() => setMode(item.id as AppMode)}
+                        onClick={() => setMode(item.id as any)}
                         className={`relative px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all duration-300 ${
                             mode === item.id 
                             ? `bg-stone-800 text-white shadow-sm ring-1 ring-white/10` 
@@ -972,7 +911,7 @@ export default function App() {
           {/* MOBILE HEADER (Visible on Mobile) */}
           <header className={`md:hidden fixed top-0 left-0 right-0 z-40 bg-stone-950/90 backdrop-blur-md border-b border-white/5 h-[50px] flex justify-between items-center px-4 shadow-md`}>
              <div className="flex items-center gap-2">
-                <img src="/icon.png" alt="RPGNEP" className="w-6 h-6 object-contain" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
+                <img src="/favicon.png" alt="RPGNEP" className="w-6 h-6 object-contain" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
                 <h1 className="text-lg font-cinzel font-bold text-white tracking-widest">RPGNEP</h1>
              </div>
              <div className="flex items-center gap-3">
@@ -981,3 +920,302 @@ export default function App() {
              </div>
           </header>
 
+          {/* MOBILE MENU DRAWER */}
+          {mobileMenuOpen && (
+              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end" onClick={() => setMobileMenuOpen(false)}>
+                  <div className="w-64 bg-stone-900 h-full border-l border-stone-800 p-4 animate-in slide-in-from-right" onClick={e => e.stopPropagation()}>
+                      <div className="flex justify-between items-center mb-6 border-b border-stone-800 pb-2">
+                          <span className="font-bold text-stone-200">Menu</span>
+                          <button onClick={() => setMobileMenuOpen(false)}><X size={24} className="text-stone-500"/></button>
+                      </div>
+                      <div className="space-y-4">
+                          <button onClick={() => {setShowAI(!showAI); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><Sparkles size={18}/> Oráculo IA</button>
+                          <button onClick={() => {setShowNotepad(!showNotepad); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><FileText size={18}/> Bloco de Notas</button>
+                          <button onClick={() => {setShowSaveModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><Save size={18}/> Salvar / Carregar</button>
+                          <button onClick={() => {setShowConfigModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><Settings size={18}/> Configurações</button>
+                          <button onClick={handleShare} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><LinkIcon size={18}/> Compartilhar Sala</button>
+                          <div className="border-t border-stone-800 my-2"></div>
+                          <button onClick={() => { if(auth) signOut(auth as Auth); setViewState('LAUNCHER'); }} className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-900/20 text-red-400"><LogOut size={18}/> Sair</button>
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {/* MOBILE BOTTOM NAVIGATION */}
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-stone-950 border-t border-white/10 h-[60px] flex items-center justify-around px-2 pb-safe">
+            {[
+                { id: 'SHEET', icon: User, label: 'Herói' },
+                { id: 'NPC', icon: Users, label: 'NPCs' },
+                { id: 'VTT', icon: MapIcon, label: 'Mapa' },
+                { id: 'DM', icon: ShieldCheck, label: 'Mestre' },
+                { id: 'CHAT', icon: MessageSquare, label: 'Chat' }
+            ].map((item) => (
+                <button 
+                    key={item.id}
+                    onClick={() => setMode(item.id as AppMode)}
+                    className={`flex flex-col items-center justify-center w-full h-full gap-1 ${mode === item.id ? 'text-amber-500' : 'text-stone-500'}`}
+                >
+                    <item.icon size={20} className={mode === item.id ? 'fill-current/20' : ''} />
+                    <span className="text-[9px] font-bold uppercase">{item.label}</span>
+                </button>
+            ))}
+          </nav>
+
+          <main className="flex-1 overflow-hidden relative flex mt-[50px] mb-[60px] md:mt-[64px] md:mb-0 h-[calc(100vh-110px)] md:h-[calc(100vh-64px)]">
+            {mode === 'SHEET' && (
+                <aside className="hidden md:flex w-64 bg-stone-900 border-r border-stone-800 flex-col z-20 shadow-xl">
+                    <div className="p-4 border-b border-stone-800 flex justify-between items-center bg-stone-950/50">
+                        <span className="text-xs font-bold text-stone-400 uppercase tracking-wider flex items-center gap-2"><LayoutDashboard size={14}/> Aventureiros</span>
+                        <div className="flex gap-1">
+                            <label className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white cursor-pointer transition-all" title="Importar Ficha">
+                                <FileUp size={16}/>
+                                <input type="file" hidden accept=".json" onChange={handleCharacterImport} />
+                            </label>
+                            <button onClick={() => {const newC = {...INITIAL_CHAR, id: generateId()}; setCharacters([...characters, newC]); setActiveCharIndex(characters.length);}} className={`p-1.5 rounded-lg bg-stone-800 hover:bg-amber-600 text-stone-400 hover:text-white transition-all`} title="Novo Personagem"><Plus size={16}/></button>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+                        {characters.map((c, i) => (
+                            <button 
+                                key={c.id} 
+                                onClick={() => setActiveCharIndex(i)} 
+                                className={`w-full p-3 rounded-xl border text-left transition-all group relative overflow-hidden ${
+                                    activeCharIndex === i 
+                                    ? `bg-gradient-to-r from-stone-800 to-stone-800/50 border-amber-500/30 shadow-lg` 
+                                    : 'bg-stone-900 border-transparent hover:bg-stone-800 hover:border-stone-700'
+                                }`}
+                            >
+                                {activeCharIndex === i && <div className={`absolute left-0 top-0 bottom-0 w-1 ${th.primary}`}></div>}
+                                <div className={`font-bold text-sm mb-0.5 ${activeCharIndex === i ? 'text-white' : 'text-stone-400 group-hover:text-stone-200'}`}>{c.name}</div>
+                                <div className="text-[10px] text-stone-500 flex justify-between items-center">
+                                    <span className="bg-black/20 px-1.5 py-0.5 rounded">{c.class}</span>
+                                    <span className={`font-mono ${activeCharIndex === i ? 'text-amber-500' : ''}`}>Nvl {c.level}</span>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </aside>
+            )}
+
+            <div className="flex-1 overflow-hidden relative bg-[#0c0a09]">
+                {mode === 'SHEET' && (
+                <div className="h-full overflow-y-auto custom-scrollbar p-2 md:p-4 lg:p-8">
+                    {/* Mobile Character Toggle */}
+                    <div className="md:hidden flex overflow-x-auto gap-2 mb-4 no-scrollbar pb-2">
+                        <button onClick={() => {const newC = {...INITIAL_CHAR, id: generateId()}; setCharacters([...characters, newC]); setActiveCharIndex(characters.length);}} className="flex-shrink-0 w-10 h-10 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center text-stone-400"><Plus size={20}/></button>
+                        <label className="flex-shrink-0 w-10 h-10 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center text-stone-400 cursor-pointer">
+                            <FileUp size={20}/>
+                            <input type="file" hidden accept=".json" onChange={handleCharacterImport} />
+                        </label>
+                        {characters.map((c, i) => (
+                            <button 
+                                key={c.id} 
+                                onClick={() => setActiveCharIndex(i)}
+                                className={`flex-shrink-0 px-4 py-2 rounded-full border text-xs font-bold ${activeCharIndex === i ? 'bg-amber-900/30 border-amber-600 text-amber-500' : 'bg-stone-900 border-stone-800 text-stone-500'}`}
+                            >
+                                {c.name}
+                            </button>
+                        ))}
+                    </div>
+
+                    <CharacterSheetMemo 
+                        char={activeChar} 
+                        setChar={(c: any) => {
+                            const newChars = [...characters];
+                            if (typeof c === 'function') {
+                                newChars[activeCharIndex] = c(newChars[activeCharIndex]);
+                            } else {
+                                newChars[activeCharIndex] = c;
+                            }
+                            setCharacters(newChars);
+                        }} 
+                        onRoll={(d: number, mod: number, label: string) => {
+                            const r1 = Math.floor(Math.random() * d) + 1;
+                            const total = r1 + mod;
+                            addLogEntry(label, `${activeChar.name} rolou ${label}: [${r1}] + ${mod} = ${total}`, r1 === 20 ? 'crit' : r1 === 1 ? 'fail' : 'dice');
+                            broadcastChat(`🎲 Rolou ${label}: [${r1}]${mod>=0?'+':''}${mod} = **${total}**`);
+                        }}
+                        onDelete={() => {
+                            if(characters.length <= 1) { alert("Você precisa ter pelo menos um personagem."); return; }
+                            if(window.confirm(`Excluir ${activeChar.name}?`)) {
+                                const newChars = characters.filter(c => c.id !== activeChar.id);
+                                setCharacters(newChars);
+                                setActiveCharIndex(0);
+                            }
+                        }}
+                    />
+                </div>
+                )}
+                
+                {mode === 'NPC' && (
+                    <NPCManager 
+                        npcs={npcs} 
+                        onUpdate={(updated) => setNpcs(prev => prev.map(n => n.id === updated.id ? updated : n))}
+                        onAdd={() => setNpcs(prev => [...prev, { ...INITIAL_CHAR, id: generateId(), name: "Novo NPC", level: 0 }])}
+                        onDelete={(id) => setNpcs(prev => prev.filter(n => n.id !== id))}
+                        onRoll={(d, mod, label) => {
+                            const r1 = Math.floor(Math.random() * d) + 1;
+                            const total = r1 + mod;
+                            addLogEntry(label, `Mestre rolou ${label}: [${r1}] + ${mod} = ${total}`, 'dice');
+                            broadcastChat(`🎲 Mestre rolou ${label}: [${r1}]${mod>=0?'+':''}${mod} = **${total}**`);
+                        }}
+                    />
+                )}
+
+                {mode === 'VTT' && (
+                    <VirtualTabletopMemo 
+                        mapGrid={mapGrid} 
+                        setMapGrid={(g: string[][]) => broadcastMap(g, mapTokens, fogGrid)} 
+                        tokens={mapTokens} 
+                        setTokens={(t: any) => {
+                            const newVal = typeof t === 'function' ? t(mapTokens) : t;
+                            broadcastMap(mapGrid, newVal, fogGrid);
+                            
+                            // Check for HP changes to sync back to Encounter
+                            newVal.forEach((token: Token) => {
+                                if (token.linkedId) {
+                                    setEncounter(prevEnc => prevEnc.map(p => {
+                                        if (p.uid === token.linkedId && (p.hpCurrent !== token.hp)) {
+                                            return { ...p, hpCurrent: token.hp };
+                                        }
+                                        return p;
+                                    }));
+                                }
+                            });
+                        }}
+                        fogGrid={fogGrid}
+                        setFogGrid={(fog: boolean[][]) => broadcastMap(mapGrid, mapTokens, fog)}
+                        characters={characters}
+                        monsters={monsters}
+                        mapConfig={mapConfig}
+                        setMapConfig={setMapConfig}
+                        activeTokenIds={activeTokenIds}
+                    />
+                )}
+                
+                {mode === 'DM' && (
+                <div className="h-full overflow-hidden">
+                    <DMToolsMemo 
+                        encounter={encounter} 
+                        setEncounter={(e: EncounterParticipant[]) => { 
+                            setEncounter(e);
+                            // Sync HP to tokens
+                            setMapTokens(prev => prev.map(t => {
+                                const p = e.find(part => part.uid === t.linkedId);
+                                if (p && (t.hp !== p.hpCurrent)) {
+                                    return { ...t, hp: p.hpCurrent };
+                                }
+                                return t;
+                            }));
+                        }} 
+                        logs={logs} 
+                        addLog={addLogEntry}
+                        characters={characters}
+                        monsters={monsters}
+                        setMonsters={setMonsters}
+                        turnIndex={turnIndex}
+                        setTurnIndex={setTurnIndex}
+                        targetUid={targetUid}
+                        setTargetUid={setTargetUid}
+                    />
+                </div>
+                )}
+                
+                {mode === 'CHAT' && (
+                    <div className="h-full w-full p-2 md:p-4 overflow-hidden bg-stone-950 flex flex-col items-center">
+                        <div className="w-full max-w-4xl h-full flex flex-col">
+                           <Chat messages={chatMessages} onSendMessage={broadcastChat} username={username} isFullPage={true} />
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <AIChat isOpen={showAI} onClose={() => setShowAI(false)} characters={characters} encounter={encounter} />
+            <DiceTray onRoll={broadcastChat} />
+            
+            {showNotepad && (
+                <div className="fixed top-[60px] right-4 md:right-20 w-[90%] md:w-80 bg-[#1c1917] border border-stone-800 shadow-2xl rounded-xl z-[60] flex flex-col overflow-hidden animate-in slide-in-from-top-5 ring-1 ring-white/10">
+                    <div className="bg-gradient-to-r from-yellow-900/20 to-stone-900 p-3 flex justify-between items-center border-b border-stone-800 cursor-move">
+                        <div className="flex items-center gap-2 text-yellow-500 font-bold text-sm">
+                            <FileText size={16}/> Bloco de Notas
+                        </div>
+                        <button onClick={() => setShowNotepad(false)} className="text-stone-500 hover:text-white transition-colors"><X size={16}/></button>
+                    </div>
+                    <textarea 
+                        className="w-full h-64 p-4 bg-[#0c0a09] resize-y outline-none text-stone-300 text-sm leading-relaxed font-mono placeholder-stone-700"
+                        placeholder="Anotações rápidas da sessão..."
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                    />
+                    <div className="bg-stone-900 p-1.5 text-[10px] text-stone-500 text-center border-t border-stone-800">
+                        Sincronizado automaticamente
+                    </div>
+                </div>
+            )}
+          </main>
+
+          {/* ... (Modals remain mostly same but ensure they match dark theme) ... */}
+          {showSaveModal && (
+              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
+                  {/* ... content ... */}
+                  <div className="bg-[#1a1a1d] border border-stone-700 p-6 rounded-lg w-full max-w-md shadow-2xl relative">
+                      <button onClick={() => setShowSaveModal(false)} className="absolute top-2 right-2 text-stone-500 hover:text-white"><X size={20}/></button>
+                      <h2 className={`text-xl font-bold text-stone-200 mb-4 flex items-center gap-2`}><Save size={20} className={th.text}/> Gerenciar Campanha</h2>
+                      <div className="space-y-4">
+                          <input className="w-full bg-[#222] border border-[#333] rounded p-2 text-white focus:border-amber-500 outline-none" value={saveFilename} onChange={e => setSaveFilename(e.target.value)} placeholder={campaignName || roomName} />
+                          <div className="grid grid-cols-2 gap-3">
+                              <button onClick={handleLocalSave} className="flex flex-col items-center justify-center p-3 bg-stone-800 hover:bg-stone-700 rounded border border-stone-600 gap-2 transition-all">
+                                  <Download className="text-blue-400" size={24}/>
+                                  <span className="text-xs font-bold text-stone-300">Download Local</span>
+                              </button>
+                              <button onClick={executeSave} disabled={!isDriveReady || isDriveLoading} className={`flex flex-col items-center justify-center p-3 rounded gap-2 transition-all group ${isDriveReady ? 'bg-green-900/30 border border-green-700 hover:bg-green-900/50' : 'bg-stone-800/50 border border-stone-700 opacity-50 cursor-not-allowed'}`}>
+                                  {isDriveLoading ? <Loader2 className="animate-spin text-green-400" size={24}/> : <Cloud className={isDriveReady ? "text-green-400 group-hover:scale-110 transition-transform" : "text-stone-500"} size={24}/>}
+                                  <span className="text-xs font-bold text-stone-300">Google Drive</span>
+                              </button>
+                          </div>
+                          <div className="border-t border-stone-700 pt-4">
+                              <div className="grid grid-cols-2 gap-3">
+                                  <label className="flex flex-col items-center justify-center p-3 bg-stone-800 hover:bg-stone-700 rounded border border-stone-600 gap-2 cursor-pointer transition-all">
+                                      <FileUp className={th.text} size={24}/>
+                                      <span className="text-xs font-bold text-stone-300">Upload Local</span>
+                                      <input type="file" hidden accept=".json" onChange={handleLocalLoad} />
+                                  </label>
+                                  <button onClick={handlePickFromDrive} disabled={!isDriveReady || isDriveLoading} className={`flex flex-col items-center justify-center p-3 rounded border gap-2 transition-all ${isDriveReady ? 'bg-purple-900/30 border-purple-700 hover:bg-purple-900/50' : 'bg-stone-800/50 opacity-50 cursor-not-allowed'}`}>
+                                      <Globe className="text-purple-400" size={24}/>
+                                      <span className="text-xs font-bold text-stone-300">Abrir Drive</span>
+                                  </button>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {showConfigModal && (
+              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">
+                  <div className="bg-[#1a1a1d] border border-stone-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                      <h3 className="text-xl font-bold text-white mb-4">Configurações</h3>
+                      <div className="space-y-4">
+                          <div>
+                              <label className="block text-stone-400 text-sm mb-2">Tema</label>
+                              <div className="flex gap-2">
+                                  <button onClick={() => setTheme('dark')} className={`flex-1 py-2 rounded border ${theme === 'dark' ? 'bg-stone-700 border-stone-500 text-white' : 'bg-[#222] border-[#333] text-stone-500'}`}><Moon size={16} className="mx-auto"/></button>
+                                  <button onClick={() => setTheme('light')} className={`flex-1 py-2 rounded border ${theme === 'light' ? 'bg-stone-200 border-stone-300 text-black' : 'bg-[#222] border-[#333] text-stone-500'}`}><Sun size={16} className="mx-auto"/></button>
+                              </div>
+                          </div>
+                          <div>
+                              <label className="block text-stone-400 text-sm mb-2">Senha da Sala (Mestre)</label>
+                              <div className="flex gap-2">
+                                  <input type="text" className="flex-1 bg-[#222] border border-stone-600 rounded p-2 text-white focus:border-amber-500 outline-none" value={campaignPassword} onChange={e => setCampaignPassword(e.target.value)} placeholder="Opcional" />
+                              </div>
+                          </div>
+                      </div>
+                      <button onClick={() => setShowConfigModal(false)} className="w-full mt-6 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded">Concluído</button>
+                  </div>
+              </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
