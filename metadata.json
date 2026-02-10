@@ -1,0 +1,8 @@
+{
+  "name": "RPGNEP Ultimate",
+  "description": "O gerenciador definitivo de D&D 5e com VTT imersivo, integração total Firebase/Google Drive e Oráculo Arcano IA.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
