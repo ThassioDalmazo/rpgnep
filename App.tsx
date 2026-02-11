@@ -10,7 +10,7 @@ import { NPCManager } from './components/NPCManager';
 import { DiceTray } from './components/DiceTray';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
-import { User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, Loader2, Map as MapIcon, Settings, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, LayoutDashboard, Menu } from 'lucide-react';
+import { User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, Loader2, Map as MapIcon, Settings, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, LayoutDashboard, Menu, Palette } from 'lucide-react';
 import { DEFAULT_MONSTERS, INITIAL_CHAR } from './constants';
 
 import { auth, googleProvider, db, isDriveConfigured } from './firebaseConfig';
@@ -142,6 +142,22 @@ const THEMES: Record<ThemeColor, { primary: string, hover: string, text: string,
     rose: { primary: 'bg-rose-600', hover: 'hover:bg-rose-500', text: 'text-rose-500', border: 'border-rose-500', ring: 'ring-rose-500', bgSoft: 'bg-rose-900/20' },
 };
 
+const BG_THEMES: Record<string, { name: string, className: string, sidebar: string }> = {
+  stone: { name: 'Padrão (Escuro)', className: 'bg-[#0c0a09]', sidebar: 'bg-[#1a1a1d]' },
+  red: { name: 'Infernal (Vermelho)', className: 'bg-red-950', sidebar: 'bg-red-900' },
+  orange: { name: 'Vulcânico (Laranja)', className: 'bg-orange-950', sidebar: 'bg-orange-900' },
+  amber: { name: 'Deserto (Âmbar)', className: 'bg-amber-950', sidebar: 'bg-amber-900' },
+  green: { name: 'Floresta (Verde)', className: 'bg-green-950', sidebar: 'bg-green-900' },
+  emerald: { name: 'Pântano (Esmeralda)', className: 'bg-emerald-950', sidebar: 'bg-emerald-900' },
+  teal: { name: 'Profundezas (Ciano)', className: 'bg-teal-950', sidebar: 'bg-teal-900' },
+  blue: { name: 'Oceano (Azul)', className: 'bg-blue-950', sidebar: 'bg-blue-900' },
+  indigo: { name: 'Noite (Índigo)', className: 'bg-indigo-950', sidebar: 'bg-indigo-900' },
+  purple: { name: 'Umbra (Roxo)', className: 'bg-purple-950', sidebar: 'bg-purple-900' },
+  fuchsia: { name: 'Feérico (Fúcsia)', className: 'bg-fuchsia-950', sidebar: 'bg-fuchsia-900' },
+  pink: { name: 'Sonho (Rosa)', className: 'bg-pink-950', sidebar: 'bg-pink-900' },
+  rose: { name: 'Paixão (Rose)', className: 'bg-rose-950', sidebar: 'bg-rose-900' },
+};
+
 const DEFAULT_MAP_CONFIG: MapConfig = {
     scale: 1.5,
     unit: 'm',
@@ -170,9 +186,10 @@ export default function App() {
   const [passwordInput, setPasswordInput] = useState('');
   const [pendingRoomId, setPendingRoomId] = useState('');
 
-  const [mode, setMode] = useState<AppMode | 'GM_DASHBOARD'>('SHEET');
+  const [mode, setMode] = useState<AppMode>('SHEET');
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [accentColor, setAccentColor] = useState<ThemeColor>('amber');
+  const [bgTheme, setBgTheme] = useState<string>('stone');
   
   const [characters, setCharacters] = useState<Character[]>([{ ...INITIAL_CHAR, id: generateId() }]);
   const [npcs, setNpcs] = useState<Character[]>([]); 
@@ -212,6 +229,7 @@ export default function App() {
   const username = currentUser?.displayName || "Jogador";
 
   const th = THEMES[accentColor];
+  const bg = BG_THEMES[bgTheme] || BG_THEMES['stone'];
 
   useEffect(() => {
     if (theme === 'dark') document.documentElement.classList.add('dark');
@@ -375,52 +393,6 @@ export default function App() {
     if (fog) setFogGrid(fog);
   };
 
-  const handleAddCombatant = (combatant: EncounterParticipant) => {
-      // 1. Add to Encounter
-      const newEncounter = [...encounter, combatant];
-      setEncounter(newEncounter);
-      addLogEntry('Entrada', `${combatant.name} entrou no combate.`, 'info');
-      
-      // 2. Spawn Token if not exists
-      // Try to find if token already exists linked to this UID
-      const existingToken = mapTokens.find(t => t.linkedId === combatant.uid);
-      
-      if (!existingToken) {
-          const centerX = Math.floor((mapGrid[0]?.length || 20) / 2);
-          const centerY = Math.floor((mapGrid.length || 20) / 2);
-          
-          const newToken: Token = {
-              id: Date.now(),
-              x: centerX,
-              y: centerY,
-              icon: combatant.type === 'Humanóide' ? '👤' : '💀',
-              hp: combatant.hpCurrent,
-              max: combatant.hpMax,
-              ac: combatant.ac,
-              color: '#ef4444',
-              size: 1,
-              width: 1,
-              height: 1,
-              name: combatant.name,
-              linkedId: combatant.uid,
-              linkedType: 'monster',
-              isProp: false
-          };
-          setMapTokens(prev => [...prev, newToken]);
-      }
-  };
-
-  const addLogEntry = (title: string, details: string, type?: LogEntry['type']) => {
-      const safeType = type || 'info';
-      const entry: LogEntry = { id: Date.now(), title, details, timestamp: new Date(), type: safeType, author: username };
-      setLogs(prev => [entry, ...prev]);
-      if (roomName && db) {
-          const cleanRoom = sanitizeRoomName(roomName);
-          const newLogRef = push(ref(db, `campaigns/${cleanRoom}/logs`));
-          set(newLogRef, { ...entry, timestamp: entry.timestamp.getTime() });
-      }
-  };
-
   const broadcastChat = (text: string) => {
     let finalAuthor = username;
     let finalText = text;
@@ -447,9 +419,6 @@ export default function App() {
                 const total = sum + mod;
                 finalText = `🎲 Rolou ${rollCmd}: [${rolls.join(', ')}]${mod ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''} = **${total}**`;
                 isSystemMsg = true;
-                
-                // ALSO ADD TO LOGS
-                addLogEntry('Dados', `${username} rolou ${rollCmd}: [${rolls.join(', ')}]${mod ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''} = ${total}`, 'dice');
             } else {
                 finalText = `⚠️ Comando de dados inválido: ${rollCmd}`;
                 isSystemMsg = true;
@@ -469,6 +438,17 @@ export default function App() {
         const newMsgRef = push(ref(db, `campaigns/${cleanRoom}/chat`));
         set(newMsgRef, msg);
     }
+  };
+
+  const addLogEntry = (title: string, details: string, type?: LogEntry['type']) => {
+      const safeType = type || 'info';
+      const entry: LogEntry = { id: Date.now(), title, details, timestamp: new Date(), type: safeType, author: username };
+      setLogs(prev => [entry, ...prev]);
+      if (roomName && db) {
+          const cleanRoom = sanitizeRoomName(roomName);
+          const newLogRef = push(ref(db, `campaigns/${cleanRoom}/logs`));
+          set(newLogRef, { ...entry, timestamp: entry.timestamp.getTime() });
+      }
   };
 
   const checkRoomPassword = async (room: string) => {
@@ -725,13 +705,13 @@ export default function App() {
   }, [encounter, turnIndex, mapTokens]);
 
   return (
-    <div className={`h-screen w-screen flex flex-col overflow-hidden ${theme === 'dark' ? 'dark bg-stone-950' : 'bg-stone-100'}`}>
+    <div className={`h-screen w-screen flex flex-col overflow-hidden ${theme === 'dark' ? 'dark ' + bg.className : 'bg-stone-100'}`}>
       {viewState === 'LAUNCHER' ? (
-        <div className="flex h-full w-full bg-[#0c0a09] relative overflow-hidden">
+        <div className={`flex h-full w-full ${bg.className} relative overflow-hidden`}>
           {/* Launcher UI... (Identical to previous) */}
           <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12 overflow-hidden">
               <div className="absolute inset-0 bg-[url('https://drive.google.com/thumbnail?id=1LBa-K4kKe0YzK57xOd8MprAiGQRdUAvX&sz=s3000')] bg-cover bg-center opacity-60"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0c0a09]"></div>
+              <div className={`absolute inset-0 bg-gradient-to-r from-transparent to-[${bg.className.replace('bg-', '')}]`}></div>
               <div className="relative z-10 animate-in slide-in-from-left duration-700">
                   <div className="flex items-center gap-3 mb-6">
                       <img src="/favicon.png" alt="Logo" className="w-16 h-16 drop-shadow-lg" onError={(e) => { e.currentTarget.style.display='none'; }} />
@@ -748,7 +728,7 @@ export default function App() {
               </div>
           </div>
 
-          <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 bg-[#0c0a09] relative">
+          <div className={`w-full lg:w-1/2 flex flex-col items-center justify-center p-8 ${bg.className} relative`}>
             <div className="w-full max-w-md space-y-8 animate-in zoom-in-95 duration-500">
                 <div className="lg:hidden text-center mb-8">
                     <img src="/favicon.png" alt="Logo" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" onError={(e) => { e.currentTarget.style.display='none'; }} />
@@ -842,7 +822,7 @@ export default function App() {
       ) : (
         <>
           {/* PC HEADER (Hidden on Mobile) */}
-          <header className={`hidden md:flex fixed top-0 left-0 right-0 z-40 bg-stone-950/70 backdrop-blur-md border-b border-white/5 px-4 h-[64px] justify-between items-center shadow-lg transition-all`}>
+          <header className={`hidden md:flex fixed top-0 left-0 right-0 z-40 backdrop-blur-md border-b border-white/5 px-4 h-[64px] justify-between items-center shadow-lg transition-all ${bg.className}/70`}>
             {/* Logo & Navigation */}
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setMode('SHEET')}>
@@ -852,7 +832,7 @@ export default function App() {
                 <h1 className="text-xl font-cinzel font-bold text-stone-200 tracking-widest group-hover:text-white transition-colors bg-clip-text text-transparent bg-gradient-to-r from-stone-200 to-stone-400">RPGNEP</h1>
               </div>
               
-              <nav className="flex items-center bg-stone-900/50 p-1 rounded-xl border border-white/5">
+              <nav className={`flex items-center p-1 rounded-xl border border-white/5 ${bg.sidebar.replace('bg-', 'bg-opacity-50 ')}`}>
                 {[
                     { id: 'SHEET', icon: User, label: 'Heróis' },
                     { id: 'NPC', icon: Users, label: 'NPCs' },
@@ -880,7 +860,7 @@ export default function App() {
 
             {/* Room Info & Actions */}
             <div className="flex items-center gap-3">
-                <div className="hidden xl:flex items-center gap-3 px-3 py-1.5 bg-stone-900/50 rounded-full border border-white/5 hover:border-white/10 transition-colors group cursor-default">
+                <div className={`hidden xl:flex items-center gap-3 px-3 py-1.5 rounded-full border border-white/5 hover:border-white/10 transition-colors group cursor-default ${bg.sidebar}/50`}>
                     <div className="flex items-center gap-2 text-xs text-stone-400">
                         {campaignPassword ? <Lock size={12} className="text-amber-500/80" /> : <Unlock size={12} className="text-emerald-500/80" />}
                         <span className="truncate max-w-[150px] font-medium text-stone-300 group-hover:text-white transition-colors">{campaignName || roomName}</span>
@@ -909,7 +889,7 @@ export default function App() {
           </header>
 
           {/* MOBILE HEADER (Visible on Mobile) */}
-          <header className={`md:hidden fixed top-0 left-0 right-0 z-40 bg-stone-950/90 backdrop-blur-md border-b border-white/5 h-[50px] flex justify-between items-center px-4 shadow-md`}>
+          <header className={`md:hidden fixed top-0 left-0 right-0 z-40 backdrop-blur-md border-b border-white/5 h-[50px] flex justify-between items-center px-4 shadow-md ${bg.className}/90`}>
              <div className="flex items-center gap-2">
                 <img src="/favicon.png" alt="RPGNEP" className="w-6 h-6 object-contain" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
                 <h1 className="text-lg font-cinzel font-bold text-white tracking-widest">RPGNEP</h1>
@@ -923,7 +903,7 @@ export default function App() {
           {/* MOBILE MENU DRAWER */}
           {mobileMenuOpen && (
               <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end" onClick={() => setMobileMenuOpen(false)}>
-                  <div className="w-64 bg-stone-900 h-full border-l border-stone-800 p-4 animate-in slide-in-from-right" onClick={e => e.stopPropagation()}>
+                  <div className={`w-64 ${bg.sidebar} h-full border-l border-stone-800 p-4 animate-in slide-in-from-right`} onClick={e => e.stopPropagation()}>
                       <div className="flex justify-between items-center mb-6 border-b border-stone-800 pb-2">
                           <span className="font-bold text-stone-200">Menu</span>
                           <button onClick={() => setMobileMenuOpen(false)}><X size={24} className="text-stone-500"/></button>
@@ -963,7 +943,7 @@ export default function App() {
 
           <main className="flex-1 overflow-hidden relative flex mt-[50px] mb-[60px] md:mt-[64px] md:mb-0 h-[calc(100vh-110px)] md:h-[calc(100vh-64px)]">
             {mode === 'SHEET' && (
-                <aside className="hidden md:flex w-64 bg-stone-900 border-r border-stone-800 flex-col z-20 shadow-xl">
+                <aside className={`hidden md:flex w-64 ${bg.sidebar} border-r border-stone-800 flex-col z-20 shadow-xl`}>
                     <div className="p-4 border-b border-stone-800 flex justify-between items-center bg-stone-950/50">
                         <span className="text-xs font-bold text-stone-400 uppercase tracking-wider flex items-center gap-2"><LayoutDashboard size={14}/> Aventureiros</span>
                         <div className="flex gap-1">
@@ -997,7 +977,7 @@ export default function App() {
                 </aside>
             )}
 
-            <div className="flex-1 overflow-hidden relative bg-[#0c0a09]">
+            <div className={`flex-1 overflow-hidden relative ${bg.className}`}>
                 {mode === 'SHEET' && (
                 <div className="h-full overflow-y-auto custom-scrollbar p-2 md:p-4 lg:p-8">
                     {/* Mobile Character Toggle */}
@@ -1203,6 +1183,41 @@ export default function App() {
                                   <button onClick={() => setTheme('light')} className={`flex-1 py-2 rounded border ${theme === 'light' ? 'bg-stone-200 border-stone-300 text-black' : 'bg-[#222] border-[#333] text-stone-500'}`}><Sun size={16} className="mx-auto"/></button>
                               </div>
                           </div>
+                          
+                          {/* Accent Color Picker */}
+                          <div>
+                              <label className="block text-stone-400 text-sm mb-2">Cor de Destaque</label>
+                              <div className="flex gap-3 justify-center bg-[#222] p-3 rounded border border-stone-600">
+                                  {(Object.keys(THEMES) as ThemeColor[]).map((c) => (
+                                      <button
+                                          key={c}
+                                          onClick={() => setAccentColor(c)}
+                                          className={`w-8 h-8 rounded-full transition-all ${THEMES[c].primary} ${accentColor === c ? 'ring-2 ring-white scale-110 shadow-lg' : 'hover:scale-105 opacity-70 hover:opacity-100'}`}
+                                          title={c.charAt(0).toUpperCase() + c.slice(1)}
+                                      />
+                                  ))}
+                              </div>
+                          </div>
+
+                          {/* Background Theme Selector */}
+                          <div>
+                              <label className="block text-stone-400 text-sm mb-2 flex items-center gap-2"><Palette size={14}/> Fundo / Ambiente</label>
+                              <div className="grid grid-cols-2 gap-2 bg-[#222] p-2 rounded border border-stone-600 max-h-40 overflow-y-auto custom-scrollbar">
+                                  {Object.entries(BG_THEMES).map(([key, t]) => (
+                                      <button
+                                          key={key}
+                                          onClick={() => setBgTheme(key)}
+                                          className={`text-xs p-2 rounded text-left truncate transition-all ${bgTheme === key ? `bg-stone-700 text-white border border-stone-500` : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
+                                      >
+                                          <div className="flex items-center gap-2">
+                                              <div className={`w-3 h-3 rounded-full ${t.className.replace('bg-', 'bg-')}`}></div>
+                                              {t.name}
+                                          </div>
+                                      </button>
+                                  ))}
+                              </div>
+                          </div>
+
                           <div>
                               <label className="block text-stone-400 text-sm mb-2">Senha da Sala (Mestre)</label>
                               <div className="flex gap-2">
@@ -1210,7 +1225,7 @@ export default function App() {
                               </div>
                           </div>
                       </div>
-                      <button onClick={() => setShowConfigModal(false)} className="w-full mt-6 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded">Concluído</button>
+                      <button onClick={() => setShowConfigModal(false)} className={`w-full mt-6 ${th.primary} ${th.hover} text-white font-bold py-2 rounded`}>Concluído</button>
                   </div>
               </div>
           )}

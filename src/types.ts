@@ -44,6 +44,7 @@ export interface Character {
   // Campos para itens personalizados salvos
   customWeapons?: { n: string; dmg: string; prop: string }[];
   customSpells?: { name: string; level: string; desc: string }[];
+  feats?: string[]; // Novo campo para Talentos
   autoHp?: boolean;
   autoAc?: boolean;
   equippedArmor?: string;

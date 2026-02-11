@@ -97,7 +97,13 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
     const strMod = Math.floor(((char.attributes?.str || 10) - 10) / 2);
     const dexMod = Math.floor(((char.attributes?.dex || 10) - 10) / 2);
     
-    // Simple parsing for weapons
+    // Spell Casting
+    const castingStatStr = char.spells?.castingStat || 'int';
+    // @ts-ignore
+    const castingMod = Math.floor(((char.attributes?.[castingStatStr as keyof typeof char.attributes] || 10) - 10) / 2);
+    const spellHit = prof + castingMod;
+
+    // Simple parsing for weapons in inventory
     const invLines = (char.inventory || "").split('\n');
     invLines.forEach(line => {
         const structMatch = line.match(/(?:-\s*)?(.*?)\s*\|\s*Dano:\s*(\d+d\d+)/i);
@@ -110,6 +116,38 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
             actions.push({ n: name, hit: prof + mod, dmg: `${dmgBase}${mod >= 0 ? '+' : ''}${mod}` }); 
         }
     });
+
+    // Parsing Spells (Standard & Custom) to Actions if they have Damage
+    if (char.spells?.known) {
+        const spellLines = char.spells.known.split('\n');
+        spellLines.forEach(line => {
+             const nameMatch = line.match(/(?:\[.*?\]\s*)?(.*?):/);
+             const spellName = nameMatch ? nameMatch[1].trim() : line.trim();
+             
+             // Search Priority: 
+             // 1. Character Custom Spells (Highest Priority for user override)
+             // 2. DM Local Custom Spells
+             // 3. Official DB
+             let dbSpell: any = char.customSpells?.find(s => s.name === spellName);
+             if (!dbSpell) dbSpell = customSpells[spellName];
+             if (!dbSpell) dbSpell = SPELLS_DB[spellName];
+             
+             // Fuzzy match fallback
+             if (!dbSpell) {
+                 dbSpell = Object.values(SPELLS_DB).find((s: any) => line.includes(s.desc.substring(0, 10)));
+             }
+
+             if (dbSpell) {
+                 // Look for dice notation in description (e.g. "8d6")
+                 const dmgMatch = dbSpell.desc.match(/(\d+d\d+)/);
+                 if (dmgMatch) {
+                     // Add to actions list for roll buttons
+                     actions.push({ n: spellName, hit: spellHit, dmg: dmgMatch[1] });
+                 }
+             }
+        });
+    }
+
     // Add simple default if empty
     if (actions.length === 0) actions.push({n: 'Desarmado', hit: prof + strMod, dmg: `1+${strMod}`});
     return actions;
@@ -337,10 +375,21 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
   };
 
   const castSpell = (participant: EncounterParticipant, spellName: string) => {
-        // Find spell data
-        let spellData = SPELLS_DB[spellName] || customSpells[spellName];
+        // Find spell data prioritizing custom character spells if linked
+        let spellData: any = null;
+
+        // @ts-ignore
+        const linkedCharId = participant.linkedCharId;
+        if (linkedCharId) {
+            const char = characters.find(c => c.id === linkedCharId);
+            if (char && char.customSpells) {
+                spellData = char.customSpells.find(s => s.name === spellName);
+            }
+        }
+
+        if (!spellData) spellData = SPELLS_DB[spellName] || customSpells[spellName];
         
-        // Try to find by partial match
+        // Try to find by partial match in standard DB
         if (!spellData) {
              const found = Object.entries(SPELLS_DB).find(([k]) => spellName.includes(k));
              if (found) spellData = found[1];
@@ -360,8 +409,6 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
             // It has damage, calculate hit bonus and roll attack
             let hitBonus = 0;
             
-            // @ts-ignore
-            const linkedCharId = participant.linkedCharId;
             if (linkedCharId) {
                 const char = characters.find(c => c.id === linkedCharId);
                 if (char) {

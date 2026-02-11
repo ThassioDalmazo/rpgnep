@@ -18,8 +18,42 @@ export const INITIAL_CHAR: Character = {
   wallet: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
   customWeapons: [],
   customSpells: [],
+  feats: [],
   exhaustion: 0,
   imageUrl: ""
+};
+
+export const FEATS_DB: Record<string, string> = {
+  "Alerta": "+5 na iniciativa. Você não pode ser surpreso enquanto estiver consciente. Outras criaturas não ganham vantagem em jogadas de ataque contra você por estarem escondidas.",
+  "Atirador de Elite": "Atacar a longo alcance não impõe desvantagem. Seus ataques à distância ignoram meia cobertura e três quartos de cobertura. Antes de atacar, você pode escolher -5 no acerto para +10 no dano.",
+  "Atleta": "Aumente Força ou Destreza em 1. Levantar-se de estar caído custa apenas 1,5m de movimento. Escalada não custa movimento extra. Salto à distância correndo requer apenas 1,5m.",
+  "Ator": "Aumente Carisma em 1. Vantagem em Enganação e Atuação para se passar por outra pessoa. Pode imitar a fala de outra pessoa ou sons.",
+  "Brigão de Taverna": "Aumente Força ou Constituição em 1. Proficiência com armas improvisadas e desarmado (1d4). Ao acertar ataque desarmado/improvisado, pode usar ação bônus para agarrar.",
+  "Combate Montado": "Vantagem em ataques corpo a corpo contra criaturas menores que sua montaria. Pode forçar ataque na montaria a alvejar você. Montaria tem Evasão se passar em teste de Destreza.",
+  "Combatente com Duas Armas": "+1 na CA enquanto empunhar duas armas corpo a corpo. Pode usar duas armas mesmo que não sejam leves. Pode sacar ou guardar duas armas.",
+  "Conjurador de Guerra": "Vantagem em Con para manter concentração. Pode conjurar com armas/escudo nas mãos. Pode usar reação para conjurar magia em vez de ataque de oportunidade.",
+  "Conjurador de Ritual": "Requer Int ou Sab 13. Aprende 2 rituais de qualquer classe. Pode copiar rituais se tiver nível apropriado (2 horas e 50 po por nível).",
+  "Curandeiro": "Ao usar kit de curandeiro para estabilizar, a criatura recupera 1 PV. Pode usar kit para curar 1d6 + 4 + Nível PV (uma vez por descanso curto por criatura).",
+  "Duelista Defensivo": "Requer Des 13. Quando for acertado por ataque corpo a corpo enquanto empunha arma de acuidade, pode usar reação para adicionar proficiência na CA.",
+  "Durável": "Aumente Constituição em 1. Ao rolar Dados de Vida, recupera no mínimo 2x seu mod de Constituição (mínimo 2).",
+  "Especialista em Besta": "Ignora propriedade de recarga de bestas. Estar a 1,5m de inimigo não impõe desvantagem. Ao atacar com arma de uma mão, pode usar bônus para atacar com besta de mão.",
+  "Explorador de Masmorras": "Vantagem em Sabedoria (Percepção) e Inteligência (Investigação) para achar portas secretas. Vantagem em resistência contra armadilhas. Resistência a dano de armadilhas. Viaja rápido sem penalidade.",
+  "Iniciado em Magia": "Escolha Bardo, Clérigo, Druida, Feiticeiro, Bruxo ou Mago. Aprenda 2 truques e 1 magia de 1º nível (uma vez por dia longo).",
+  "Líder Inspirador": "Requer Car 13. Gasta 10 min para inspirar 6 aliados. Eles ganham PV temporários igual ao seu nível + mod Carisma. Uma vez por descanso curto.",
+  "Mestre de Armas": "Aumente Força ou Destreza em 1. Ganha proficiência em 4 armas à sua escolha.",
+  "Mestre de Armas de Haste": "Ao atacar com glaive, alabarda ou bastão, pode usar bônus para ataque com cabo (1d4 concussão). Inimigos provocam oportunidade ao entrar no alcance.",
+  "Mestre de Armas Grandes": "Ao fazer crítico ou reduzir criatura a 0, pode fazer ataque extra como bônus. Antes de atacar com arma pesada, pode escolher -5 no acerto para +10 no dano.",
+  "Mestre de Armadura Média": "Requer Armadura Média. Não tem desvantagem em Furtividade. Pode somar +3 de Destreza na CA em vez de +2.",
+  "Mestre de Armadura Pesada": "Requer Armadura Pesada. Aumente Força em 1. Reduz dano de concussão, cortante e perfurante de armas não-mágicas em 3.",
+  "Mestre de Escudo": "Se atacar, pode usar bônus para empurrar com escudo. Adiciona bônus de escudo em testes de Des contra magias. Se passar em save de Des para meio dano, não toma nenhum.",
+  "Móvel": "Aumente deslocamento em 3m. Dash em terreno difícil não custa extra. Se atacar criatura corpo a corpo, não provoca oportunidade dela neste turno.",
+  "Observador": "Aumente Int ou Sab em 1. Se puder ver boca, entende o que é dito. +5 em Percepção e Investigação passivas.",
+  "Perito": "Ganhe proficiência em 3 perícias ou ferramentas à sua escolha.",
+  "Resiliente": "Aumente um atributo em 1. Ganhe proficiência em testes de resistência desse atributo.",
+  "Robusto": "Seus pontos de vida máximos aumentam em 2x seu nível. A cada nível ganha +2 PV.",
+  "Sentinela": "Ao acertar oportunidade, deslocamento do alvo vira 0. Provoca oportunidade mesmo se fizerem Desengajar. Se inimigo atacar outro alvo a 1,5m, você pode usar reação para atacar esse inimigo.",
+  "Sortudo": "3 pontos de sorte por dia longo. Pode gastar 1 para rolar d20 adicional em ataque, teste ou resistência e escolher resultado. Pode usar para fazer inimigo rolar d20 extra e escolher.",
+  "Matador de Magos": "Reação para atacar criatura a 1,5m que conjure magia. Dano em mago concentrando impõe desvantagem no teste. Vantagem em resistência contra magias de criaturas a 1,5m."
 };
 
 export const CLASSES_DB: Record<string, { dv: number; sub: string[]; slots: 'full' | 'half' | 'half-up' | 'pact' | null }> = {
