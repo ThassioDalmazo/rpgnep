@@ -56,6 +56,15 @@ export const FEATS_DB: Record<string, string> = {
   "Matador de Magos": "Reação para atacar criatura a 1,5m que conjure magia. Dano em mago concentrando impõe desvantagem no teste. Vantagem em resistência contra magias de criaturas a 1,5m."
 };
 
+export const FEAT_PREREQUISITES: Record<string, { attr?: Record<string, number>; class?: string[]; armor?: string }> = {
+  "Mestre de Armadura Pesada": { armor: "heavy" },
+  "Mestre de Armadura Média": { armor: "medium" },
+  "Líder Inspirador": { attr: { cha: 13 } },
+  "Conjurador de Ritual": { attr: { int: 13 } },
+  "Duelista Defensivo": { attr: { dex: 13 } },
+  "Brigão de Taverna": { attr: { str: 13 } }
+};
+
 export const CLASSES_DB: Record<string, { dv: number; sub: string[]; slots: 'full' | 'half' | 'half-up' | 'pact' | null }> = {
   'Bárbaro': { 
     dv: 12, 
@@ -248,7 +257,7 @@ export const CONDITIONS_LIST = [
     "Enfeitiçado", "Envenenado", "Exausto", "Impedido", 
     "Incapacitado", "Inconsciente", "Invisível", "Paralisado", 
     "Petrificado", "Surdo"
-];
+  ];
 
 export const RACES_LIST = [
   "Aarakocra", "Aasimar", "Anão", "Anão da Colina", "Anão da Montanha", 
@@ -422,106 +431,185 @@ export const COMMON_WEAPONS: { n: string, dmg: string, prop: string }[] = [
   { n: "Besta Mão", dmg: "1d6 perfurante", prop: "Mun (9/36), Leve, Recarga" }
 ];
 
-export const ARMOR_DB: Record<string, { n: string, ac: number, type: 'light' | 'medium' | 'heavy' | 'shield', dexMax?: number, minStr?: number, stealthDis?: boolean }> = {
-  // Leves
-  "Acolchoada": { n: "Acolchoada", ac: 11, type: "light", stealthDis: true },
-  "Couro": { n: "Couro", ac: 11, type: "light" },
-  "Couro Batido": { n: "Couro Batido", ac: 12, type: "light" },
-  // Médias
-  "Gibão de Peles": { n: "Gibão de Peles", ac: 12, type: "medium", dexMax: 2 },
-  "Camisão de Malha": { n: "Camisão de Malha", ac: 13, type: "medium", dexMax: 2 },
-  "Brunea": { n: "Brunea", ac: 14, type: "medium", dexMax: 2, stealthDis: true },
-  "Peitoral": { n: "Peitoral", ac: 14, type: "medium", dexMax: 2 },
-  "Meia-Armadura": { n: "Meia-Armadura", ac: 15, type: "medium", dexMax: 2, stealthDis: true },
-  // Pesadas
-  "Cota de Anéis": { n: "Cota de Anéis", ac: 14, type: "heavy", dexMax: 0, stealthDis: true },
-  "Cota de Malha": { n: "Cota de Malha", ac: 16, type: "heavy", dexMax: 0, minStr: 13, stealthDis: true },
-  "Cota de Talas": { n: "Cota de Talas", ac: 17, type: "heavy", dexMax: 0, minStr: 15, stealthDis: true },
-  "Placas": { n: "Placas", ac: 18, type: "heavy", dexMax: 0, minStr: 15, stealthDis: true },
-  // Escudo
-  "Escudo": { n: "Escudo", ac: 2, type: "shield" }
+export const ARMOR_DB: Record<string, { n: string, ac: number, type: 'light' | 'medium' | 'heavy' | 'shield', stealthDis?: boolean, cost: number, weight: string }> = {
+  'Couro': { n: 'Couro', ac: 11, type: 'light', cost: 10, weight: '5kg' },
+  'Couro Batido': { n: 'Couro Batido', ac: 12, type: 'light', cost: 45, weight: '6.5kg' },
+  'Camisão de Malha': { n: 'Camisão de Malha', ac: 13, type: 'medium', cost: 50, weight: '10kg' },
+  'Peitoral': { n: 'Peitoral', ac: 14, type: 'medium', cost: 400, weight: '10kg' },
+  'Meia-Armadura': { n: 'Meia-Armadura', ac: 15, type: 'medium', stealthDis: true, cost: 750, weight: '20kg' },
+  'Cota de Malha': { n: 'Cota de Malha', ac: 16, type: 'heavy', stealthDis: true, cost: 75, weight: '27.5kg' },
+  'Cota de Talas': { n: 'Cota de Talas', ac: 17, type: 'heavy', stealthDis: true, cost: 200, weight: '30kg' },
+  'Placas': { n: 'Placas', ac: 18, type: 'heavy', stealthDis: true, cost: 1500, weight: '32.5kg' },
+  'Escudo': { n: 'Escudo', ac: 2, type: 'shield', cost: 10, weight: '3kg' }
 };
 
+export const SKILL_LIST = [
+  {id:'acrobacia', n:'Acrobacia', a:'dex'}, {id:'adestrar', n:'Adestrar Animais', a:'wis'},
+  {id:'arcanismo', n:'Arcanismo', a:'int'}, {id:'atletismo', n:'Atletismo', a:'str'},
+  {id:'atuacao', n:'Atuação', a:'cha'}, {id:'enganacao', n:'Enganação', a:'cha'},
+  {id:'furtividade', n:'Furtividade', a:'dex'}, {id:'historia', n:'História', a:'int'},
+  {id:'intimidacao', n:'Intimidação', a:'cha'}, {id:'intuicao', n:'Intuição', a:'wis'},
+  {id:'investigacao', n:'Investigação', a:'int'}, {id:'medicina', n:'Medicina', a:'wis'},
+  {id:'natureza', n:'Natureza', a:'int'}, {id:'natureza', n:'Natureza', a:'int'},
+  {id:'percepcao', n:'Percepção', a:'wis'}, {id:'persuasao', n:'Persuasão', a:'cha'},
+  {id:'prestidigitacao', n:'Prestidigitação', a:'dex'}, {id:'religiao', n:'Religião', a:'int'},
+  {id:'sobrevivencia', n:'Sobrevivência', a:'wis'}
+];
+
+export const CREATURE_IMAGES = [
+  "aelion.PNG", "alair.png", "aranha.PNG", "aranha_menor.PNG", "aranha_metalica.PNG", 
+  "arquimago.PNG", "artf.PNG", "askhael.png", "aslan.PNG", "assassino_culto.PNG", 
+  "assassino_vapor.PNG", "automato.PNG", "bandido.PNG", "banshee.PNG", "barbaro_golias.PNG", 
+  "barbaro_meioorc.PNG", "bardo_kenku.PNG", "basilisco.PNG", "basilisco_1.PNG", "beholder.PNG", 
+  "beholder_zumbi.PNG", "bruxo_tiefling.PNG", "capitão_dos_bandidos.PNG", "centopeia.PNG", 
+  "clerigo.PNG", "cobra.PNG", "devorador_de_mentes.PNG", "diabrete.PNG", "dragao.PNG", 
+  "dragao_negro.PNG", "druida_tortie.PNG", "duida_elfo.PNG", "elemental_da_terra.PNG", 
+  "escorpiao.PNG", "esqueleto.PNG", "esqueleto_guerreiro.PNG", "esqueleto_ruina.PNG", 
+  "fantasma.PNG", "fantasma_1.PNG", "gargula.PNG", "gargula_lata.PNG", "gigante_da_tempestade.PNG", 
+  "gladiador.PNG", "gladiador_1.PNG", "gnoll.PNG", "gnu.PNG", "goblin.PNG", "goblin_1.PNG", 
+  "goblin_arqueiro.PNG", "goblin_ladrão.PNG", "golem_ferro.PNG", "grifo.PNG", "guarda_canino.PNG", 
+  "guarda_carcereiro.PNG", "guarda_carcereiro_2.PNG", "guarda_gigante.PNG", "guarda_mago.PNG", 
+  "guarda_real.PNG", "guarda_recruta.PNG", "guarda_sargento.PNG", "guerreira_githyanki.PNG", 
+  "harpia.PNG", "harpia_1.PNG", "kobold.PNG", "ladino_hafling.PNG", "lich.PNG", "lich_1.PNG", 
+  "lobisomen.PNG", "lobisomen_1.PNG", "lobo.PNG", "lobo_atroz.PNG", "lorack.PNG", "mago.PNG", 
+  "mago_negro.PNG", "manticora.PNG", "manticora_1.PNG", "mimic.PNG", "mimic_1.PNG", "minotauro.PNG", 
+  "monge_tabaxi.PNG", "morcego.PNG", "morcego_1.PNG", "ogro.PNG", "ogro_1.PNG", "ogro_duas_cabeças.PNG", 
+  "ogro_gigante.PNG", "orc.PNG", "orc_2.PNG", "orc_3.PNG", "orc_cavalheiro.PNG", "paladino_draconato.PNG", 
+  "plebeu.PNG", "prisioneiro_anão.PNG", "prisioneiro_bruto.PNG", "prisioneiro_bruto_2.PNG", 
+  "prisioneiro_criminoso.PNG", "prisioneiro_cultista.PNG", "prisioneiro_cultista_2.PNG", 
+  "prisioneiro_elfa.PNG", "prisioneiro_enfraquecido.PNG", "prisioneiro_nobre.PNG", "quimera.PNG", 
+  "rato.PNG", "rei_demonio.PNG", "saeel.PNG", "sapo.PNG", "silime_2.PNG", "slime.PNG", "slime_1.PNG", 
+  "snow.PNG", "tarrasque.PNG", "touro_metalico.PNG", "troll.PNG", "urso.PNG", "urso_atroz.PNG", 
+  "urso_coruja.PNG", "vampiro.PNG", "vampiro_cria.PNG", "verme.PNG", "vespa.PNG", "zumbi.PNG"
+].map(f => `/textures/creatures/${f}`);
+
 export const DEFAULT_MONSTERS: Monster[] = [
-  { id: 120, name: "Prisioneiro (Enfraquecido)", type: "Humanóide", cr: "0", ac: 10, hp: 4, speed: "9m", actions: [{n: "Soco", hit: 2, dmg: "1"}] },
-  { id: 101, name: "Plebeu", type: "Humanóide", cr: "0", ac: 10, hp: 4, speed: "9m", actions: [{n: "Clava", hit: 2, dmg: "1d4"}] },
-  { id: 109, name: "Kobold", type: "Humanóide", cr: "1/8", ac: 12, hp: 5, speed: "9m", actions: [{n: "Adaga", hit: 4, dmg: "1d4+2"}, {n: "Funda", hit: 4, dmg: "1d4+2"}], traits: [{n: "Táticas de Matilha", d: "Vantagem se aliado estiver a 1.5m do alvo."}, {n: "Sensibilidade à Luz", d: "Desvantagem em ataques sob luz solar."}] },
-  { id: 107, name: "Bandido", type: "Humanóide", cr: "1/8", ac: 12, hp: 11, speed: "9m", actions: [{n: "Cimitarra", hit: 3, dmg: "1d6+1"}, {n: "Besta Leve", hit: 3, dmg: "1d8+1"}] },
-  { id: 110, name: "Guarda (Recruta)", type: "Humanóide", cr: "1/8", ac: 16, hp: 11, speed: "9m", actions: [{n: "Lança", hit: 3, dmg: "1d6+1"}] },
-  { id: 121, name: "Prisioneiro (Criminoso)", type: "Humanóide", cr: "1/8", ac: 11, hp: 11, speed: "9m", actions: [{n: "Faca Improvisada", hit: 3, dmg: "1d4+1"}] },
-  { id: 102, name: "Goblin", type: "Humanóide", cr: "1/4", ac: 15, hp: 7, speed: "9m", 
-    actions: [{n: "Cimitarra", hit: 4, dmg: "1d6+2"}, {n: "Arco Curto", hit: 4, dmg: "1d6+2"}],
-    traits: [{n: "Escapar Ágil", d: "Pode usar Desengajar ou Esconder como ação bônus."}]
-  },
-  { id: 103, name: "Esqueleto", type: "Morto-vivo", cr: "1/4", ac: 13, hp: 13, speed: "9m", 
-    actions: [{n: "Espada Curta", hit: 4, dmg: "1d6+2"}, {n: "Arco Curto", hit: 4, dmg: "1d6+2"}],
-    traits: [{n: "Vulnerabilidade", d: "Dano de concussão."}] 
-  },
-  { id: 104, name: "Zumbi", type: "Morto-vivo", cr: "1/4", ac: 8, hp: 22, speed: "6m", 
-    actions: [{n: "Pancada", hit: 3, dmg: "1d6+1"}],
-    traits: [{n: "Fortitude de Morto-Vivo", d: "Se cair a 0 PV, chance de voltar com 1 PV (CD 5+dano)."}]
-  },
-  { id: 108, name: "Lobo", type: "Fera", cr: "1/4", ac: 13, hp: 11, speed: "12m", 
-    actions: [{n: "Mordida", hit: 4, dmg: "2d4+2 | CD 11 For ou Caído"}],
-    traits: [{n: "Táticas de Matilha", d: "Vantagem se aliado estiver a 1.5m do alvo."}, {n: "Audição e Olfato Apurados", d: "Vantagem em Percepção."}]
-  },
-  { id: 122, name: "Prisioneiro (Cultista)", type: "Humanóide", cr: "1/4", ac: 12, hp: 9, speed: "9m", actions: [{n: "Adaga", hit: 3, dmg: "1d4+1"}], spells: ["Chama Sagrada (1d8)", "Taumaturgia"] },
-  { id: 111, name: "Guarda (Carcereiro)", type: "Humanóide", cr: "1/2", ac: 14, hp: 16, speed: "9m", actions: [{n: "Arco Longo", hit: 3, dmg: "1d8+1"}, {n: "Espada Curta", hit: 4, dmg: "1d6+2"}, {n: "Rede", hit: 3, dmg: "Contenção"}] },
-  { id: 123, name: "Prisioneiro (Bruto)", type: "Humanóide", cr: "1/2", ac: 13, hp: 32, speed: "9m", actions: [{n: "Ataque Múltiplo", hit: 4, dmg: "2x"}, {n: "Ataque Desarmado", hit: 4, dmg: "1d4+2"}] },
-  { id: 105, name: "Orc", type: "Humanóide", cr: "1/2", ac: 13, hp: 15, speed: "9m", 
-    actions: [{n: "Machado Grande", hit: 5, dmg: "1d12+3"}, {n: "Azagaia", hit: 5, dmg: "1d6+3"}],
-    traits: [{n: "Agressivo", d: "Ação bônus para mover até seu deslocamento em direção a inimigo."}]
-  },
-  { id: 106, name: "Gnoll", type: "Humanóide", cr: "1/2", ac: 15, hp: 22, speed: "9m", 
-    actions: [{n: "Mordida", hit: 4, dmg: "1d4+2"}, {n: "Lança", hit: 4, dmg: "1d8+2"}, {n: "Arco Longo", hit: 3, dmg: "1d8+1"}],
-    traits: [{n: "Frenesi", d: "Quando reduz criatura a 0 PV, pode fazer ataque de mordida como ação bônus."}]
-  },
-  { id: 201, name: "Urso Marrom", type: "Fera", cr: "1", ac: 11, hp: 34, speed: "12m", actions: [{n: "Multiataque", hit: 6, dmg: "Mordida + Garra"}, {n: "Mordida", hit: 6, dmg: "1d8+4"}, {n: "Garras", hit: 6, dmg: "2d6+4"}] },
-  { id: 206, name: "Lobo Atroz", type: "Fera", cr: "1", ac: 14, hp: 37, speed: "15m", 
-    actions: [{n: "Mordida", hit: 5, dmg: "2d6+3 | CD 13 For ou Caído"}],
-    traits: [{n: "Táticas de Matilha", d: "Vantagem se aliado estiver a 1.5m do alvo."}]
-  },
-  { id: 701, name: "Diabrete (Imp)", type: "Infernal", cr: "1", ac: 13, hp: 10, speed: "6m/12m voo", actions: [{n: "Ferrão", hit: 5, dmg: "1d4+3 + 3d6 veneno (CD 11 Con metade)"}], traits: [{n: "Invisibilidade", d: "Ação para ficar invisível."}, {n: "Resistência à Magia", d: "Vantagem em testes de resistência."}] },
-  { id: 202, name: "Harpia", type: "Monstruosidade", cr: "1", ac: 11, hp: 38, speed: "6m/12m voo", actions: [{n: "Multiataque", hit: 3, dmg: "2x"}, {n: "Garras", hit: 3, dmg: "2d4+1"}, {n: "Clava", hit: 3, dmg: "1d4+1"}, {n: "Canção Sedutora", hit: 0, dmg: "CD 11 Sab ou Enfeitiçado"}] },
-  { id: 203, name: "Cubo Gelatinoso", type: "Limo", cr: "2", ac: 6, hp: 84, speed: "4.5m", actions: [{n: "Pseudópode", hit: 4, dmg: "3d6+1d6 ácido"}, {n: "Engolfar", hit: 0, dmg: "CD 12 Des ou 6d6 ácido + Preso"}], traits: [{n: "Transparente", d: "CD 15 Percepção para notar."}] },
-  { id: 204, name: "Ogro", type: "Gigante", cr: "2", ac: 11, hp: 59, speed: "12m", actions: [{n: "Clava Grande", hit: 6, dmg: "2d8+4"}, {n: "Azagaia", hit: 6, dmg: "2d6+4"}] },
-  { id: 205, name: "Mímico", type: "Monstruosidade", cr: "2", ac: 12, hp: 58, speed: "4.5m", 
-    actions: [{n: "Pseudópode", hit: 5, dmg: "1d8+3 + Agarrado"}, {n: "Mordida", hit: 5, dmg: "1d8+3 + 1d8 ácido"}],
-    traits: [{n: "Aderente", d: "Criaturas tocadas ficam presas (CD 13 Força)."}, {n: "Aparência Falsa", d: "Indistinguível de objeto enquanto imóvel."}]
-  },
-  { id: 702, name: "Grifo", type: "Monstruosidade", cr: "2", ac: 12, hp: 59, speed: "9m/24m voo", actions: [{n: "Multiataque", hit: 6, dmg: "Bico + Garra"}, {n: "Bico", hit: 6, dmg: "1d8+4"}, {n: "Garras", hit: 6, dmg: "2d6+4"}] },
-  { id: 207, name: "Capitão dos Bandidos", type: "Humanóide", cr: "2", ac: 15, hp: 65, speed: "9m", actions: [{n: "Multiataque", hit: 5, dmg: "2x Cimitarra + 1x Adaga"}, {n: "Cimitarra", hit: 5, dmg: "1d6+3"}, {n: "Adaga", hit: 5, dmg: "1d4+3"}], traits: [{n: "Aparar", d: "Reação: +2 CA contra um ataque corpo a corpo."}] },
-  { id: 113, name: "Guarda (Mago de Combate)", type: "Humanóide", cr: "2", ac: 12, hp: 45, speed: "9m", actions: [{n: "Bordão", hit: 2, dmg: "1d6"}], spells: ["Mísseis Mágicos (3x1d4+1)", "Onda Trovejante (2d8)", "Teia (CD 13)", "Escudo Arcano (+5 CA)"] },
-  { id: 301, name: "Urso Coruja", type: "Monstruosidade", cr: "3", ac: 13, hp: 59, speed: "12m", actions: [{n: "Multiataque", hit: 7, dmg: "Bico + Garra"}, {n: "Bico", hit: 7, dmg: "1d10+5"}, {n: "Garras", hit: 7, dmg: "2d8+5"}] },
-  { id: 302, name: "Lobisomem", type: "Humanóide", cr: "3", ac: 12, hp: 58, speed: "12m", actions: [{n: "Multiataque", hit: 4, dmg: "Mordida + Garra (Híbrido)"}, {n: "Mordida", hit: 4, dmg: "1d8+2 + CD 12 Con Maldição"}, {n: "Garras", hit: 4, dmg: "2d4+2"}, {n: "Lança", hit: 4, dmg: "1d8+2"}], traits: [{n: "Imunidade", d: "Dano cortante/perfurante/concussão de armas não-mágicas."}] },
-  { id: 308, name: "Basilisco", type: "Monstruosidade", cr: "3", ac: 15, hp: 52, speed: "6m", actions: [{n: "Mordida", hit: 5, dmg: "2d6+3 + 2d6 veneno"}], traits: [{n: "Olhar Petrificante", d: "CD 12 Con ou petrificado."}] },
-  { id: 703, name: "Mantícora", type: "Monstruosidade", cr: "3", ac: 14, hp: 68, speed: "9m/15m voo", actions: [{n: "Multiataque", hit: 5, dmg: "Mordida + 2x Garra"}, {n: "Mordida", hit: 5, dmg: "1d8+3"}, {n: "Garras", hit: 5, dmg: "2d6+3"}, {n: "Espinhos da Cauda", hit: 5, dmg: "1d8+3 (x3)"}] },
-  { id: 112, name: "Guarda (Sargento)", type: "Humanóide", cr: "3", ac: 18, hp: 52, speed: "9m", actions: [{n: "Multiataque", hit: 5, dmg: "2x"}, {n: "Espada Grande", hit: 5, dmg: "2d6+3"}, {n: "Besta Pesada", hit: 3, dmg: "1d10"}], traits: [{n: "Liderança", d: "Aliados a 9m ganham +1d4 em ataques."}] },
-  { id: 303, name: "Fantasma", type: "Morto-vivo", cr: "4", ac: 11, hp: 45, speed: "12m voo", actions: [{n: "Toque Debilitante", hit: 5, dmg: "4d6+3 necrótico"}, {n: "Possessão", hit: 0, dmg: "CD 13 Car ou Controlado"}], traits: [{n: "Movimento Incorpóreo", d: "Pode atravessar objetos e criaturas."}] },
-  { id: 309, name: "Banshee", type: "Morto-vivo", cr: "4", ac: 12, hp: 58, speed: "0m/12m voo", actions: [{n: "Toque Corruptor", hit: 4, dmg: "3d6+2 necrótico"}, {n: "Lamento", hit: 0, dmg: "CD 13 Con ou 0 PV (1/dia)"}], traits: [{n: "Detectar Vida", d: "Sente vida a 8km."}] },
-  { id: 704, name: "Ettin", type: "Gigante", cr: "4", ac: 12, hp: 85, speed: "12m", actions: [{n: "Multiataque", hit: 7, dmg: "Machado + Maça"}, {n: "Machado de Batalha", hit: 7, dmg: "2d8+5"}, {n: "Maça Estrela", hit: 7, dmg: "2d8+5"}], traits: [{n: "Duas Cabeças", d: "Vantagem em Percepção e testes contra cegueira/encantamento."}] },
-  { id: 304, name: "Beholder Zumbi", type: "Morto-vivo", cr: "5", ac: 15, hp: 93, speed: "0m/9m voo", actions: [{n: "Mordida", hit: 5, dmg: "3d6"}, {n: "Raio Ocular", hit: 5, dmg: "CD 14 (Des/Con/Sab/For) 3d6 (Var)"}] },
-  { id: 305, name: "Vampiro (Cria)", type: "Morto-vivo", cr: "5", ac: 15, hp: 82, speed: "9m", actions: [{n: "Multiataque", hit: 6, dmg: "2x"}, {n: "Garras", hit: 6, dmg: "2d4+3"}, {n: "Mordida", hit: 6, dmg: "1d6+3 + 2d6 necrótico"}], traits: [{n: "Regeneração", d: "Recupera 10 PV no início do turno se não levar dano radiante/solar."}] },
-  { id: 306, name: "Troll", type: "Gigante", cr: "5", ac: 15, hp: 84, speed: "9m", actions: [{n: "Multiataque", hit: 7, dmg: "Mordida + 2x Garra"}, {n: "Mordida", hit: 7, dmg: "1d6+4"}, {n: "Garras", hit: 7, dmg: "2d6+4"}], traits: [{n: "Regeneração", d: "Recupera 10 PV se não levar dano de fogo/ácido."}] },
-  { id: 307, name: "Gladiador", type: "Humanóide", cr: "5", ac: 16, hp: 112, speed: "9m", actions: [{n: "Multiataque", hit: 7, dmg: "3x Corpo a Corpo"}, {n: "Lança", hit: 7, dmg: "2d6+4"}, {n: "Escudada", hit: 7, dmg: "1d4+4 + Derrubar (CD 15 For)"}], traits: [{n: "Bravura", d: "Vantagem contra medo."}] },
-  { id: 705, name: "Elemental da Terra", type: "Elemental", cr: "5", ac: 17, hp: 126, speed: "9m/9m escavar", actions: [{n: "Multiataque", hit: 8, dmg: "2x"}, {n: "Pancada", hit: 8, dmg: "2d8+5"}], traits: [{n: "Cerco", d: "Dobra o dano contra objetos e estruturas."}] },
-  { id: 310, name: "Quimera", type: "Monstruosidade", cr: "6", ac: 14, hp: 114, speed: "9m/18m voo", actions: [{n: "Multiataque", hit: 7, dmg: "Mordida + Chifres + Garras"}, {n: "Mordida", hit: 7, dmg: "2d6+4"}, {n: "Chifres", hit: 7, dmg: "1d12+4"}, {n: "Garras", hit: 7, dmg: "2d6+4"}, {n: "Sopro de Fogo", hit: 0, dmg: "7d8 (CD 15) Recarga 5-6"}] },
-  { id: 404, name: "Devorador de Mentes", type: "Aberração", cr: "7", ac: 15, hp: 71, speed: "9m", actions: [{n: "Tentáculos", hit: 7, dmg: "2d10+4 + Agarrado"}, {n: "Extrair Cérebro", hit: 7, dmg: "10d10 perfurante"}, {n: "Rajada Mental", hit: 0, dmg: "4d8+4 (CD 15 Int)"}], spells: ["Detectar Pensamentos", "Levitação", "Invisibilidade", "Domar Monstro"] },
-  { id: 401, name: "Dragão Vermelho Jovem", type: "Dragão", cr: "10", ac: 18, hp: 178, speed: "12m/24m voo", actions: [{n: "Multiataque", hit: 10, dmg: "Mordida + 2x Garra"}, {n: "Mordida", hit: 10, dmg: "2d10+6+1d6 fogo"}, {n: "Garras", hit: 10, dmg: "2d6+6"}, {n: "Sopro de Fogo", hit: 0, dmg: "16d6 fogo (CD 17 Des) Recarga 5-6"}] },
-  { id: 403, name: "Gigante da Tempestade", type: "Gigante", cr: "13", ac: 16, hp: 230, speed: "15m", 
-    actions: [{n: "Multiataque", hit: 14, dmg: "2x Espada Grande"}, {n: "Espada Grande", hit: 14, dmg: "6d6+9"}, {n: "Relâmpago", hit: 0, dmg: "12d8 (CD 17) Recarga 5-6"}],
-    traits: [{n: "Anfíbio", d: "Respira ar e água."}, {n: "Imunidade", d: "Elétrico e Trovão."}]
-  },
-  { id: 405, name: "Dragão Negro Adulto", type: "Dragão", cr: "14", ac: 19, hp: 195, speed: "12m/24m voo", actions: [{n: "Multiataque", hit: 11, dmg: "Mordida + 2x Garra"}, {n: "Mordida", hit: 11, dmg: "2d10+6 + 1d8 ácido"}, {n: "Garras", hit: 11, dmg: "2d6+6"}, {n: "Cauda", hit: 11, dmg: "2d8+6"}, {n: "Sopro Ácido", hit: 0, dmg: "12d8 (CD 18 Des) Recarga 5-6"}], traits: [{n: "Lendário (3/Turno)", d: "Pode usar ações lendárias no fim do turno de outros (Cauda, Asas)."}] },
-  { id: 402, name: "Lich", type: "Morto-vivo", cr: "21", ac: 17, hp: 135, speed: "9m", 
-    actions: [{n: "Toque Paralisante", hit: 12, dmg: "3d6 frio + CD 18 Con ou Paralisado"}, {n: "Disrupt Life (Lendário)", hit: 0, dmg: "6d6 necrótico (CD 18 Con)"}],
-    spells: ["Raio de Gelo", "Mãos Mágicas", "Escudo Arcano", "Mísseis Mágicos", "Detectar Magia", "Bola de Fogo", "Contramágica", "Dedo da Morte", "Palavra de Poder: Matar"],
-    traits: [{n: "Resistência Lendária (3/Dia)", d: "Se falhar em teste de resistência, pode escolher passar."}, {n: "Rejuvenescimento", d: "Se tiver filactéria, ganha novo corpo em 1d10 dias."}]
-  },
-  { id: 999, name: "Tarrasque", type: "Monstruosidade", cr: "30", ac: 25, hp: 676, speed: "12m", 
-    actions: [{n: "Multiataque", hit: 19, dmg: "Mordida + 2x Garra + Chifres + Cauda"}, {n: "Mordida", hit: 19, dmg: "4d12+10 + Agarrado"}, {n: "Garras", hit: 19, dmg: "4d8+10"}, {n: "Cauda", hit: 19, dmg: "4d6+10 + CD 20 For ou Caído"}, {n: "Chifres", hit: 19, dmg: "4d10+10"}],
-    traits: [{n: "Carapaça Refletiva", d: "Imune a mísseis mágicos e magias de linha/raio."}, {n: "Resistência Lendária (3/Dia)", d: "Passa no teste se falhar."}]
-  }
+    // --- 000-099: Low Challenge / Common ---
+    { id: 100, name: "Aranha", type: "Fera", cr: "0", ac: 12, hp: 1, speed: "6m", actions: [{n: "Mordida", hit: 4, dmg: "1"}], imageUrl: "/textures/creatures/aranha_menor.PNG" },
+    { id: 101, name: "Plebeu", type: "Humanóide", cr: "0", ac: 10, hp: 4, speed: "9m", actions: [{n: "Clava", hit: 2, dmg: "1d4"}], imageUrl: "/textures/creatures/plebeu.PNG" },
+    { id: 102, name: "Prisioneiro (Enfraquecido)", type: "Humanóide", cr: "0", ac: 10, hp: 4, speed: "9m", actions: [{n: "Soco", hit: 2, dmg: "1"}], imageUrl: "/textures/creatures/prisioneiro_enfraquecido.PNG" },
+    { id: 103, name: "Rato Gigante", type: "Fera", cr: "1/8", ac: 12, hp: 7, speed: "9m", actions: [{n: "Mordida", hit: 4, dmg: "1d4+2"}], imageUrl: "/textures/creatures/rato.PNG" },
+    { id: 104, name: "Bandido", type: "Humanóide", cr: "1/8", ac: 12, hp: 11, speed: "9m", actions: [{n: "Cimitarra", hit: 3, dmg: "1d6+1"}, {n: "Besta Leve", hit: 3, dmg: "1d8+1"}], imageUrl: "/textures/creatures/bandido.PNG" },
+    { id: 105, name: "Kobold", type: "Humanóide", cr: "1/8", ac: 12, hp: 5, speed: "9m", actions: [{n: "Adaga", hit: 4, dmg: "1d4+2"}, {n: "Funda", hit: 4, dmg: "1d4+2"}], traits: [{n: "Táticas de Matilha", d: "Vantagem se aliado estiver a 1.5m do alvo."}, {n: "Sensibilidade à Luz", d: "Desvantagem em ataques sob luz solar."}], imageUrl: "/textures/creatures/kobold.PNG" },
+    { id: 106, name: "Guarda (Recruta)", type: "Humanóide", cr: "1/8", ac: 16, hp: 11, speed: "9m", actions: [{n: "Lança", hit: 3, dmg: "1d6+1"}], imageUrl: "/textures/creatures/guarda_recruta.PNG" },
+    { id: 107, name: "Prisioneiro (Criminoso)", type: "Humanóide", cr: "1/8", ac: 11, hp: 11, speed: "9m", actions: [{n: "Faca Improvisada", hit: 3, dmg: "1d4+1"}], imageUrl: "/textures/creatures/prisioneiro_criminoso.PNG" },
+    { id: 108, name: "Goblin", type: "Humanóide", cr: "1/4", ac: 15, hp: 7, speed: "9m", actions: [{n: "Cimitarra", hit: 4, dmg: "1d6+2"}, {n: "Arco Curto", hit: 4, dmg: "1d6+2"}], traits: [{n: "Escapar Ágil", d: "Pode usar Desengajar ou Esconder como ação bônus."}], imageUrl: "/textures/creatures/goblin.PNG" },
+    { id: 109, name: "Goblin (Guerreiro)", type: "Humanóide", cr: "1/4", ac: 15, hp: 10, speed: "9m", actions: [{n: "Machadinha", hit: 4, dmg: "1d6+2"}], imageUrl: "/textures/creatures/goblin_1.PNG" },
+    { id: 110, name: "Goblin Arqueiro", type: "Humanóide", cr: "1/4", ac: 14, hp: 7, speed: "9m", actions: [{n: "Arco Curto", hit: 4, dmg: "1d6+2"}], imageUrl: "/textures/creatures/goblin_arqueiro.PNG" },
+    { id: 111, name: "Goblin Ladrão", type: "Humanóide", cr: "1/4", ac: 14, hp: 9, speed: "9m", actions: [{n: "Adaga", hit: 5, dmg: "1d4+3"}], imageUrl: "/textures/creatures/goblin_ladrão.PNG" },
+    { id: 112, name: "Esqueleto", type: "Morto-vivo", cr: "1/4", ac: 13, hp: 13, speed: "9m", actions: [{n: "Espada Curta", hit: 4, dmg: "1d6+2"}, {n: "Arco Curto", hit: 4, dmg: "1d6+2"}], traits: [{n: "Vulnerabilidade", d: "Dano de concussão."}], imageUrl: "/textures/creatures/esqueleto.PNG" },
+    { id: 113, name: "Zumbi", type: "Morto-vivo", cr: "1/4", ac: 8, hp: 22, speed: "6m", actions: [{n: "Pancada", hit: 3, dmg: "1d6+1"}], traits: [{n: "Fortitude de Morto-Vivo", d: "Se cair a 0 PV, chance de voltar com 1 PV (CD 5+dano)."}], imageUrl: "/textures/creatures/zumbi.PNG" },
+    { id: 114, name: "Cobra Venenosa", type: "Fera", cr: "1/4", ac: 13, hp: 13, speed: "9m", actions: [{n: "Mordida", hit: 5, dmg: "1d1+1 + 2d4 veneno"}], imageUrl: "/textures/creatures/cobra.PNG" },
+    { id: 115, name: "Prisioneiro (Cultista)", type: "Humanóide", cr: "1/4", ac: 12, hp: 9, speed: "9m", actions: [{n: "Adaga", hit: 3, dmg: "1d4+1"}], spells: ["Chama Sagrada (1d8)", "Taumaturgia"], imageUrl: "/textures/creatures/prisioneiro_cultista.PNG" },
+    { id: 116, name: "Lobo", type: "Fera", cr: "1/4", ac: 13, hp: 11, speed: "12m", actions: [{n: "Mordida", hit: 4, dmg: "2d4+2 | CD 11 For ou Caído"}], traits: [{n: "Táticas de Matilha", d: "Vantagem se aliado estiver a 1.5m do alvo."}], imageUrl: "/textures/creatures/lobo.PNG" },
+    { id: 117, name: "Esqueleto Guerreiro", type: "Morto-vivo", cr: "1/2", ac: 14, hp: 20, speed: "9m", actions: [{n: "Espada Longa", hit: 4, dmg: "1d8+2"}], imageUrl: "/textures/creatures/esqueleto_guerreiro.PNG" },
+    { id: 118, name: "Orc", type: "Humanóide", cr: "1/2", ac: 13, hp: 15, speed: "9m", actions: [{n: "Machado Grande", hit: 5, dmg: "1d12+3"}, {n: "Azagaia", hit: 5, dmg: "1d6+3"}], traits: [{n: "Agressivo", d: "Ação bônus para mover até seu deslocamento em direção a inimigo."}], imageUrl: "/textures/creatures/orc.PNG" },
+    { id: 119, name: "Gnoll", type: "Humanóide", cr: "1/2", ac: 15, hp: 22, speed: "9m", actions: [{n: "Mordida", hit: 4, dmg: "1d4+2"}, {n: "Lança", hit: 4, dmg: "1d8+2"}, {n: "Arco Longo", hit: 3, dmg: "1d8+1"}], traits: [{n: "Frenesi", d: "Quando reduz criatura a 0 PV, pode fazer ataque de mordida como ação bônus."}], imageUrl: "/textures/creatures/gnoll.PNG" },
+    { id: 120, name: "Guarda (Carcereiro)", type: "Humanóide", cr: "1/2", ac: 14, hp: 16, speed: "9m", actions: [{n: "Arco Longo", hit: 3, dmg: "1d8+1"}, {n: "Espada Curta", hit: 4, dmg: "1d6+2"}, {n: "Rede", hit: 3, dmg: "Contenção"}], imageUrl: "/textures/creatures/guarda_carcereiro.PNG" },
+    { id: 121, name: "Guarda (Canino)", type: "Fera", cr: "1/2", ac: 13, hp: 22, speed: "12m", actions: [{n: "Mordida", hit: 4, dmg: "1d8+2"}], traits: [{n: "Faro Apurado", d: "Vantagem em Percepção (Olfato)."}], imageUrl: "/textures/creatures/guarda_canino.PNG" },
+    { id: 122, name: "Prisioneiro (Bruto)", type: "Humanóide", cr: "1/2", ac: 13, hp: 32, speed: "9m", actions: [{n: "Ataque Múltiplo", hit: 4, dmg: "2x"}, {n: "Ataque Desarmado", hit: 4, dmg: "1d4+2"}], imageUrl: "/textures/creatures/prisioneiro_bruto.PNG" },
+    { id: 123, name: "Prisioneiro (Anão)", type: "Humanóide", cr: "1/2", ac: 12, hp: 20, speed: "7.5m", actions: [{n: "Cabeçada", hit: 4, dmg: "1d6+2"}], traits: [{n: "Resiliência Anã", d: "Resistência a veneno."}], imageUrl: "/textures/creatures/prisioneiro_anão.PNG" },
+    { id: 124, name: "Prisioneiro (Elfa)", type: "Humanóide", cr: "1/2", ac: 13, hp: 14, speed: "10.5m", actions: [{n: "Chute", hit: 4, dmg: "1d4+2"}], spells: ["Mãos Mágicas"], imageUrl: "/textures/creatures/prisioneiro_elfa.PNG" },
+    { id: 125, name: "Sapo Gigante", type: "Fera", cr: "1/4", ac: 11, hp: 18, speed: "9m", actions: [{n: "Mordida", hit: 3, dmg: "1d6+1 + Agarrado"}], imageUrl: "/textures/creatures/sapo.PNG" },
+    { id: 126, name: "Vespa Gigante", type: "Fera", cr: "1/2", ac: 12, hp: 13, speed: "3m/15m voo", actions: [{n: "Ferrão", hit: 4, dmg: "1d6+2 + 3d6 veneno"}], imageUrl: "/textures/creatures/vespa.PNG" },
+    { id: 127, name: "Centopeia Gigante", type: "Fera", cr: "1/4", ac: 13, hp: 4, speed: "9m", actions: [{n: "Mordida", hit: 4, dmg: "1d4+2 veneno"}], imageUrl: "/textures/creatures/centopeia.PNG" },
+    { id: 130, name: "Guarda (Carcereiro Chefe)", type: "Humanóide", cr: "1", ac: 16, hp: 25, speed: "9m", actions: [{n: "Espada Longa", hit: 5, dmg: "1d8+3"}, {n: "Rede Pesada", hit: 4, dmg: "Contenção (CD 12)"}], imageUrl: "/textures/creatures/guarda_carcereiro_2.PNG" },
+    { id: 131, name: "Orc Xamã", type: "Humanóide", cr: "2", ac: 13, hp: 30, speed: "9m", actions: [{n: "Cajado", hit: 4, dmg: "1d6+2"}], spells: ["Raio de Fogo (2d10)", "Benção", "Arma Espiritual"], imageUrl: "/textures/creatures/orc_3.PNG" },
+    
+    // --- 200-299: Mid-Low Challenge ---
+    { id: 200, name: "Aranha Gigante", type: "Fera", cr: "1", ac: 14, hp: 26, speed: "9m", actions: [{n: "Mordida", hit: 5, dmg: "1d8+3 + 2d8 veneno"}, {n: "Teia", hit: 5, dmg: "Contenção"}], imageUrl: "/textures/creatures/aranha.PNG" },
+    { id: 201, name: "Urso Marrom", type: "Fera", cr: "1", ac: 11, hp: 34, speed: "12m", actions: [{n: "Multiataque", hit: 6, dmg: "Mordida + Garra"}, {n: "Mordida", hit: 6, dmg: "1d8+4"}, {n: "Garras", hit: 6, dmg: "2d6+4"}], imageUrl: "/textures/creatures/urso.PNG" },
+    { id: 202, name: "Lobo Atroz", type: "Fera", cr: "1", ac: 14, hp: 37, speed: "15m", actions: [{n: "Mordida", hit: 5, dmg: "2d6+3 | CD 13 For ou Caído"}], imageUrl: "/textures/creatures/lobo_atroz.PNG" },
+    { id: 203, name: "Harpia", type: "Monstruosidade", cr: "1", ac: 11, hp: 38, speed: "6m/12m voo", actions: [{n: "Multiataque", hit: 3, dmg: "2x"}, {n: "Garras", hit: 3, dmg: "2d4+1"}, {n: "Canção Sedutora", hit: 0, dmg: "CD 11 Sab ou Enfeitiçado"}], imageUrl: "/textures/creatures/harpia.PNG" },
+    { id: 204, name: "Diabrete (Imp)", type: "Infernal", cr: "1", ac: 13, hp: 10, speed: "6m/12m voo", actions: [{n: "Ferrão", hit: 5, dmg: "1d4+3 + 3d6 veneno (CD 11 Con metade)"}], imageUrl: "/textures/creatures/diabrete.PNG" },
+    { id: 205, name: "Ogro", type: "Gigante", cr: "2", ac: 11, hp: 59, speed: "12m", actions: [{n: "Clava Grande", hit: 6, dmg: "2d8+4"}, {n: "Azagaia", hit: 6, dmg: "2d6+4"}], imageUrl: "/textures/creatures/ogro.PNG" },
+    { id: 206, name: "Mímico", type: "Monstruosidade", cr: "2", ac: 12, hp: 58, speed: "4.5m", actions: [{n: "Pseudópode", hit: 5, dmg: "1d8+3 + Agarrado"}, {n: "Mordida", hit: 5, dmg: "1d8+3 + 1d8 ácido"}], imageUrl: "/textures/creatures/mimic.PNG" },
+    { id: 207, name: "Grifo", type: "Monstruosidade", cr: "2", ac: 12, hp: 59, speed: "9m/24m voo", actions: [{n: "Multiataque", hit: 6, dmg: "Bico + Garra"}, {n: "Bico", hit: 6, dmg: "1d8+4"}, {n: "Garras", hit: 6, dmg: "2d6+4"}], imageUrl: "/textures/creatures/grifo.PNG" },
+    { id: 208, name: "Capitão dos Bandidos", type: "Humanóide", cr: "2", ac: 15, hp: 65, speed: "9m", actions: [{n: "Multiataque", hit: 5, dmg: "2x Cimitarra + 1x Adaga"}, {n: "Cimitarra", hit: 5, dmg: "1d6+3"}, {n: "Adaga", hit: 5, dmg: "1d4+3"}], imageUrl: "/textures/creatures/capitão_dos_bandidos.PNG" },
+    { id: 209, name: "Guarda (Mago)", type: "Humanóide", cr: "2", ac: 12, hp: 45, speed: "9m", actions: [{n: "Bordão", hit: 2, dmg: "1d6"}], spells: ["Mísseis Mágicos (3x1d4+1)", "Onda Trovejante (2d8)", "Teia (CD 13)", "Escudo Arcano (+5 CA)"], imageUrl: "/textures/creatures/guarda_mago.PNG" },
+    { id: 210, name: "Gárgula", type: "Elemental", cr: "2", ac: 15, hp: 52, speed: "9m/18m voo", actions: [{n: "Multiataque", hit: 4, dmg: "Mordida + Garra"}, {n: "Mordida", hit: 4, dmg: "1d6+2"}, {n: "Garras", hit: 4, dmg: "1d6+2"}], imageUrl: "/textures/creatures/gargula.PNG" },
+    { id: 211, name: "Slime (Gosma)", type: "Limo", cr: "2", ac: 8, hp: 45, speed: "3m", actions: [{n: "Pseudópode", hit: 4, dmg: "1d6+2 + 2d6 ácido"}], traits: [{n: "Corrosivo", d: "Dano em armas não-mágicas."}], imageUrl: "/textures/creatures/slime.PNG" },
+    { id: 212, name: "Orc (Guerreiro)", type: "Humanóide", cr: "2", ac: 16, hp: 30, speed: "9m", actions: [{n: "Machado Grande", hit: 5, dmg: "1d12+3"}], imageUrl: "/textures/creatures/orc_2.PNG" },
+    { id: 213, name: "Prisioneiro (Cultista Líder)", type: "Humanóide", cr: "2", ac: 13, hp: 33, speed: "9m", actions: [{n: "Adaga", hit: 4, dmg: "1d4+2"}], spells: ["Arma Espiritual (1d8+3)", "Imobilizar Pessoa (CD 13)"], imageUrl: "/textures/creatures/prisioneiro_cultista_2.PNG" },
+    { id: 214, name: "Prisioneiro (Bruto Elite)", type: "Humanóide", cr: "2", ac: 14, hp: 45, speed: "9m", actions: [{n: "Ataque Múltiplo", hit: 5, dmg: "2x"}, {n: "Ataque Desarmado", hit: 5, dmg: "1d6+3"}], imageUrl: "/textures/creatures/prisioneiro_bruto_2.PNG" },
+    { id: 215, name: "Prisioneiro (Nobre)", type: "Humanóide", cr: "1/8", ac: 15, hp: 9, speed: "9m", actions: [{n: "Rapieira", hit: 3, dmg: "1d8+1"}], traits: [{n: "Aparar", d: "+2 CA (reação)."}], imageUrl: "/textures/creatures/prisioneiro_nobre.PNG" },
+    { id: 216, name: "Gnu", type: "Fera", cr: "1/4", ac: 10, hp: 15, speed: "12m", actions: [{n: "Chifres", hit: 6, dmg: "1d6+4"}], imageUrl: "/textures/creatures/gnu.PNG" },
+    { id: 220, name: "Harpia Matriarca", type: "Monstruosidade", cr: "3", ac: 12, hp: 50, speed: "6m/15m voo", actions: [{n: "Multiataque", hit: 5, dmg: "2x"}, {n: "Garras", hit: 5, dmg: "2d6+2"}, {n: "Grito Ensurdecedor", hit: 0, dmg: "3d6 sônico (CD 13 Con)"}], imageUrl: "/textures/creatures/harpia_1.PNG" },
+    { id: 221, name: "Ogro Esmagador", type: "Gigante", cr: "3", ac: 13, hp: 65, speed: "12m", actions: [{n: "Marreta", hit: 7, dmg: "2d10+5"}], imageUrl: "/textures/creatures/ogro_1.PNG" },
+    { id: 222, name: "Slime Ácido", type: "Limo", cr: "3", ac: 9, hp: 60, speed: "4.5m", actions: [{n: "Pseudópode", hit: 5, dmg: "2d6+3 + 3d6 ácido"}], imageUrl: "/textures/creatures/slime_1.PNG" },
+    
+    // --- 300-399: Mid Challenge ---
+    { id: 300, name: "Urso Coruja", type: "Monstruosidade", cr: "3", ac: 13, hp: 59, speed: "12m", actions: [{n: "Multiataque", hit: 7, dmg: "Bico + Garra"}, {n: "Bico", hit: 7, dmg: "1d10+5"}, {n: "Garras", hit: 7, dmg: "2d8+5"}], imageUrl: "/textures/creatures/urso_coruja.PNG" },
+    { id: 301, name: "Lobisomem", type: "Humanóide", cr: "3", ac: 12, hp: 58, speed: "12m", actions: [{n: "Multiataque", hit: 4, dmg: "Mordida + Garra (Híbrido)"}, {n: "Mordida", hit: 4, dmg: "1d8+2 + CD 12 Con Maldição"}, {n: "Garras", hit: 4, dmg: "2d4+2"}], imageUrl: "/textures/creatures/lobisomen.PNG" },
+    { id: 302, name: "Basilisco", type: "Monstruosidade", cr: "3", ac: 15, hp: 52, speed: "6m", actions: [{n: "Mordida", hit: 5, dmg: "2d6+3 + 2d6 veneno"}], traits: [{n: "Olhar Petrificante", d: "CD 12 Con ou petrificado."}], imageUrl: "/textures/creatures/basilisco.PNG" },
+    { id: 303, name: "Mantícora", type: "Monstruosidade", cr: "3", ac: 14, hp: 68, speed: "9m/15m voo", actions: [{n: "Multiataque", hit: 5, dmg: "Mordida + 2x Garra"}, {n: "Mordida", hit: 5, dmg: "1d8+3"}, {n: "Garras", hit: 5, dmg: "2d6+3"}, {n: "Espinhos da Cauda", hit: 5, dmg: "1d8+3 (x3)"}], imageUrl: "/textures/creatures/manticora.PNG" },
+    { id: 304, name: "Guarda (Sargento)", type: "Humanóide", cr: "3", ac: 18, hp: 52, speed: "9m", actions: [{n: "Multiataque", hit: 5, dmg: "2x"}, {n: "Espada Grande", hit: 5, dmg: "2d6+3"}, {n: "Besta Pesada", hit: 3, dmg: "1d10"}], traits: [{n: "Liderança", d: "Aliados a 9m ganham +1d4 em ataques."}], imageUrl: "/textures/creatures/guarda_sargento.PNG" },
+    { id: 305, name: "Minotauro", type: "Monstruosidade", cr: "3", ac: 14, hp: 76, speed: "12m", actions: [{n: "Machado Grande", hit: 6, dmg: "2d12+4"}, {n: "Chifres", hit: 6, dmg: "2d8+4"}], traits: [{n: "Investida", d: "Se mover 3m e acertar chifres, alvo empurrado/derrubado."}], imageUrl: "/textures/creatures/minotauro.PNG" },
+    { id: 306, name: "Escorpião Gigante", type: "Fera", cr: "3", ac: 15, hp: 52, speed: "12m", actions: [{n: "Multiataque", hit: 4, dmg: "2x Garras + 1x Ferrão"}, {n: "Garras", hit: 4, dmg: "1d8+2"}, {n: "Ferrão", hit: 4, dmg: "1d10+2 + 4d10 veneno"}], imageUrl: "/textures/creatures/escorpiao.PNG" },
+    { id: 307, name: "Fantasma", type: "Morto-vivo", cr: "4", ac: 11, hp: 45, speed: "12m voo", actions: [{n: "Toque Debilitante", hit: 5, dmg: "4d6+3 necrótico"}, {n: "Possessão", hit: 0, dmg: "CD 13 Car ou Controlado"}], imageUrl: "/textures/creatures/fantasma.PNG" },
+    { id: 308, name: "Banshee", type: "Morto-vivo", cr: "4", ac: 12, hp: 58, speed: "0m/12m voo", actions: [{n: "Toque Corruptor", hit: 4, dmg: "3d6+2 necrótico"}, {n: "Lamento", hit: 0, dmg: "CD 13 Con ou 0 PV (1/dia)"}], imageUrl: "/textures/creatures/banshee.PNG" },
+    { id: 309, name: "Ogro de Duas Cabeças (Ettin)", type: "Gigante", cr: "4", ac: 12, hp: 85, speed: "12m", actions: [{n: "Multiataque", hit: 7, dmg: "Machado + Maça"}, {n: "Machado", hit: 7, dmg: "2d8+5"}, {n: "Maça", hit: 7, dmg: "2d8+5"}], imageUrl: "/textures/creatures/ogro_duas_cabeças.PNG" },
+    { id: 310, name: "Orc Chefe de Guerra", type: "Humanóide", cr: "4", ac: 16, hp: 93, speed: "9m", actions: [{n: "Multiataque", hit: 6, dmg: "2x"}, {n: "Machado Grande", hit: 6, dmg: "1d12+4 + 1d8"}], traits: [{n: "Grito de Batalha", d: "Aliados ganham vantagem (1/dia)."}], imageUrl: "/textures/creatures/orc_cavalheiro.PNG" },
+    { id: 311, name: "Guarda Real", type: "Humanóide", cr: "4", ac: 20, hp: 60, speed: "9m", actions: [{n: "Multiataque", hit: 6, dmg: "2x"}, {n: "Espada Longa", hit: 6, dmg: "1d8+4"}], imageUrl: "/textures/creatures/guarda_real.PNG" },
+    { id: 312, name: "Assassino do Culto", type: "Humanóide", cr: "4", ac: 15, hp: 50, speed: "12m", actions: [{n: "Cimitarra", hit: 6, dmg: "1d6+4 + veneno"}, {n: "Besta", hit: 6, dmg: "1d8+4 + veneno"}], traits: [{n: "Vantagem em Furtividade", d: "Se tiver sucesso, dano crítico automático."}], imageUrl: "/textures/creatures/assassino_culto.PNG" },
+    { id: 313, name: "Beholder Zumbi", type: "Morto-vivo", cr: "5", ac: 15, hp: 93, speed: "0m/9m voo", actions: [{n: "Mordida", hit: 5, dmg: "3d6"}, {n: "Raio Ocular", hit: 5, dmg: "CD 14 (Var)"}], imageUrl: "/textures/creatures/beholder_zumbi.PNG" },
+    { id: 314, name: "Vampiro (Cria)", type: "Morto-vivo", cr: "5", ac: 15, hp: 82, speed: "9m", actions: [{n: "Multiataque", hit: 6, dmg: "2x"}, {n: "Garras", hit: 6, dmg: "2d4+3"}, {n: "Mordida", hit: 6, dmg: "1d6+3 + 2d6 necrótico"}], imageUrl: "/textures/creatures/vampiro_cria.PNG" },
+    { id: 315, name: "Troll", type: "Gigante", cr: "5", ac: 15, hp: 84, speed: "9m", actions: [{n: "Multiataque", hit: 7, dmg: "Mordida + 2x Garra"}, {n: "Mordida", hit: 7, dmg: "1d6+4"}, {n: "Garras", hit: 7, dmg: "2d6+4"}], traits: [{n: "Regeneração", d: "Recupera 10 PV se não levar dano de fogo/ácido."}], imageUrl: "/textures/creatures/troll.PNG" },
+    { id: 316, name: "Gladiador", type: "Humanóide", cr: "5", ac: 16, hp: 112, speed: "9m", actions: [{n: "Multiataque", hit: 7, dmg: "3x Corpo a Corpo"}, {n: "Lança", hit: 7, dmg: "2d6+4"}, {n: "Escudada", hit: 7, dmg: "1d4+4 + Derrubar (CD 15 For)"}], imageUrl: "/textures/creatures/gladiador.PNG" },
+    { id: 317, name: "Elemental da Terra", type: "Elemental", cr: "5", ac: 17, hp: 126, speed: "9m/9m escavar", actions: [{n: "Multiataque", hit: 8, dmg: "2x"}, {n: "Pancada", hit: 8, dmg: "2d8+5"}], imageUrl: "/textures/creatures/elemental_da_terra.PNG" },
+    { id: 318, name: "Guarda Gigante", type: "Gigante", cr: "5", ac: 16, hp: 105, speed: "12m", actions: [{n: "Multiataque", hit: 8, dmg: "2x"}, {n: "Espadão Gigante", hit: 8, dmg: "3d6+5"}], imageUrl: "/textures/creatures/guarda_gigante.PNG" },
+    { id: 319, name: "Ogro Gigante", type: "Gigante", cr: "6", ac: 14, hp: 120, speed: "12m", actions: [{n: "Esmagar", hit: 9, dmg: "4d8+6"}], imageUrl: "/textures/creatures/ogro_gigante.PNG" },
+    { id: 320, name: "Quimera", type: "Monstruosidade", cr: "6", ac: 14, hp: 114, speed: "9m/18m voo", actions: [{n: "Multiataque", hit: 7, dmg: "Mordida + Chifres + Garras"}, {n: "Sopro de Fogo", hit: 0, dmg: "7d8 (CD 15) Recarga 5-6"}], imageUrl: "/textures/creatures/quimera.PNG" },
+    { id: 321, name: "Mago Negro", type: "Humanóide", cr: "6", ac: 12, hp: 40, speed: "9m", actions: [{n: "Adaga", hit: 5, dmg: "1d4+2"}], spells: ["Bola de Fogo (8d6)", "Relâmpago (8d6)", "Voo", "Invisibilidade Maior"], imageUrl: "/textures/creatures/mago_negro.PNG" },
+    { id: 322, name: "Assassino a Vapor", type: "Construto", cr: "6", ac: 18, hp: 90, speed: "12m", actions: [{n: "Lâmina Oculta", hit: 8, dmg: "2d8+5"}, {n: "Jato de Vapor", hit: 0, dmg: "4d8 fogo (CD 15 Des)"}], imageUrl: "/textures/creatures/assassino_vapor.PNG" },
+    { id: 323, name: "Aranha Metálica", type: "Construto", cr: "5", ac: 18, hp: 75, speed: "12m", actions: [{n: "Patas Laminadas", hit: 7, dmg: "2d10+4"}, {n: "Teia de Aço", hit: 7, dmg: "Contenção (CD 15 For)"}], imageUrl: "/textures/creatures/aranha_metalica.PNG" },
+    { id: 330, name: "Basilisco Ancião", type: "Monstruosidade", cr: "5", ac: 16, hp: 80, speed: "7.5m", actions: [{n: "Mordida Tóxica", hit: 6, dmg: "3d6+4 + 3d6 veneno"}], traits: [{n: "Aura Petrificante", d: "CD 14 Con em área de 9m."}], imageUrl: "/textures/creatures/basilisco_1.PNG" },
+    { id: 331, name: "Lobisomem Alpha", type: "Humanóide", cr: "5", ac: 14, hp: 90, speed: "15m", actions: [{n: "Despedaçar", hit: 7, dmg: "3d8+4"}, {n: "Uivo", hit: 0, dmg: "CD 14 Sab ou Medo"}], imageUrl: "/textures/creatures/lobisomen_1.PNG" },
+    { id: 332, name: "Mantícora Anciã", type: "Monstruosidade", cr: "5", ac: 16, hp: 95, speed: "9m/18m voo", actions: [{n: "Espinhos Penetrantes", hit: 7, dmg: "2d8+4 (x3)"}], imageUrl: "/textures/creatures/manticora_1.PNG" },
+    { id: 333, name: "Mímico Gigante", type: "Monstruosidade", cr: "5", ac: 14, hp: 100, speed: "6m", actions: [{n: "Engolir", hit: 6, dmg: "2d10+5 + Ácido"}], imageUrl: "/textures/creatures/mimic_1.PNG" },
+
+    // --- 400-499: High Challenge ---
+    { id: 400, name: "Devorador de Mentes", type: "Aberração", cr: "7", ac: 15, hp: 71, speed: "9m", actions: [{n: "Tentáculos", hit: 7, dmg: "2d10+4 + Agarrado"}, {n: "Extrair Cérebro", hit: 7, dmg: "10d10 perfurante"}, {n: "Rajada Mental", hit: 0, dmg: "4d8+4 (CD 15 Int)"}], imageUrl: "/textures/creatures/devorador_de_mentes.PNG" },
+    { id: 401, name: "Mago (Arquimago)", type: "Humanóide", cr: "12", ac: 15, hp: 99, speed: "9m", actions: [{n: "Adaga +2", hit: 8, dmg: "1d4+4"}], spells: ["Parar o Tempo", "Globo de Invulnerabilidade", "Cone de Frio (8d8)", "Muralha de Fogo (5d8)"], imageUrl: "/textures/creatures/arquimago.PNG" },
+    { id: 402, name: "Dragão Vermelho Jovem", type: "Dragão", cr: "10", ac: 18, hp: 178, speed: "12m/24m voo", actions: [{n: "Multiataque", hit: 10, dmg: "Mordida + 2x Garra"}, {n: "Sopro de Fogo", hit: 0, dmg: "16d6 fogo (CD 17 Des)"}], imageUrl: "/textures/creatures/dragao.PNG" },
+    { id: 403, name: "Golem de Ferro", type: "Construto", cr: "16", ac: 20, hp: 210, speed: "9m", actions: [{n: "Multiataque", hit: 13, dmg: "2x Pancada"}, {n: "Pancada", hit: 13, dmg: "3d8+7"}, {n: "Sopro de Veneno", hit: 0, dmg: "10d8 (CD 19 Con)"}], imageUrl: "/textures/creatures/golem_ferro.PNG" },
+    { id: 404, name: "Beholder", type: "Aberração", cr: "13", ac: 18, hp: 180, speed: "0m/6m voo", actions: [{n: "Mordida", hit: 5, dmg: "4d6"}, {n: "Raios Oculares (3)", hit: 0, dmg: "Vários Efeitos (CD 16)"}], imageUrl: "/textures/creatures/beholder.PNG" },
+    { id: 405, name: "Vampiro (Lorde)", type: "Morto-vivo", cr: "13", ac: 16, hp: 144, speed: "9m", actions: [{n: "Multiataque", hit: 9, dmg: "2x + Mordida"}, {n: "Desarmado", hit: 9, dmg: "1d8+4 + 3d6 necrótico"}, {n: "Mordida", hit: 9, dmg: "1d6+4 + 3d6 necrótico"}], traits: [{n: "Regeneração", d: "20 PV/turno."}], imageUrl: "/textures/creatures/vampiro.PNG" },
+    { id: 406, name: "Gigante da Tempestade", type: "Gigante", cr: "13", ac: 16, hp: 230, speed: "15m", actions: [{n: "Multiataque", hit: 14, dmg: "2x Espada Grande"}, {n: "Espada Grande", hit: 14, dmg: "6d6+9"}, {n: "Relâmpago", hit: 0, dmg: "12d8 (CD 17) Recarga 5-6"}], imageUrl: "/textures/creatures/gigante_da_tempestade.PNG" },
+    { id: 407, name: "Dragão Negro Adulto", type: "Dragão", cr: "14", ac: 19, hp: 195, speed: "12m/24m voo", actions: [{n: "Multiataque", hit: 11, dmg: "Mordida + 2x Garra"}, {n: "Sopro Ácido", hit: 0, dmg: "12d8 (CD 18 Des)"}], imageUrl: "/textures/creatures/dragao_negro.PNG" },
+    { id: 408, name: "Verme Púrpura", type: "Monstruosidade", cr: "15", ac: 18, hp: 247, speed: "15m escavar", actions: [{n: "Mordida", hit: 14, dmg: "3d8+9 + Engolir"}, {n: "Ferrão", hit: 14, dmg: "3d6+9 + 12d6 veneno"}], imageUrl: "/textures/creatures/verme.PNG" },
+    { id: 409, name: "Touro Metálico (Gorgon)", type: "Monstruosidade", cr: "5", ac: 19, hp: 114, speed: "12m", actions: [{n: "Chifres", hit: 8, dmg: "2d12+5"}, {n: "Sopro Petrificante", hit: 0, dmg: "CD 13 Con ou Petrificado"}], imageUrl: "/textures/creatures/touro_metalico.PNG" },
+    { id: 410, name: "Esqueleto da Ruína", type: "Morto-vivo", cr: "7", ac: 18, hp: 90, speed: "9m", actions: [{n: "Espada das Sombras", hit: 8, dmg: "2d6+5 + 2d6 necrótico"}], imageUrl: "/textures/creatures/esqueleto_ruina.PNG" },
+
+    // --- 500+ NPCs & Bosses ---
+    { id: 500, name: "Artífice (NPC)", type: "Humanóide", cr: "3", ac: 16, hp: 45, speed: "9m", actions: [{n: "Martelo", hit: 5, dmg: "1d8+2"}], spells: ["Mísseis Mágicos", "Curar Ferimentos", "Levitação"], imageUrl: "/textures/creatures/artf.PNG" },
+    { id: 501, name: "Autômato", type: "Construto", cr: "1", ac: 16, hp: 30, speed: "9m", actions: [{n: "Pancada", hit: 4, dmg: "1d6+2"}], imageUrl: "/textures/creatures/automato.PNG" },
+    { id: 502, name: "Bárbaro Golias (NPC)", type: "Humanóide", cr: "5", ac: 15, hp: 90, speed: "12m", actions: [{n: "Machado Grande", hit: 7, dmg: "1d12+4 + 2 (Fúria)"}], imageUrl: "/textures/creatures/barbaro_golias.PNG" },
+    { id: 503, name: "Bárbaro Meio-Orc (NPC)", type: "Humanóide", cr: "4", ac: 14, hp: 75, speed: "9m", actions: [{n: "Machado Duplo", hit: 6, dmg: "2d6+3"}], imageUrl: "/textures/creatures/barbaro_meioorc.PNG" },
+    { id: 504, name: "Bardo Kenku (NPC)", type: "Humanóide", cr: "2", ac: 14, hp: 30, speed: "9m", actions: [{n: "Adaga", hit: 4, dmg: "1d4+2"}], spells: ["Zombaria Viciosa", "Onda Trovejante", "Invisibilidade"], imageUrl: "/textures/creatures/bardo_kenku.PNG" },
+    { id: 505, name: "Bruxo Tiefling (NPC)", type: "Humanóide", cr: "3", ac: 12, hp: 35, speed: "9m", actions: [{n: "Rajada Mística", hit: 5, dmg: "1d10+3"}], spells: ["Braços de Hadar", "Escuridão", "Raio Ardente"], imageUrl: "/textures/creatures/bruxo_tiefling.PNG" },
+    { id: 506, name: "Clérigo (NPC)", type: "Humanóide", cr: "3", ac: 18, hp: 40, speed: "9m", actions: [{n: "Maça", hit: 4, dmg: "1d6+2"}], spells: ["Cura Ferimentos", "Benção", "Arma Espiritual"], imageUrl: "/textures/creatures/clerigo.PNG" },
+    { id: 507, name: "Druida Tortle (NPC)", type: "Humanóide", cr: "2", ac: 17, hp: 38, speed: "9m", actions: [{n: "Bordão", hit: 4, dmg: "1d6+2"}], spells: ["Constrição", "Pele de Árvore", "Curar Ferimentos"], imageUrl: "/textures/creatures/druida_tortie.PNG" },
+    { id: 508, name: "Druida Elfo (NPC)", type: "Humanóide", cr: "2", ac: 14, hp: 27, speed: "10.5m", actions: [{n: "Cimitarra", hit: 4, dmg: "1d6+2"}], spells: ["Fogo das Fadas", "Onda Trovejante"], imageUrl: "/textures/creatures/duida_elfo.PNG" },
+    { id: 509, name: "Guerreira Githyanki (NPC)", type: "Humanóide", cr: "5", ac: 17, hp: 65, speed: "9m", actions: [{n: "Espada Grande de Prata", hit: 7, dmg: "2d6+4 + 2d6 psíquico"}], imageUrl: "/textures/creatures/guerreira_githyanki.PNG" },
+    { id: 510, name: "Ladino Halfling (NPC)", type: "Humanóide", cr: "3", ac: 16, hp: 33, speed: "7.5m", actions: [{n: "Adaga", hit: 6, dmg: "1d4+3 + 2d6 (Furtivo)"}], imageUrl: "/textures/creatures/ladino_hafling.PNG" },
+    { id: 511, name: "Mago (NPC)", type: "Humanóide", cr: "2", ac: 12, hp: 22, speed: "9m", actions: [{n: "Bordão", hit: 2, dmg: "1d6"}], spells: ["Mãos Flamejantes", "Escudo Arcano", "Mísseis Mágicos"], imageUrl: "/textures/creatures/mago.PNG" },
+    { id: 512, name: "Monge Tabaxi (NPC)", type: "Humanóide", cr: "4", ac: 16, hp: 55, speed: "12m", actions: [{n: "Ataque Desarmado", hit: 6, dmg: "1d6+4"}, {n: "Rajada de Golpes", hit: 6, dmg: "2x 1d6+4"}], imageUrl: "/textures/creatures/monge_tabaxi.PNG" },
+    { id: 513, name: "Paladino Draconato (NPC)", type: "Humanóide", cr: "5", ac: 18, hp: 70, speed: "9m", actions: [{n: "Espada Longa", hit: 7, dmg: "1d8+4"}, {n: "Sopro de Fogo", hit: 0, dmg: "3d6 (CD 13)"}], imageUrl: "/textures/creatures/paladino_draconato.PNG" },
+    
+    // --- 600+ Special & Unique ---
+    { id: 600, name: "Lich", type: "Morto-vivo", cr: "21", ac: 17, hp: 135, speed: "9m", actions: [{n: "Toque Paralisante", hit: 12, dmg: "3d6 frio + CD 18 Con ou Paralisado"}], spells: ["Dedo da Morte", "Palavra de Poder: Matar", "Desintegrar"], imageUrl: "/textures/creatures/lich.PNG" },
+    { id: 601, name: "Rei Demônio (Balor)", type: "Demônio", cr: "19", ac: 19, hp: 262, speed: "12m/24m voo", actions: [{n: "Espada Longa Relâmpago", hit: 14, dmg: "3d8+8 + 3d8 elétrico"}, {n: "Chicote de Fogo", hit: 14, dmg: "2d6+8 + 3d6 fogo"}], imageUrl: "/textures/creatures/rei_demonio.PNG" },
+    { id: 602, name: "Tarrasque", type: "Monstruosidade", cr: "30", ac: 25, hp: 676, speed: "12m", actions: [{n: "Multiataque", hit: 19, dmg: "Mordida + 2x Garra + Chifres + Cauda"}, {n: "Mordida", hit: 19, dmg: "4d12+10 + Agarrado"}], traits: [{n: "Carapaça Refletiva", d: "Imune a mísseis mágicos e magias de linha/raio."}], imageUrl: "/textures/creatures/tarrasque.PNG" },
+    { id: 603, name: "Urso Atroz", type: "Fera", cr: "2", ac: 13, hp: 45, speed: "12m", actions: [{n: "Mordida", hit: 7, dmg: "1d8+5"}, {n: "Garras", hit: 7, dmg: "2d6+5"}], imageUrl: "/textures/creatures/urso_atroz.PNG" },
+    { id: 604, name: "Morcego Gigante", type: "Fera", cr: "1/4", ac: 13, hp: 22, speed: "18m voo", actions: [{n: "Mordida", hit: 4, dmg: "1d6+2"}], imageUrl: "/textures/creatures/morcego.PNG" },
+    { id: 605, name: "Gárgula de Lata", type: "Construto", cr: "2", ac: 16, hp: 40, speed: "9m", actions: [{n: "Pancada", hit: 5, dmg: "1d8+3"}], imageUrl: "/textures/creatures/gargula_lata.PNG" },
+    { id: 606, name: "Gladiador Elite", type: "Humanóide", cr: "7", ac: 18, hp: 130, speed: "9m", actions: [{n: "Tridente", hit: 8, dmg: "2d6+5"}, {n: "Rede", hit: 5, dmg: "Contenção"}], imageUrl: "/textures/creatures/gladiador_1.PNG" },
+    { id: 607, name: "Slime Negro", type: "Limo", cr: "4", ac: 8, hp: 85, speed: "6m", actions: [{n: "Pseudópode", hit: 5, dmg: "2d6+3 + 2d8 ácido"}], imageUrl: "/textures/creatures/silime_2.PNG" },
+    { id: 608, name: "Fantasma Ancião", type: "Morto-vivo", cr: "6", ac: 12, hp: 70, speed: "12m voo", actions: [{n: "Amedrontar", hit: 0, dmg: "CD 15 Sab"}, {n: "Drenar Vida", hit: 6, dmg: "5d8 necrótico"}], imageUrl: "/textures/creatures/fantasma_1.PNG" },
+    { id: 609, name: "Gnu (Fera)", type: "Fera", cr: "1/2", ac: 11, hp: 20, speed: "12m", actions: [{n: "Chifres", hit: 5, dmg: "1d8+3"}], imageUrl: "/textures/creatures/gnu.PNG" },
+    { id: 610, name: "Demilich", type: "Morto-vivo", cr: "18", ac: 20, hp: 80, speed: "0m/9m voo", actions: [{n: "Uivo", hit: 0, dmg: "CD 15 Con ou 0 HP"}, {n: "Drenar Energia", hit: 10, dmg: "10d6 necrótico"}], imageUrl: "/textures/creatures/lich_1.PNG" },
+    { id: 611, name: "Enxame de Morcegos", type: "Fera", cr: "1/2", ac: 12, hp: 22, speed: "0m/9m voo", actions: [{n: "Mordidas", hit: 4, dmg: "2d4"}], traits: [{n: "Enxame", d: "Pode ocupar espaço de outra criatura."}], imageUrl: "/textures/creatures/morcego_1.PNG" }
 ];
 
 export const MAP_ASSETS = {
@@ -546,16 +634,3 @@ export const MAP_ASSETS = {
       {c:'🌿', n:'Arbusto', t:'obj'}, {c:'🍄', n:'Cogumelo', t:'obj'}
   ]
 };
-
-export const SKILL_LIST = [
-  {id:'acrobacia', n:'Acrobacia', a:'dex'}, {id:'adestrar', n:'Adestrar Animais', a:'wis'},
-  {id:'arcanismo', n:'Arcanismo', a:'int'}, {id:'atletismo', n:'Atletismo', a:'str'},
-  {id:'atuacao', n:'Atuação', a:'cha'}, {id:'enganacao', n:'Enganação', a:'cha'},
-  {id:'furtividade', n:'Furtividade', a:'dex'}, {id:'historia', n:'História', a:'int'},
-  {id:'intimidacao', n:'Intimidação', a:'cha'}, {id:'intuicao', n:'Intuição', a:'wis'},
-  {id:'investigacao', n:'Investigação', a:'int'}, {id:'medicina', n:'Medicina', a:'wis'},
-  {id:'natureza', n:'Natureza', a:'int'}, {id:'natureza', n:'Natureza', a:'int'},
-  {id:'percepcao', n:'Percepção', a:'wis'}, {id:'persuasao', n:'Persuasão', a:'cha'},
-  {id:'prestidigitacao', n:'Prestidigitação', a:'dex'}, {id:'religiao', n:'Religião', a:'int'},
-  {id:'sobrevivencia', n:'Sobrevivência', a:'wis'}
-];

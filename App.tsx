@@ -10,7 +10,9 @@ import { NPCManager } from './components/NPCManager';
 import { DiceTray } from './components/DiceTray';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
-import { User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, Loader2, Map as MapIcon, Settings, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, LayoutDashboard, Menu, Palette } from 'lucide-react';
+import { SoundController } from './components/SoundController';
+import { DMScreen } from './components/DMScreen';
+import { User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, Loader2, Map as MapIcon, Settings, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, LayoutDashboard, Menu, RotateCcw, PanelLeftClose, PanelLeftOpen, BookOpen, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import { DEFAULT_MONSTERS, INITIAL_CHAR } from './constants';
 
 import { auth, googleProvider, db, isDriveConfigured } from './firebaseConfig';
@@ -134,12 +136,12 @@ const processImportedCharacter = (json: any): Character | null => {
 };
 
 type ThemeColor = 'amber' | 'blue' | 'purple' | 'emerald' | 'rose';
-const THEMES: Record<ThemeColor, { primary: string, hover: string, text: string, border: string, ring: string, bgSoft: string }> = {
-    amber: { primary: 'bg-amber-600', hover: 'hover:bg-amber-500', text: 'text-amber-500', border: 'border-amber-500', ring: 'ring-amber-500', bgSoft: 'bg-amber-900/20' },
-    blue: { primary: 'bg-blue-600', hover: 'hover:bg-blue-500', text: 'text-blue-500', border: 'border-blue-500', ring: 'ring-blue-500', bgSoft: 'bg-blue-900/20' },
-    purple: { primary: 'bg-purple-600', hover: 'hover:bg-purple-500', text: 'text-purple-500', border: 'border-purple-500', ring: 'ring-purple-500', bgSoft: 'bg-purple-900/20' },
-    emerald: { primary: 'bg-emerald-600', hover: 'hover:bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500', ring: 'ring-emerald-500', bgSoft: 'bg-amber-900/20' },
-    rose: { primary: 'bg-rose-600', hover: 'hover:bg-rose-500', text: 'text-rose-500', border: 'border-rose-500', ring: 'ring-rose-500', bgSoft: 'bg-rose-900/20' },
+const THEMES: Record<ThemeColor, { primary: string, hover: string, text: string, border: string, ring: string, bgSoft: string, gradient: string }> = {
+    amber: { primary: 'bg-amber-600', hover: 'hover:bg-amber-500', text: 'text-amber-500', border: 'border-amber-500', ring: 'ring-amber-500', bgSoft: 'bg-amber-900/20', gradient: 'from-amber-600 to-orange-600' },
+    blue: { primary: 'bg-blue-600', hover: 'hover:bg-blue-500', text: 'text-blue-500', border: 'border-blue-500', ring: 'ring-blue-500', bgSoft: 'bg-blue-900/20', gradient: 'from-blue-600 to-indigo-600' },
+    purple: { primary: 'bg-purple-600', hover: 'hover:bg-purple-500', text: 'text-purple-500', border: 'border-purple-500', ring: 'ring-purple-500', bgSoft: 'bg-purple-900/20', gradient: 'from-purple-600 to-fuchsia-600' },
+    emerald: { primary: 'bg-emerald-600', hover: 'hover:bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500', ring: 'ring-emerald-500', bgSoft: 'bg-amber-900/20', gradient: 'from-emerald-600 to-green-600' },
+    rose: { primary: 'bg-rose-600', hover: 'hover:bg-rose-500', text: 'text-rose-500', border: 'border-rose-500', ring: 'ring-rose-500', bgSoft: 'bg-rose-900/20', gradient: 'from-rose-600 to-red-600' },
 };
 
 const BG_THEMES: Record<string, { name: string, className: string, sidebar: string }> = {
@@ -170,6 +172,8 @@ const DEFAULT_MAP_CONFIG: MapConfig = {
     bgY: 0,
     bgScale: 1
 };
+
+const AUTOSAVE_KEY = 'rpgnep_autosave_v2';
 
 export default function App() {
   const [viewState, setViewState] = useState<'LAUNCHER' | 'APP'>('LAUNCHER');
@@ -207,6 +211,7 @@ export default function App() {
 
   const [turnIndex, setTurnIndex] = useState<number>(-1);
   const [targetUid, setTargetUid] = useState<number | null>(null);
+  const [round, setRound] = useState<number>(1); // Added Round Tracking
 
   const [isDriveReady, setIsDriveReady] = useState(false);
   const [driveStatus, setDriveStatus] = useState<'disconnected' | 'connected' | 'saving' | 'error'>('disconnected');
@@ -216,11 +221,16 @@ export default function App() {
   const [showTerms, setShowTerms] = useState(false); 
   const [showAI, setShowAI] = useState(false);
   const [showNotepad, setShowNotepad] = useState(false);
+  const [showDMScreen, setShowDMScreen] = useState(false); // Added DM Screen state
+  const [showDashboardChat, setShowDashboardChat] = useState(false); // Floating chat in dashboard
   const [isDriveLoading, setIsDriveLoading] = useState(false);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   const [isOnlineMultiplayer, setIsOnlineMultiplayer] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [gmSidebarOpen, setGmSidebarOpen] = useState(true);
   
+  const [hasLocalSave, setHasLocalSave] = useState(false);
+
   const isRemoteUpdate = useRef(false);
   const updateTimeout = useRef<any>(null);
   
@@ -235,6 +245,84 @@ export default function App() {
     if (theme === 'dark') document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [theme]);
+
+  // Check for local save on boot
+  useEffect(() => {
+      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      if (saved) setHasLocalSave(true);
+  }, []);
+
+  // Autosave Effect
+  useEffect(() => {
+      if (viewState === 'APP' && !isOnlineMultiplayer && characters.length > 0) {
+          const timeout = setTimeout(() => {
+              const backup: CampaignData = {
+                  version: '2.0',
+                  timestamp: Date.now(),
+                  name: campaignName || roomName,
+                  password: '',
+                  characters,
+                  npcs,
+                  monsters,
+                  encounter,
+                  logs,
+                  map: { grid: mapGrid, tokens: mapTokens, fog: fogGrid, config: mapConfig },
+                  combat: { turnIndex, targetUid, round },
+                  notes
+              };
+              localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(backup));
+              setUnsavedChanges(false); // Local saved counts as saved for simple users
+          }, 2000);
+          return () => clearTimeout(timeout);
+      }
+  }, [characters, npcs, monsters, encounter, logs, mapGrid, mapTokens, fogGrid, mapConfig, turnIndex, targetUid, notes, viewState, isOnlineMultiplayer, campaignName, roomName, round]);
+
+  const handleContinueSession = () => {
+      try {
+          const saved = localStorage.getItem(AUTOSAVE_KEY);
+          if (saved) {
+              const data = JSON.parse(saved) as CampaignData;
+              setIsSyncing(true);
+              
+              if (data.name) { setCampaignName(data.name); setRoomName(data.name); }
+              if (data.characters) setCharacters(data.characters.map(sanitizeCharacter));
+              if (data.npcs) setNpcs(data.npcs.map(sanitizeCharacter));
+              if (data.monsters) setMonsters(data.monsters);
+              if (data.encounter) {
+                  // Sanitize encounter data to avoid crashes
+                  setEncounter(data.encounter.map((p: any) => ({
+                      ...p,
+                      conditions: p.conditions || [],
+                      actions: p.actions || [],
+                      spells: p.spells || [],
+                      traits: p.traits || []
+                  })));
+              }
+              if (data.logs) setLogs(data.logs.map((l: any) => ({ ...l, timestamp: new Date(l.timestamp) })));
+              if (data.map) {
+                  setMapGrid(data.map.grid || []);
+                  setMapTokens(data.map.tokens || []);
+                  if (data.map.fog) setFogGrid(data.map.fog);
+                  if (data.map.config) setMapConfig(prev => ({ ...prev, ...data.map.config }));
+              }
+              if (data.combat) {
+                  setTurnIndex(data.combat.turnIndex ?? -1);
+                  setTargetUid(data.combat.targetUid ?? null);
+                  setRound(data.combat.round || 1);
+              }
+              if (data.notes) setNotes(data.notes);
+
+              setCurrentUser({ uid: 'offline', displayName: 'Viajante', isAnonymous: true } as any);
+              setTimeout(() => {
+                  setViewState('APP');
+                  setIsSyncing(false);
+              }, 500);
+          }
+      } catch(e) {
+          console.error("Erro ao recuperar sessão", e);
+          alert("Erro ao recuperar sessão anterior.");
+      }
+  };
 
   const handleAuthError = (e: any) => {
       console.error("Auth Error:", e);
@@ -284,15 +372,15 @@ export default function App() {
 
   useEffect(() => {
       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-          if (unsavedChanges) { e.preventDefault(); e.returnValue = ''; }
+          if (unsavedChanges && isOnlineMultiplayer) { e.preventDefault(); e.returnValue = ''; }
       };
       window.addEventListener('beforeunload', handleBeforeUnload);
       return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [unsavedChanges]);
+  }, [unsavedChanges, isOnlineMultiplayer]);
 
   useEffect(() => {
       if (viewState === 'APP') {
-          setUnsavedChanges(true);
+          if (isOnlineMultiplayer) setUnsavedChanges(true);
           const isOfflineUser = !currentUser || currentUser.isAnonymous || currentUser.uid === 'demo' || currentUser.uid === 'offline';
           const database = db;
 
@@ -311,7 +399,7 @@ export default function App() {
                       encounter,
                       logs, 
                       map: { grid: mapGrid, tokens: mapTokens, fog: fogGrid, config: mapConfig },
-                      combat: { turnIndex, targetUid },
+                      combat: { turnIndex, targetUid, round },
                       notes
                   };
                   update(campaignRef, { ...payload, lastUpdate: Date.now() }).catch(e => console.error("Sync Error", e));
@@ -319,7 +407,7 @@ export default function App() {
           }
           isRemoteUpdate.current = false;
       }
-  }, [characters, npcs, encounter, mapGrid, mapTokens, monsters, fogGrid, turnIndex, targetUid, campaignName, campaignPassword, notes, mapConfig, currentUser, roomName]);
+  }, [characters, npcs, encounter, mapGrid, mapTokens, monsters, fogGrid, turnIndex, targetUid, campaignName, campaignPassword, notes, mapConfig, currentUser, roomName, round]);
 
   const sanitizeRoomName = (name: string) => name.trim().toLowerCase().replace(/[.#$[\]]/g, '_');
 
@@ -344,7 +432,16 @@ export default function App() {
               if (data.characters) setCharacters(data.characters.map(sanitizeCharacter));
               if (data.npcs) setNpcs(data.npcs.map(sanitizeCharacter));
               if (data.monsters) setMonsters(data.monsters);
-              if (data.encounter) setEncounter(data.encounter);
+              if (data.encounter) {
+                  // Sanitize remote encounter data
+                  setEncounter(data.encounter.map((p: any) => ({
+                      ...p,
+                      conditions: p.conditions || [],
+                      actions: p.actions || [],
+                      spells: p.spells || [],
+                      traits: p.traits || []
+                  })));
+              }
               if (data.map) {
                   setMapGrid(data.map.grid || []);
                   setMapTokens(data.map.tokens || []);
@@ -354,6 +451,7 @@ export default function App() {
               if (data.combat) {
                   setTurnIndex(data.combat.turnIndex ?? -1);
                   setTargetUid(data.combat.targetUid ?? null);
+                  setRound(data.combat.round || 1);
               }
               if (data.notes) setNotes(data.notes);
           } else if (!data) {
@@ -551,7 +649,7 @@ export default function App() {
 
   const handleLocalSave = () => {
     const data: CampaignData = { 
-        version: '2.0', timestamp: Date.now(), name: campaignName || roomName, characters, npcs, encounter, logs, map: { grid: mapGrid, tokens: mapTokens, fog: fogGrid, config: mapConfig }, monsters, combat: { turnIndex, targetUid }, notes
+        version: '2.0', timestamp: Date.now(), name: campaignName || roomName, characters, npcs, encounter, logs, map: { grid: mapGrid, tokens: mapTokens, fog: fogGrid, config: mapConfig }, monsters, combat: { turnIndex, targetUid, round }, notes
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -577,7 +675,16 @@ export default function App() {
             if (data.characters) setCharacters(data.characters.map(sanitizeCharacter));
             if (data.npcs) setNpcs(data.npcs.map(sanitizeCharacter));
             if (data.monsters) setMonsters(data.monsters);
-            if (data.encounter) setEncounter(data.encounter);
+            if (data.encounter) {
+                // Sanitize local load
+                setEncounter(data.encounter.map((p: any) => ({
+                    ...p,
+                    conditions: p.conditions || [],
+                    actions: p.actions || [],
+                    spells: p.spells || [],
+                    traits: p.traits || []
+                })));
+            }
             if (data.logs) setLogs(data.logs.map((l: any) => ({ ...l, timestamp: new Date(l.timestamp) })));
             if (data.map) { 
                 setMapGrid(data.map.grid || []); 
@@ -588,6 +695,7 @@ export default function App() {
             if (data.combat) {
                 setTurnIndex(data.combat.turnIndex ?? -1);
                 setTargetUid(data.combat.targetUid ?? null);
+                setRound(data.combat.round || 1);
             }
             if (data.notes) setNotes(data.notes);
             alert("Mesa carregada com sucesso!");
@@ -630,7 +738,7 @@ export default function App() {
     setIsDriveLoading(true);
     setDriveStatus('saving');
     try {
-      const data: CampaignData = { version: '2.0', timestamp: Date.now(), name: campaignName || roomName, characters, npcs, encounter, logs, map: { grid: mapGrid, tokens: mapTokens, fog: fogGrid, config: mapConfig }, monsters, combat: { turnIndex, targetUid }, notes };
+      const data: CampaignData = { version: '2.0', timestamp: Date.now(), name: campaignName || roomName, characters, npcs, encounter, logs, map: { grid: mapGrid, tokens: mapTokens, fog: fogGrid, config: mapConfig }, monsters, combat: { turnIndex, targetUid, round }, notes };
       const fileData = await saveFileToDrive(saveFilename || campaignName || roomName, data) as any;
       alert('Campanha salva com sucesso no Google Drive!');
       if (fileData && fileData.webViewLink) window.open(fileData.webViewLink, '_blank');
@@ -653,7 +761,16 @@ export default function App() {
             if (parsed.characters) setCharacters(parsed.characters.map(sanitizeCharacter));
             if (parsed.npcs) setNpcs(parsed.npcs.map(sanitizeCharacter));
             if (parsed.monsters) setMonsters(parsed.monsters);
-            if (parsed.encounter) setEncounter(parsed.encounter);
+            if (parsed.encounter) {
+                // Sanitize drive load
+                setEncounter(parsed.encounter.map((p: any) => ({
+                    ...p,
+                    conditions: p.conditions || [],
+                    actions: p.actions || [],
+                    spells: p.spells || [],
+                    traits: p.traits || []
+                })));
+            }
             if (parsed.logs) setLogs(parsed.logs.map((l: any) => ({ ...l, timestamp: new Date(l.timestamp) })));
             if (parsed.map) { 
                 setMapGrid(parsed.map.grid || []); 
@@ -664,6 +781,7 @@ export default function App() {
             if (parsed.combat) {
                 setTurnIndex(parsed.combat.turnIndex ?? -1);
                 setTargetUid(parsed.combat.targetUid ?? null);
+                setRound(parsed.combat.round || 1);
             }
             if (parsed.notes) setNotes(parsed.notes);
             alert("Campanha carregada com sucesso!");
@@ -739,6 +857,16 @@ export default function App() {
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-600 to-transparent opacity-50"></div>
                     <h2 className="text-2xl font-bold text-white mb-6 text-center font-cinzel">Iniciar Aventura</h2>
                     
+                    {hasLocalSave && !isJoiningViaLink && (
+                        <button 
+                            onClick={handleContinueSession}
+                            className="w-full mb-6 bg-stone-800/80 hover:bg-stone-700 text-amber-400 font-bold py-3 rounded-lg border border-amber-900/50 flex items-center justify-center gap-2 transition-all shadow-md group animate-pulse"
+                        >
+                            <RotateCcw size={18} className="group-hover:-rotate-180 transition-transform duration-500"/>
+                            CONTINUAR SESSÃO ANTERIOR (OFFLINE)
+                        </button>
+                    )}
+
                     {isJoiningViaLink && (
                         <div className="mb-4 bg-amber-900/30 text-amber-400 p-3 rounded-lg border border-amber-800/50 text-sm flex items-center gap-2">
                             <LinkIcon size={16}/>
@@ -821,38 +949,39 @@ export default function App() {
         </div>
       ) : (
         <>
-          {/* PC HEADER (Hidden on Mobile) */}
-          <header className={`hidden md:flex fixed top-0 left-0 right-0 z-40 backdrop-blur-md border-b border-white/5 px-4 h-[64px] justify-between items-center shadow-lg transition-all ${bg.className}/70`}>
+          {/* PC HEADER (Floating Glass UI) */}
+          <header className="hidden md:flex fixed top-4 left-6 right-6 z-40 bg-stone-950/80 backdrop-blur-md border border-white/10 rounded-2xl h-[60px] justify-between items-center shadow-2xl px-6 transition-all">
             {/* Logo & Navigation */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-8">
               <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setMode('SHEET')}>
-                <div className={`p-2 rounded-lg bg-gradient-to-br from-stone-800 to-stone-900 border border-white/10 group-hover:border-amber-500/50 transition-colors`}>
-                    <img src="/favicon.png" alt="RPGNEP" className="w-6 h-6 object-contain group-hover:rotate-12 transition-transform duration-500" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500 transition-transform group-hover:rotate-180 duration-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
+                <div className={`p-2 rounded-lg bg-gradient-to-br from-stone-800 to-stone-900 border border-white/5 group-hover:border-amber-500/50 transition-all shadow-md`}>
+                    <img src="/favicon.png" alt="RPGNEP" className="w-6 h-6 object-contain group-hover:scale-110 transition-transform duration-300" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500 transition-transform group-hover:rotate-180 duration-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
                 </div>
-                <h1 className="text-xl font-cinzel font-bold text-stone-200 tracking-widest group-hover:text-white transition-colors bg-clip-text text-transparent bg-gradient-to-r from-stone-200 to-stone-400">RPGNEP</h1>
+                <div className="flex flex-col">
+                    <h1 className="text-lg font-cinzel font-bold text-stone-200 tracking-widest group-hover:text-white transition-colors bg-clip-text text-transparent bg-gradient-to-r from-stone-100 to-stone-400">RPGNEP</h1>
+                </div>
               </div>
               
-              <nav className={`flex items-center p-1 rounded-xl border border-white/5 ${bg.sidebar.replace('bg-', 'bg-opacity-50 ')}`}>
+              <nav className="flex items-center gap-1 bg-black/20 p-1 rounded-xl border border-white/5">
                 {[
                     { id: 'SHEET', icon: User, label: 'Heróis' },
                     { id: 'NPC', icon: Users, label: 'NPCs' },
                     { id: 'VTT', icon: MapIcon, label: 'Mapa' },
                     { id: 'DM', icon: ShieldCheck, label: 'Mestre' },
-                    { id: 'GM_DASHBOARD', icon: LayoutDashboard, label: 'GM Mode' },
+                    { id: 'GM_DASHBOARD', icon: LayoutDashboard, label: 'Painel GM' },
                     { id: 'CHAT', icon: MessageSquare, label: 'Chat' }
                 ].map((item) => (
                     <button 
                         key={item.id}
                         onClick={() => setMode(item.id as any)}
-                        className={`relative px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all duration-300 ${
+                        className={`relative px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all duration-300 group ${
                             mode === item.id 
-                            ? `bg-stone-800 text-white shadow-sm ring-1 ring-white/10` 
+                            ? `bg-stone-800 text-amber-500 shadow-sm border border-stone-700` 
                             : 'text-stone-500 hover:text-stone-300 hover:bg-white/5'
                         }`}
                     >
-                        <item.icon size={14} className={mode === item.id ? th.text : ''} />
-                        <span className="hidden sm:inline">{item.label}</span>
-                        {mode === item.id && <span className={`absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${th.primary}`}></span>}
+                        <item.icon size={14} className={mode === item.id ? 'text-amber-500' : 'text-stone-600 group-hover:text-stone-400 transition-colors'} />
+                        <span className="hidden lg:inline tracking-wide">{item.label}</span>
                     </button>
                 ))}
               </nav>
@@ -860,17 +989,19 @@ export default function App() {
 
             {/* Room Info & Actions */}
             <div className="flex items-center gap-3">
-                <div className={`hidden xl:flex items-center gap-3 px-3 py-1.5 rounded-full border border-white/5 hover:border-white/10 transition-colors group cursor-default ${bg.sidebar}/50`}>
+                <div className={`hidden xl:flex items-center gap-3 px-3 py-1.5 rounded-lg border border-white/5 bg-black/20 hover:bg-black/30 transition-all group cursor-default shadow-inner`}>
                     <div className="flex items-center gap-2 text-xs text-stone-400">
                         {campaignPassword ? <Lock size={12} className="text-amber-500/80" /> : <Unlock size={12} className="text-emerald-500/80" />}
-                        <span className="truncate max-w-[150px] font-medium text-stone-300 group-hover:text-white transition-colors">{campaignName || roomName}</span>
+                        <span className="truncate max-w-[120px] font-bold text-stone-300 group-hover:text-white transition-colors">{campaignName || roomName}</span>
                     </div>
-                    <div className="h-4 w-px bg-white/10"></div>
-                    <button onClick={handleShare} className="text-stone-500 hover:text-blue-400 transition-colors" title="Copiar Link"><LinkIcon size={14}/></button>
+                    <div className="h-3 w-px bg-white/10"></div>
+                    <button onClick={handleShare} className="text-stone-500 hover:text-blue-400 transition-colors p-1 rounded hover:bg-white/5" title="Copiar Link"><LinkIcon size={12}/></button>
                 </div>
 
-                <div className={`hidden lg:flex items-center justify-center w-8 h-8 rounded-full border text-xs font-bold transition-all ${
-                    isOnlineMultiplayer ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-stone-800/50 text-stone-500 border-white/5'
+                <div className={`hidden lg:flex items-center justify-center w-8 h-8 rounded-full border text-[10px] font-bold transition-all shadow-sm ${
+                    isOnlineMultiplayer 
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-emerald-900/20' 
+                    : 'bg-red-500/10 text-red-400 border-red-500/20'
                 }`} title={isOnlineMultiplayer ? "Online" : "Offline"}>
                     {isOnlineMultiplayer ? <Globe size={14}/> : <WifiOff size={14}/>}
                 </div>
@@ -878,51 +1009,54 @@ export default function App() {
                 <div className="h-6 w-px bg-white/10 mx-1"></div>
 
                 <div className="flex items-center gap-1">
-                    <button onClick={handleEmailInvite} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/5 text-stone-400 hover:text-blue-400 transition-colors" title="Convidar"><Mail size={18}/></button>
-                    <button onClick={() => setShowAI(!showAI)} className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-300 ${showAI ? 'bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/50' : 'hover:bg-white/5 text-stone-400 hover:text-purple-400'}`} title="Oráculo IA"><Sparkles size={18}/></button>
-                    <button onClick={() => setShowNotepad(!showNotepad)} className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-300 ${showNotepad ? 'bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/50' : 'hover:bg-white/5 text-stone-400 hover:text-yellow-400'}`} title="Bloco de Notas"><FileText size={18}/></button>
-                    <button onClick={() => setShowSaveModal(true)} className={`w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors relative ${unsavedChanges ? 'text-amber-500' : 'text-stone-400 hover:text-green-400'}`} title="Salvar / Carregar"><Save size={18}/>{unsavedChanges && <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_#f59e0b]"></span>}</button>
-                    <button onClick={() => setShowConfigModal(true)} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/5 text-stone-400 hover:text-white transition-colors" title="Configurações"><Settings size={18}/></button>
-                    <button onClick={() => { if(auth) signOut(auth as Auth); setViewState('LAUNCHER'); setCurrentUser(null); }} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-stone-400 hover:text-red-500 transition-colors" title="Sair"><LogOut size={18}/></button>
+                    <button onClick={handleEmailInvite} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-stone-400 hover:text-blue-400 transition-all" title="Convidar"><Mail size={18}/></button>
+                    <button onClick={() => setShowDMScreen(!showDMScreen)} className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-300 ${showDMScreen ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50' : 'hover:bg-white/5 text-stone-400 hover:text-amber-400'}`} title="Escudo do Mestre"><BookOpen size={18}/></button>
+                    <button onClick={() => setShowAI(!showAI)} className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-300 ${showAI ? 'bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.3)]' : 'hover:bg-white/5 text-stone-400 hover:text-purple-400'}`} title="Oráculo IA"><Sparkles size={18}/></button>
+                    <button onClick={() => setShowNotepad(!showNotepad)} className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-300 ${showNotepad ? 'bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/50' : 'hover:bg-white/5 text-stone-400 hover:text-yellow-400'}`} title="Bloco de Notas"><FileText size={18}/></button>
+                    <button onClick={() => setShowSaveModal(true)} className={`w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 transition-all relative ${unsavedChanges ? 'text-amber-500' : 'text-stone-400 hover:text-green-400'}`} title="Salvar / Carregar"><Save size={18}/>{unsavedChanges && <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_5px_#f59e0b] animate-pulse"></span>}</button>
+                    <button onClick={() => setShowConfigModal(true)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-stone-400 hover:text-white transition-all" title="Configurações"><Settings size={18}/></button>
+                    <button onClick={() => { if(auth) signOut(auth as Auth); setViewState('LAUNCHER'); setCurrentUser(null); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-stone-400 hover:text-red-500 transition-all" title="Sair"><LogOut size={18}/></button>
                 </div>
             </div>
           </header>
 
           {/* MOBILE HEADER (Visible on Mobile) */}
-          <header className={`md:hidden fixed top-0 left-0 right-0 z-40 backdrop-blur-md border-b border-white/5 h-[50px] flex justify-between items-center px-4 shadow-md ${bg.className}/90`}>
-             <div className="flex items-center gap-2">
-                <img src="/favicon.png" alt="RPGNEP" className="w-6 h-6 object-contain" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
+          <header className={`md:hidden fixed top-0 left-0 right-0 z-40 bg-stone-950/80 backdrop-blur-md border-b border-white/10 h-[56px] flex justify-between items-center px-4 shadow-md`}>
+             <div className="flex items-center gap-3">
+                <img src="/favicon.png" alt="RPGNEP" className="w-8 h-8 object-contain" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
                 <h1 className="text-lg font-cinzel font-bold text-white tracking-widest">RPGNEP</h1>
              </div>
-             <div className="flex items-center gap-3">
-                <div className={`w-2 h-2 rounded-full ${isOnlineMultiplayer ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-stone-400"><Menu size={24}/></button>
+             <div className="flex items-center gap-4">
+                <div className={`w-2.5 h-2.5 rounded-full ${isOnlineMultiplayer ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-red-500'}`}></div>
+                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-stone-400 p-2 rounded-lg hover:bg-white/10 active:bg-white/20"><Menu size={22}/></button>
              </div>
           </header>
 
           {/* MOBILE MENU DRAWER */}
           {mobileMenuOpen && (
               <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end" onClick={() => setMobileMenuOpen(false)}>
-                  <div className={`w-64 ${bg.sidebar} h-full border-l border-stone-800 p-4 animate-in slide-in-from-right`} onClick={e => e.stopPropagation()}>
-                      <div className="flex justify-between items-center mb-6 border-b border-stone-800 pb-2">
-                          <span className="font-bold text-stone-200">Menu</span>
-                          <button onClick={() => setMobileMenuOpen(false)}><X size={24} className="text-stone-500"/></button>
+                  <div className="w-72 bg-[#121214] h-full border-l border-stone-800 p-5 animate-in slide-in-from-right shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+                      <div className="flex justify-between items-center mb-8 border-b border-stone-800 pb-4">
+                          <span className="font-bold text-lg text-stone-200 font-cinzel">Menu</span>
+                          <button onClick={() => setMobileMenuOpen(false)} className="p-2 bg-stone-800 rounded-full text-stone-400 hover:text-white"><X size={18}/></button>
                       </div>
-                      <div className="space-y-4">
-                          <button onClick={() => {setShowAI(!showAI); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><Sparkles size={18}/> Oráculo IA</button>
-                          <button onClick={() => {setShowNotepad(!showNotepad); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><FileText size={18}/> Bloco de Notas</button>
-                          <button onClick={() => {setShowSaveModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><Save size={18}/> Salvar / Carregar</button>
-                          <button onClick={() => {setShowConfigModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><Settings size={18}/> Configurações</button>
-                          <button onClick={handleShare} className="w-full flex items-center gap-3 p-3 rounded-lg bg-stone-800 text-stone-300"><LinkIcon size={18}/> Compartilhar Sala</button>
-                          <div className="border-t border-stone-800 my-2"></div>
-                          <button onClick={() => { if(auth) signOut(auth as Auth); setViewState('LAUNCHER'); }} className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-900/20 text-red-400"><LogOut size={18}/> Sair</button>
+                      <div className="space-y-3 flex-1">
+                          <button onClick={() => {setShowDMScreen(!showDMScreen); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold transition-all"><BookOpen size={18} className="text-amber-500"/> Escudo do Mestre</button>
+                          <button onClick={() => {setShowAI(!showAI); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold transition-all"><Sparkles size={18} className="text-purple-500"/> Oráculo IA</button>
+                          <button onClick={() => {setShowNotepad(!showNotepad); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold transition-all"><FileText size={18} className="text-yellow-500"/> Bloco de Notas</button>
+                          <button onClick={() => {setShowSaveModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold transition-all"><Save size={18} className="text-blue-500"/> Salvar / Carregar</button>
+                          <button onClick={() => {setShowConfigModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold transition-all"><Settings size={18} className="text-stone-500"/> Configurações</button>
+                          <button onClick={handleShare} className="w-full flex items-center gap-3 p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold transition-all"><LinkIcon size={18} className="text-emerald-500"/> Compartilhar Sala</button>
+                      </div>
+                      <div className="border-t border-stone-800 pt-4 mt-auto">
+                          <button onClick={() => { if(auth) signOut(auth as Auth); setViewState('LAUNCHER'); }} className="w-full flex items-center gap-3 p-3 rounded-xl bg-red-950/30 text-red-400 font-bold hover:bg-red-900/50 transition-all border border-red-900/30"><LogOut size={18}/> Sair</button>
                       </div>
                   </div>
               </div>
           )}
 
-          {/* MOBILE BOTTOM NAVIGATION */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-stone-950 border-t border-white/10 h-[60px] flex items-center justify-around px-2 pb-safe">
+          {/* MOBILE BOTTOM NAVIGATION (Floating Dock) */}
+          <nav className="md:hidden fixed bottom-6 left-4 right-4 z-40 bg-stone-950/80 backdrop-blur-xl border border-white/10 rounded-2xl h-[64px] flex items-center justify-around px-2 shadow-2xl pb-safe">
             {[
                 { id: 'SHEET', icon: User, label: 'Herói' },
                 { id: 'NPC', icon: Users, label: 'NPCs' },
@@ -933,25 +1067,28 @@ export default function App() {
                 <button 
                     key={item.id}
                     onClick={() => setMode(item.id as AppMode)}
-                    className={`flex flex-col items-center justify-center w-full h-full gap-1 ${mode === item.id ? 'text-amber-500' : 'text-stone-500'}`}
+                    className={`relative flex flex-col items-center justify-center w-full h-full gap-1 transition-all group`}
                 >
-                    <item.icon size={20} className={mode === item.id ? 'fill-current/20' : ''} />
-                    <span className="text-[9px] font-bold uppercase">{item.label}</span>
+                    <div className={`p-2 rounded-xl transition-all duration-300 ${mode === item.id ? 'bg-amber-500 text-stone-950 -translate-y-2 shadow-lg shadow-amber-900/50' : 'text-stone-500 group-hover:text-stone-300'}`}>
+                        <item.icon size={mode === item.id ? 20 : 20} className={mode === item.id ? '' : 'opacity-70'} />
+                    </div>
+                    {mode === item.id && <span className="text-[9px] font-bold uppercase tracking-tight text-amber-500 absolute bottom-1 animate-in fade-in slide-in-from-bottom-1">{item.label}</span>}
                 </button>
             ))}
           </nav>
 
-          <main className="flex-1 overflow-hidden relative flex mt-[50px] mb-[60px] md:mt-[64px] md:mb-0 h-[calc(100vh-110px)] md:h-[calc(100vh-64px)]">
+          <main className="flex-1 overflow-hidden relative flex mt-0 md:mt-[80px] h-screen md:h-[calc(100vh-80px)]">
+            <SoundController />
             {mode === 'SHEET' && (
-                <aside className={`hidden md:flex w-64 ${bg.sidebar} border-r border-stone-800 flex-col z-20 shadow-xl`}>
-                    <div className="p-4 border-b border-stone-800 flex justify-between items-center bg-stone-950/50">
+                <aside className="hidden md:flex w-72 bg-stone-900/50 backdrop-blur-md border-r border-stone-800 flex-col z-20 shadow-xl">
+                    <div className="p-5 border-b border-stone-800 flex justify-between items-center bg-stone-950/50">
                         <span className="text-xs font-bold text-stone-400 uppercase tracking-wider flex items-center gap-2"><LayoutDashboard size={14}/> Aventureiros</span>
                         <div className="flex gap-1">
-                            <label className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white cursor-pointer transition-all" title="Importar Ficha">
+                            <label className="p-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white cursor-pointer transition-all" title="Importar Ficha">
                                 <FileUp size={16}/>
                                 <input type="file" hidden accept=".json" onChange={handleCharacterImport} />
                             </label>
-                            <button onClick={() => {const newC = {...INITIAL_CHAR, id: generateId()}; setCharacters([...characters, newC]); setActiveCharIndex(characters.length);}} className={`p-1.5 rounded-lg bg-stone-800 hover:bg-amber-600 text-stone-400 hover:text-white transition-all`} title="Novo Personagem"><Plus size={16}/></button>
+                            <button onClick={() => {const newC = {...INITIAL_CHAR, id: generateId()}; setCharacters([...characters, newC]); setActiveCharIndex(characters.length);}} className={`p-2 rounded-lg bg-stone-800 hover:bg-amber-600 text-stone-400 hover:text-white transition-all`} title="Novo Personagem"><Plus size={16}/></button>
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
@@ -959,17 +1096,16 @@ export default function App() {
                             <button 
                                 key={c.id} 
                                 onClick={() => setActiveCharIndex(i)} 
-                                className={`w-full p-3 rounded-xl border text-left transition-all group relative overflow-hidden ${
+                                className={`w-full p-3 rounded-xl border text-left transition-all duration-300 group relative overflow-hidden ${
                                     activeCharIndex === i 
-                                    ? `bg-gradient-to-r from-stone-800 to-stone-800/50 border-amber-500/30 shadow-lg` 
-                                    : 'bg-stone-900 border-transparent hover:bg-stone-800 hover:border-stone-700'
+                                    ? `bg-gradient-to-r ${th.gradient} border-transparent shadow-lg transform scale-[1.02]` 
+                                    : 'bg-stone-800/40 border-stone-800 hover:bg-stone-800 hover:border-stone-700'
                                 }`}
                             >
-                                {activeCharIndex === i && <div className={`absolute left-0 top-0 bottom-0 w-1 ${th.primary}`}></div>}
-                                <div className={`font-bold text-sm mb-0.5 ${activeCharIndex === i ? 'text-white' : 'text-stone-400 group-hover:text-stone-200'}`}>{c.name}</div>
-                                <div className="text-[10px] text-stone-500 flex justify-between items-center">
-                                    <span className="bg-black/20 px-1.5 py-0.5 rounded">{c.class}</span>
-                                    <span className={`font-mono ${activeCharIndex === i ? 'text-amber-500' : ''}`}>Nvl {c.level}</span>
+                                <div className={`font-bold text-sm mb-1 ${activeCharIndex === i ? 'text-white' : 'text-stone-300 group-hover:text-white'}`}>{c.name}</div>
+                                <div className={`text-[10px] flex justify-between items-center ${activeCharIndex === i ? 'text-white/80' : 'text-stone-500'}`}>
+                                    <span className={`${activeCharIndex === i ? 'bg-white/20' : 'bg-black/20'} px-2 py-0.5 rounded-md`}>{c.class}</span>
+                                    <span className="font-mono font-bold">Nvl {c.level}</span>
                                 </div>
                             </button>
                         ))}
@@ -979,19 +1115,15 @@ export default function App() {
 
             <div className={`flex-1 overflow-hidden relative ${bg.className}`}>
                 {mode === 'SHEET' && (
-                <div className="h-full overflow-y-auto custom-scrollbar p-2 md:p-4 lg:p-8">
+                <div className="h-full overflow-y-auto custom-scrollbar p-2 md:p-6 lg:p-8 pb-24 md:pb-6">
                     {/* Mobile Character Toggle */}
-                    <div className="md:hidden flex overflow-x-auto gap-2 mb-4 no-scrollbar pb-2">
-                        <button onClick={() => {const newC = {...INITIAL_CHAR, id: generateId()}; setCharacters([...characters, newC]); setActiveCharIndex(characters.length);}} className="flex-shrink-0 w-10 h-10 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center text-stone-400"><Plus size={20}/></button>
-                        <label className="flex-shrink-0 w-10 h-10 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center text-stone-400 cursor-pointer">
-                            <FileUp size={20}/>
-                            <input type="file" hidden accept=".json" onChange={handleCharacterImport} />
-                        </label>
+                    <div className="md:hidden flex overflow-x-auto gap-2 mb-4 no-scrollbar pb-2 pt-14">
+                        <button onClick={() => {const newC = {...INITIAL_CHAR, id: generateId()}; setCharacters([...characters, newC]); setActiveCharIndex(characters.length);}} className="flex-shrink-0 w-12 h-12 rounded-2xl bg-stone-800 border border-stone-700 flex items-center justify-center text-stone-400 shadow-md"><Plus size={24}/></button>
                         {characters.map((c, i) => (
                             <button 
                                 key={c.id} 
                                 onClick={() => setActiveCharIndex(i)}
-                                className={`flex-shrink-0 px-4 py-2 rounded-full border text-xs font-bold ${activeCharIndex === i ? 'bg-amber-900/30 border-amber-600 text-amber-500' : 'bg-stone-900 border-stone-800 text-stone-500'}`}
+                                className={`flex-shrink-0 px-5 py-3 rounded-2xl border text-xs font-bold shadow-md transition-all ${activeCharIndex === i ? `bg-gradient-to-br ${th.gradient} text-white border-transparent` : 'bg-stone-900 border-stone-800 text-stone-500'}`}
                             >
                                 {c.name}
                             </button>
@@ -1028,18 +1160,20 @@ export default function App() {
                 )}
                 
                 {mode === 'NPC' && (
-                    <NPCManager 
-                        npcs={npcs} 
-                        onUpdate={(updated) => setNpcs(prev => prev.map(n => n.id === updated.id ? updated : n))}
-                        onAdd={() => setNpcs(prev => [...prev, { ...INITIAL_CHAR, id: generateId(), name: "Novo NPC", level: 0 }])}
-                        onDelete={(id) => setNpcs(prev => prev.filter(n => n.id !== id))}
-                        onRoll={(d, mod, label) => {
-                            const r1 = Math.floor(Math.random() * d) + 1;
-                            const total = r1 + mod;
-                            addLogEntry(label, `Mestre rolou ${label}: [${r1}] + ${mod} = ${total}`, 'dice');
-                            broadcastChat(`🎲 Mestre rolou ${label}: [${r1}]${mod>=0?'+':''}${mod} = **${total}**`);
-                        }}
-                    />
+                    <div className="h-full pt-14 md:pt-0">
+                        <NPCManager 
+                            npcs={npcs} 
+                            onUpdate={(updated) => setNpcs(prev => prev.map(n => n.id === updated.id ? updated : n))}
+                            onAdd={() => setNpcs(prev => [...prev, { ...INITIAL_CHAR, id: generateId(), name: "Novo NPC", level: 0 }])}
+                            onDelete={(id) => setNpcs(prev => prev.filter(n => n.id !== id))}
+                            onRoll={(d, mod, label) => {
+                                const r1 = Math.floor(Math.random() * d) + 1;
+                                const total = r1 + mod;
+                                addLogEntry(label, `Mestre rolou ${label}: [${r1}] + ${mod} = ${total}`, 'dice');
+                                broadcastChat(`🎲 Mestre rolou ${label}: [${r1}]${mod>=0?'+':''}${mod} = **${total}**`);
+                            }}
+                        />
+                    </div>
                 )}
 
                 {mode === 'VTT' && (
@@ -1066,6 +1200,7 @@ export default function App() {
                         fogGrid={fogGrid}
                         setFogGrid={(fog: boolean[][]) => broadcastMap(mapGrid, mapTokens, fog)}
                         characters={characters}
+                        npcs={npcs}
                         monsters={monsters}
                         mapConfig={mapConfig}
                         setMapConfig={setMapConfig}
@@ -1074,7 +1209,7 @@ export default function App() {
                 )}
                 
                 {mode === 'DM' && (
-                <div className="h-full overflow-hidden">
+                <div className="h-full overflow-hidden pt-14 md:pt-0">
                     <DMToolsMemo 
                         encounter={encounter} 
                         setEncounter={(e: EncounterParticipant[]) => { 
@@ -1091,18 +1226,129 @@ export default function App() {
                         logs={logs} 
                         addLog={addLogEntry}
                         characters={characters}
+                        npcs={npcs}
                         monsters={monsters}
                         setMonsters={setMonsters}
                         turnIndex={turnIndex}
                         setTurnIndex={setTurnIndex}
                         targetUid={targetUid}
                         setTargetUid={setTargetUid}
+                        round={round}
+                        setRound={setRound}
                     />
                 </div>
                 )}
+
+                {mode === 'GM_DASHBOARD' && (
+                    <div className="flex h-full w-full overflow-hidden bg-stone-950 relative pt-14 md:pt-0">
+                        {/* GM Sidebar (Combat Tracker) */}
+                        <div 
+                            className={`flex flex-col border-r border-stone-800 bg-[#161619] z-20 shrink-0 shadow-2xl transition-all duration-300 ease-in-out absolute md:relative h-full ${
+                                gmSidebarOpen ? 'translate-x-0 w-[350px] lg:w-[400px]' : '-translate-x-full md:w-0 md:opacity-0 md:overflow-hidden absolute'
+                            }`}
+                        >
+                            <div className="flex items-center justify-between p-3 border-b border-stone-800 bg-stone-950/50">
+                                <span className="text-xs font-black text-amber-500 uppercase tracking-widest flex items-center gap-2"><LayoutDashboard size={14}/> Centro de Comando</span>
+                                <button onClick={() => setGmSidebarOpen(false)} className="p-1 text-stone-500 hover:text-white bg-stone-800/50 rounded-lg hover:bg-stone-800 transition-colors"><PanelLeftClose size={16}/></button>
+                            </div>
+                            <DMToolsMemo
+                                encounter={encounter}
+                                setEncounter={(e) => {
+                                    setEncounter(e);
+                                    setMapTokens(prev => prev.map(t => {
+                                        const p = e.find(part => part.uid === t.linkedId);
+                                        if (p && (t.hp !== p.hpCurrent)) {
+                                            return { ...t, hp: p.hpCurrent };
+                                        }
+                                        return t;
+                                    }));
+                                }}
+                                logs={logs}
+                                addLog={addLogEntry}
+                                characters={characters}
+                                npcs={npcs}
+                                monsters={monsters}
+                                setMonsters={setMonsters}
+                                turnIndex={turnIndex}
+                                setTurnIndex={setTurnIndex}
+                                targetUid={targetUid}
+                                setTargetUid={setTargetUid}
+                                compact={true}
+                                round={round}
+                                setRound={setRound}
+                            />
+                        </div>
+
+                        {/* Expand Button (when sidebar is closed) */}
+                        {!gmSidebarOpen && (
+                            <button 
+                                onClick={() => setGmSidebarOpen(true)} 
+                                className="absolute top-4 left-4 z-30 p-2 bg-stone-900 border border-stone-700 rounded-lg text-amber-500 hover:bg-stone-800 shadow-xl hover:scale-105 transition-all"
+                                title="Abrir Painel GM"
+                            >
+                                <PanelLeftOpen size={20}/>
+                            </button>
+                        )}
+
+                        {/* VTT Main View */}
+                        <div className="flex-1 relative bg-stone-900/50">
+                            <div className="absolute inset-0">
+                                <VirtualTabletopMemo
+                                    mapGrid={mapGrid}
+                                    setMapGrid={(g) => broadcastMap(g, mapTokens, fogGrid)}
+                                    tokens={mapTokens}
+                                    setTokens={(t) => {
+                                        const newVal = typeof t === 'function' ? t(mapTokens) : t;
+                                        broadcastMap(mapGrid, newVal, fogGrid);
+                                        newVal.forEach((token: Token) => {
+                                            if (token.linkedId) {
+                                                setEncounter(prevEnc => prevEnc.map(p => {
+                                                    if (p.uid === token.linkedId && (p.hpCurrent !== token.hp)) {
+                                                        return { ...p, hpCurrent: token.hp };
+                                                    }
+                                                    return p;
+                                                }));
+                                            }
+                                        });
+                                    }}
+                                    fogGrid={fogGrid}
+                                    setFogGrid={(fog) => broadcastMap(mapGrid, mapTokens, fog)}
+                                    characters={characters}
+                                    npcs={npcs}
+                                    monsters={monsters}
+                                    mapConfig={mapConfig}
+                                    setMapConfig={setMapConfig}
+                                    activeTokenIds={activeTokenIds}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Integrated Floating Chat */}
+                        <div className={`absolute right-4 top-4 bottom-24 w-80 md:w-96 bg-stone-950/95 backdrop-blur-xl border border-stone-800 rounded-2xl shadow-2xl flex flex-col z-30 transition-transform duration-300 ease-in-out ${showDashboardChat ? 'translate-x-0' : 'translate-x-[120%]'}`}>
+                            <div className="p-3 border-b border-stone-800 flex justify-between items-center bg-stone-900/50 rounded-t-2xl">
+                                <span className="text-xs font-bold text-stone-300 uppercase tracking-widest flex items-center gap-2"><MessageSquare size={14}/> Comms</span>
+                                <button onClick={() => setShowDashboardChat(false)} className="text-stone-500 hover:text-white p-1 hover:bg-stone-800 rounded"><X size={16}/></button>
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <Chat messages={chatMessages} onSendMessage={broadcastChat} username={username} isFullPage={false} />
+                            </div>
+                        </div>
+
+                        {/* Floating Chat Toggle */}
+                        {!showDashboardChat && (
+                            <button 
+                                onClick={() => setShowDashboardChat(true)}
+                                className="absolute top-4 right-4 z-30 p-2 bg-stone-900 border border-stone-700 rounded-lg text-amber-500 hover:bg-stone-800 shadow-xl hover:scale-105 transition-all"
+                                title="Abrir Chat"
+                            >
+                                <PanelRightOpen size={20}/>
+                            </button>
+                        )}
+                    </div>
+                )}
                 
                 {mode === 'CHAT' && (
-                    <div className="h-full w-full p-2 md:p-4 overflow-hidden bg-stone-950 flex flex-col items-center">
+                    <div className="h-full w-full p-2 md:p-4 overflow-hidden bg-stone-950 flex flex-col items-center pt-16 md:pt-4">
                         <div className="w-full max-w-4xl h-full flex flex-col">
                            <Chat messages={chatMessages} onSendMessage={broadcastChat} username={username} isFullPage={true} />
                         </div>
@@ -1110,125 +1356,90 @@ export default function App() {
                 )}
             </div>
 
-            <AIChat isOpen={showAI} onClose={() => setShowAI(false)} characters={characters} encounter={encounter} />
+            <AIChat isOpen={showAI} onClose={() => setShowAI(false)} characters={characters} encounter={encounter} mapTokens={mapTokens} notes={notes} campaignName={campaignName || roomName} />
+            <DMScreen isOpen={showDMScreen} onClose={() => setShowDMScreen(false)} />
             <DiceTray onRoll={broadcastChat} />
+
+            {/* SAVE MODAL */}
+            {showSaveModal && (
+                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-[#1c1c1e] border border-stone-700 w-full max-w-lg rounded-2xl shadow-2xl p-6 relative animate-in zoom-in-95">
+                        <button onClick={() => setShowSaveModal(false)} className="absolute top-4 right-4 text-stone-500 hover:text-white"><X size={20}/></button>
+                        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2 font-cinzel"><Save className="text-amber-500"/> Salvar & Carregar</h3>
+                        
+                        <div className="space-y-6">
+                            {/* LOCAL */}
+                            <div className="bg-[#121214] p-4 rounded-xl border border-stone-800">
+                                <h4 className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-3">Armazenamento Local (Arquivo)</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button onClick={handleLocalSave} className="bg-stone-800 hover:bg-stone-700 text-stone-300 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all border border-stone-700">
+                                        <Download size={18}/> Baixar JSON
+                                    </button>
+                                    <label className="bg-stone-800 hover:bg-stone-700 text-stone-300 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all border border-stone-700 cursor-pointer">
+                                        <Upload size={18}/> Carregar JSON
+                                        <input type="file" hidden accept=".json" onChange={handleLocalLoad} ref={localLoadRef} />
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* CLOUD */}
+                            <div className="bg-[#121214] p-4 rounded-xl border border-stone-800 relative overflow-hidden">
+                                <h4 className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Cloud size={14}/> Nuvem (Google Drive)</h4>
+                                
+                                <div className="space-y-3">
+                                    {!isDriveReady ? (
+                                        <div className="text-center py-4 text-stone-500 text-xs">
+                                            {driveStatus === 'error' ? 'Erro na conexão com Drive.' : 'Conectando ao Google Drive...'}
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex gap-2">
+                                                <input 
+                                                    className="flex-1 bg-stone-900 border border-stone-700 rounded-lg px-3 text-sm text-white focus:border-blue-500 outline-none"
+                                                    placeholder="Nome do Arquivo (Opcional)"
+                                                    value={saveFilename}
+                                                    onChange={e => setSaveFilename(e.target.value)}
+                                                />
+                                                <button onClick={executeSave} disabled={isDriveLoading} className="bg-blue-700 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 disabled:opacity-50 transition-all">
+                                                    {isDriveLoading ? <Loader2 className="animate-spin"/> : <Upload size={18}/>} Salvar
+                                                </button>
+                                            </div>
+                                            <button onClick={handlePickFromDrive} disabled={isDriveLoading} className="w-full bg-stone-800 hover:bg-stone-700 text-blue-400 border border-blue-900/30 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all">
+                                                <Cloud size={18}/> Carregar do Drive
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 pt-4 border-t border-stone-800 text-center text-[10px] text-stone-600">
+                            Recomendamos salvar regularmente. O autosave local é temporário.
+                        </div>
+                    </div>
+                </div>
+            )}
             
             {showNotepad && (
-                <div className="fixed top-[60px] right-4 md:right-20 w-[90%] md:w-80 bg-[#1c1917] border border-stone-800 shadow-2xl rounded-xl z-[60] flex flex-col overflow-hidden animate-in slide-in-from-top-5 ring-1 ring-white/10">
-                    <div className="bg-gradient-to-r from-yellow-900/20 to-stone-900 p-3 flex justify-between items-center border-b border-stone-800 cursor-move">
+                <div className="fixed top-[80px] right-4 md:right-20 w-[90%] md:w-96 bg-[#1c1917]/90 backdrop-blur-xl border border-stone-700 shadow-2xl rounded-2xl z-[60] flex flex-col overflow-hidden animate-in slide-in-from-top-5 ring-1 ring-white/10">
+                    <div className="bg-gradient-to-r from-yellow-900/20 to-stone-900/50 p-3 flex justify-between items-center border-b border-stone-700 cursor-move">
                         <div className="flex items-center gap-2 text-yellow-500 font-bold text-sm">
-                            <FileText size={16}/> Bloco de Notas
+                            <FileText size={18}/> Bloco de Notas
                         </div>
-                        <button onClick={() => setShowNotepad(false)} className="text-stone-500 hover:text-white transition-colors"><X size={16}/></button>
+                        <button onClick={() => setShowNotepad(false)} className="text-stone-500 hover:text-white transition-colors p-1 hover:bg-white/10 rounded"><X size={18}/></button>
                     </div>
                     <textarea 
-                        className="w-full h-64 p-4 bg-[#0c0a09] resize-y outline-none text-stone-300 text-sm leading-relaxed font-mono placeholder-stone-700"
+                        className="w-full h-80 p-5 bg-transparent resize-y outline-none text-stone-300 text-sm leading-relaxed font-mono placeholder-stone-700"
                         placeholder="Anotações rápidas da sessão..."
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                     />
-                    <div className="bg-stone-900 p-1.5 text-[10px] text-stone-500 text-center border-t border-stone-800">
+                    <div className="bg-stone-900/50 p-2 text-[10px] text-stone-500 text-center border-t border-stone-800 font-bold uppercase tracking-widest">
                         Sincronizado automaticamente
                     </div>
                 </div>
             )}
           </main>
-
-          {/* ... (Modals remain mostly same but ensure they match dark theme) ... */}
-          {showSaveModal && (
-              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
-                  {/* ... content ... */}
-                  <div className="bg-[#1a1a1d] border border-stone-700 p-6 rounded-lg w-full max-w-md shadow-2xl relative">
-                      <button onClick={() => setShowSaveModal(false)} className="absolute top-2 right-2 text-stone-500 hover:text-white"><X size={20}/></button>
-                      <h2 className={`text-xl font-bold text-stone-200 mb-4 flex items-center gap-2`}><Save size={20} className={th.text}/> Gerenciar Campanha</h2>
-                      <div className="space-y-4">
-                          <input className="w-full bg-[#222] border border-[#333] rounded p-2 text-white focus:border-amber-500 outline-none" value={saveFilename} onChange={e => setSaveFilename(e.target.value)} placeholder={campaignName || roomName} />
-                          <div className="grid grid-cols-2 gap-3">
-                              <button onClick={handleLocalSave} className="flex flex-col items-center justify-center p-3 bg-stone-800 hover:bg-stone-700 rounded border border-stone-600 gap-2 transition-all">
-                                  <Download className="text-blue-400" size={24}/>
-                                  <span className="text-xs font-bold text-stone-300">Download Local</span>
-                              </button>
-                              <button onClick={executeSave} disabled={!isDriveReady || isDriveLoading} className={`flex flex-col items-center justify-center p-3 rounded gap-2 transition-all group ${isDriveReady ? 'bg-green-900/30 border border-green-700 hover:bg-green-900/50' : 'bg-stone-800/50 border border-stone-700 opacity-50 cursor-not-allowed'}`}>
-                                  {isDriveLoading ? <Loader2 className="animate-spin text-green-400" size={24}/> : <Cloud className={isDriveReady ? "text-green-400 group-hover:scale-110 transition-transform" : "text-stone-500"} size={24}/>}
-                                  <span className="text-xs font-bold text-stone-300">Google Drive</span>
-                              </button>
-                          </div>
-                          <div className="border-t border-stone-700 pt-4">
-                              <div className="grid grid-cols-2 gap-3">
-                                  <label className="flex flex-col items-center justify-center p-3 bg-stone-800 hover:bg-stone-700 rounded border border-stone-600 gap-2 cursor-pointer transition-all">
-                                      <FileUp className={th.text} size={24}/>
-                                      <span className="text-xs font-bold text-stone-300">Upload Local</span>
-                                      <input type="file" hidden accept=".json" onChange={handleLocalLoad} />
-                                  </label>
-                                  <button onClick={handlePickFromDrive} disabled={!isDriveReady || isDriveLoading} className={`flex flex-col items-center justify-center p-3 rounded border gap-2 transition-all ${isDriveReady ? 'bg-purple-900/30 border-purple-700 hover:bg-purple-900/50' : 'bg-stone-800/50 opacity-50 cursor-not-allowed'}`}>
-                                      <Globe className="text-purple-400" size={24}/>
-                                      <span className="text-xs font-bold text-stone-300">Abrir Drive</span>
-                                  </button>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          )}
-
-          {showConfigModal && (
-              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">
-                  <div className="bg-[#1a1a1d] border border-stone-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
-                      <h3 className="text-xl font-bold text-white mb-4">Configurações</h3>
-                      <div className="space-y-4">
-                          <div>
-                              <label className="block text-stone-400 text-sm mb-2">Tema</label>
-                              <div className="flex gap-2">
-                                  <button onClick={() => setTheme('dark')} className={`flex-1 py-2 rounded border ${theme === 'dark' ? 'bg-stone-700 border-stone-500 text-white' : 'bg-[#222] border-[#333] text-stone-500'}`}><Moon size={16} className="mx-auto"/></button>
-                                  <button onClick={() => setTheme('light')} className={`flex-1 py-2 rounded border ${theme === 'light' ? 'bg-stone-200 border-stone-300 text-black' : 'bg-[#222] border-[#333] text-stone-500'}`}><Sun size={16} className="mx-auto"/></button>
-                              </div>
-                          </div>
-                          
-                          {/* Accent Color Picker */}
-                          <div>
-                              <label className="block text-stone-400 text-sm mb-2">Cor de Destaque</label>
-                              <div className="flex gap-3 justify-center bg-[#222] p-3 rounded border border-stone-600">
-                                  {(Object.keys(THEMES) as ThemeColor[]).map((c) => (
-                                      <button
-                                          key={c}
-                                          onClick={() => setAccentColor(c)}
-                                          className={`w-8 h-8 rounded-full transition-all ${THEMES[c].primary} ${accentColor === c ? 'ring-2 ring-white scale-110 shadow-lg' : 'hover:scale-105 opacity-70 hover:opacity-100'}`}
-                                          title={c.charAt(0).toUpperCase() + c.slice(1)}
-                                      />
-                                  ))}
-                              </div>
-                          </div>
-
-                          {/* Background Theme Selector */}
-                          <div>
-                              <label className="block text-stone-400 text-sm mb-2 flex items-center gap-2"><Palette size={14}/> Fundo / Ambiente</label>
-                              <div className="grid grid-cols-2 gap-2 bg-[#222] p-2 rounded border border-stone-600 max-h-40 overflow-y-auto custom-scrollbar">
-                                  {Object.entries(BG_THEMES).map(([key, t]) => (
-                                      <button
-                                          key={key}
-                                          onClick={() => setBgTheme(key)}
-                                          className={`text-xs p-2 rounded text-left truncate transition-all ${bgTheme === key ? `bg-stone-700 text-white border border-stone-500` : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
-                                      >
-                                          <div className="flex items-center gap-2">
-                                              <div className={`w-3 h-3 rounded-full ${t.className.replace('bg-', 'bg-')}`}></div>
-                                              {t.name}
-                                          </div>
-                                      </button>
-                                  ))}
-                              </div>
-                          </div>
-
-                          <div>
-                              <label className="block text-stone-400 text-sm mb-2">Senha da Sala (Mestre)</label>
-                              <div className="flex gap-2">
-                                  <input type="text" className="flex-1 bg-[#222] border border-stone-600 rounded p-2 text-white focus:border-amber-500 outline-none" value={campaignPassword} onChange={e => setCampaignPassword(e.target.value)} placeholder="Opcional" />
-                              </div>
-                          </div>
-                      </div>
-                      <button onClick={() => setShowConfigModal(false)} className={`w-full mt-6 ${th.primary} ${th.hover} text-white font-bold py-2 rounded`}>Concluído</button>
-                  </div>
-              </div>
-          )}
         </>
       )}
     </div>

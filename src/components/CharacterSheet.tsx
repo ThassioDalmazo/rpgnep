@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState, Dispatch, SetStateAction, useRef } from 'react';
 import { Character } from '../types';
-import { CLASSES_DB, SKILL_LIST, RACES_LIST, BACKGROUNDS_DB, COMMON_WEAPONS, SPELLS_DB, CLASS_FEATURES, ARMOR_DB, INITIAL_CHAR, FEATS_DB } from '../constants';
-import { Sword, Shield, Heart, Zap, Scroll, Backpack, Save, Upload, Skull, BatteryCharging, Brain, Plus, ChevronDown, ChevronRight, Book, Moon, Trash2, ArrowUpCircle, Clock, Ruler, Hourglass, Sparkles, Calculator, AlertTriangle, Dices, GripVertical, List, FileText, Check, X, Search, Activity, User, Camera, Eraser, BookOpen, Flame, Anchor, Scale, Coins, Tag, Hammer, Eye, Store, ShoppingBag, CircleDollarSign, Link as LinkIcon, Star } from 'lucide-react';
+import { CLASSES_DB, SKILL_LIST, RACES_LIST, BACKGROUNDS_DB, COMMON_WEAPONS, SPELLS_DB, CLASS_FEATURES, ARMOR_DB, FEATS_DB, DEFAULT_MONSTERS, FEAT_PREREQUISITES, CREATURE_IMAGES } from '../constants';
+import { Sword, Shield, Heart, Zap, Scroll, Backpack, Save, Upload, Skull, Brain, Plus, ChevronDown, ChevronRight, Book, Moon, Trash2, ArrowUpCircle, Sparkles, Calculator, AlertTriangle, List, FileText, Check, X, Search, User, Camera, Eraser, BookOpen, Flame, Link as LinkIcon, Star, Hammer, ShoppingBag, Store, CircleDollarSign, GripVertical, Image as ImageIcon, Download, ThumbsUp } from 'lucide-react';
 
 interface Props {
   char: Character;
@@ -136,6 +136,9 @@ const AUTO_ACTIONS: Record<string, { type: 'inv' | 'spell', text: string }> = {
 
 const DICE_TYPES = [4, 6, 8, 10, 12, 20];
 
+// Basic XP progression table for D&D 5e
+const XP_TABLE: number[] = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000];
+
 export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelete, isNPC = false }) => {
   const [activeTab, setActiveTab] = useState<'main' | 'spells' | 'inv' | 'bio'>('main');
   const [showWeapons, setShowWeapons] = useState(false);
@@ -149,7 +152,13 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
   const [newLevelHP, setNewLevelHP] = useState(0);
   const [asiPoints, setAsiPoints] = useState<Record<string, number>>({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
 
-  // Advanced Custom States
+  // Avatar Selection State
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [avatarSearch, setAvatarSearch] = useState('');
+
+  // Accordion state for spells
+  const [expandedSpellLevels, setExpandedSpellLevels] = useState<Record<string, boolean>>({});
+
   const [customSpell, setCustomSpell] = useState({ 
       name: '', level: 'Truque', school: 'Evocação', 
       time: '1 Ação', range: '18m', duration: 'Instantânea', 
@@ -166,12 +175,10 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
       attunement: false, desc: ''
   });
 
-  // Inventory States
   const [invViewMode, setInvViewMode] = useState<'list' | 'text'>('list');
   const [newItemInput, setNewItemInput] = useState('');
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
 
-  // Spells List States
   const [spellViewMode, setSpellViewMode] = useState<'list' | 'text'>('list');
   const [newSpellInput, setNewSpellInput] = useState('');
   const [draggedSpellIndex, setDraggedSpellIndex] = useState<number | null>(null);
@@ -187,25 +194,49 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
   const fmt = (val: number) => (val >= 0 ? "+" : "") + val;
   const profBonus = Math.ceil(1 + (char.level / 4));
 
-  // --- Helper to Append Dice ---
   const appendDiceToString = (current: string, face: number): string => {
       const dieStr = `1d${face}`;
-      // Regex to find existing dice of same face to increment (e.g. 1d6 -> 2d6)
       const regex = new RegExp(`(\\d+)d${face}`);
       const match = current.match(regex);
 
       if (match) {
-          // If present, increment count
           const newCount = parseInt(match[1]) + 1;
           return current.replace(regex, `${newCount}d${face}`);
       } else {
-          // If not present, append
           if (!current || current.trim() === '') return dieStr;
           return `${current} + ${dieStr}`;
       }
   };
 
-  // ... (AC, HP, Level Up Effects logic remains the same) ...
+  const checkFeatAvailability = (featName: string): boolean => {
+      const req = FEAT_PREREQUISITES[featName];
+      if (!req) return true; // Sem pré-requisitos cadastrados = disponível
+
+      // Check Attributes
+      if (req.attr) {
+          for (const [attr, val] of Object.entries(req.attr)) {
+              // @ts-ignore
+              if ((char.attributes[attr] || 0) < val) return false;
+          }
+      }
+
+      // Check Class (Approximation)
+      if (req.class) {
+          if (!req.class.includes(char.class)) return false;
+      }
+
+      // Check Armor/Weapon (Approximation based on Class Roles)
+      if (req.armor) {
+          // Simplificação: Assume que classes marciais têm proficiência
+          const heavyArmorClasses = ["Guerreiro", "Paladino", "Clérigo"];
+          const mediumArmorClasses = [...heavyArmorClasses, "Bárbaro", "Patrulheiro", "Druida", "Artífice"];
+          if (req.armor === "heavy" && !heavyArmorClasses.includes(char.class)) return false;
+          if (req.armor === "medium" && !mediumArmorClasses.includes(char.class)) return false;
+      }
+
+      return true;
+  };
+
   useEffect(() => {
     if (!char?.class || !char?.attributes) return;
     const conMod = getMod(char.attributes.con || 10);
@@ -246,12 +277,16 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
         if (!prev.hitDice.max) updates.hitDice = { ...prev.hitDice, max: `d${hitDieSize}` };
         return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
     });
-  }, [char?.class, char?.level, char?.attributes, char?.autoHp, char?.autoAc, char?.equippedArmor, char?.equippedShield]); 
+  }, [char.class, char.level, char.attributes, char.autoHp, char.autoAc, char.equippedArmor, char.equippedShield]); 
 
-  // ... (Other helper functions like openLevelUp, confirmLevelUp, etc.) ...
   const nextLevelNum = (char.level || 0) + 1;
   const featuresAtNextLevel = CLASS_FEATURES[char.class]?.[nextLevelNum] || [];
   const isASILevel = featuresAtNextLevel.some(f => f.includes('Incremento de Atributo'));
+
+  // Calculate XP Progress
+  const nextLevelXP = XP_TABLE[char.level] || 355000; // Cap at max
+  const currentLevelXP = XP_TABLE[char.level - 1] || 0;
+  const xpProgress = Math.min(100, Math.max(0, ((char.xp - currentLevelXP) / (nextLevelXP - currentLevelXP)) * 100));
 
   const updateAttr = (attr: keyof Character['attributes'], val: number) => {
     setChar({ ...char, attributes: { ...char.attributes, [attr]: val } });
@@ -259,10 +294,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
 
   const toggleSkill = (skill: string) => {
     setChar({ ...char, skills: { ...char.skills, [skill]: !char.skills[skill] } });
-  };
-
-  const toggleSave = (attr: string) => {
-    setChar({ ...char, saves: { ...char.saves, [attr]: !char.saves[attr] } });
   };
 
   const handleBackgroundChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -402,7 +433,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
       try {
         const json = JSON.parse(ev.target?.result as string);
         if (json.nome_personagem || json.attr_for) {
-            // ... (Legacy import logic omitted for brevity, identical to previous) ...
             alert("Ficha legada importada (parcial).");
         } else {
             setChar(prev => ({...prev, ...json, id: prev.id}));
@@ -418,9 +448,19 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
       const file = e.target.files?.[0];
       if (file) {
           const reader = new FileReader();
-          reader.onload = (ev) => { if (ev.target?.result) setChar({ ...char, imageUrl: ev.target.result as string }); };
+          reader.onload = (ev) => { 
+              if (ev.target?.result) {
+                  setChar({ ...char, imageUrl: ev.target.result as string });
+                  setShowAvatarModal(false);
+              }
+          };
           reader.readAsDataURL(file);
       }
+  };
+
+  const handleSelectGalleryImage = (url: string) => {
+      setChar({ ...char, imageUrl: url });
+      setShowAvatarModal(false);
   };
 
   const toggleArmor = (armorName: string) => { setChar({ ...char, equippedArmor: char.equippedArmor === armorName ? undefined : armorName }); };
@@ -430,38 +470,72 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
      if (!char.inventory.includes(w.n)) setChar({ ...char, inventory: `- ${w.n} | Dano: ${w.dmg} | ${w.prop}\n` + char.inventory });
   };
 
-  // --- NEW ITEM CREATION LOGIC ---
   const createCustomItem = () => {
-    if (!customItem.name) return;
+    if (!customItem.name) {
+        alert("Dê um nome ao seu item!");
+        return;
+    }
     
+    // Constrói os detalhes baseados no tipo
     let details = '';
-    if (customItem.type === 'Arma') details = `| Dano: ${customItem.damage || '1d4'} ${customItem.damageType}`;
-    else if (customItem.type === 'Armadura' || customItem.type === 'Escudo') details = `| CA: +${customItem.ac || 0}`;
+    if (customItem.type === 'Arma') {
+        details = `| Dano: ${customItem.damage || '1d4'} ${customItem.damageType}`;
+    } else if (customItem.type === 'Armadura' || customItem.type === 'Escudo') {
+        details = `| CA: +${customItem.ac || 0}`;
+    } else if (customItem.type === 'Poção') {
+        details = `| Efeito: ${customItem.damage || 'Cura/Dano'}`;
+    }
     
-    const props = customItem.props ? `| ${customItem.props}` : '';
-    const attune = customItem.attunement ? '(S)' : ''; // Sintonização
-    const rarityInfo = customItem.rarity !== 'Comum' ? `[${customItem.rarity}]` : '';
-    const weightCost = (customItem.weight || customItem.cost) ? `| ${customItem.weight}kg, ${customItem.cost}PO` : '';
-
-    const entry = `- ${rarityInfo} ${customItem.name} ${attune} ${details} ${props} ${weightCost}\n`.trim() + "\n";
+    // Formata propriedades opcionais
+    const propsStr = customItem.props ? `| ${customItem.props}` : '';
+    const attuneStr = customItem.attunement ? '(S)' : '';
+    const rarityStr = customItem.rarity !== 'Comum' ? `[${customItem.rarity}]` : '';
     
-    // Save to inventory string (PREPENDING for visibility) and custom array
-    setChar(prev => ({ 
-        ...prev, 
-        inventory: entry + prev.inventory,
-        customWeapons: customItem.type === 'Arma' ? [...(prev.customWeapons || []), { n: customItem.name, dmg: customItem.damage, prop: customItem.props }] : prev.customWeapons 
-    }));
+    // Formata Peso e Custo
+    const weightCostParts = [];
+    if (customItem.weight) weightCostParts.push(`${customItem.weight}kg`);
+    if (customItem.cost) weightCostParts.push(`${customItem.cost} PO`);
+    const weightCostStr = weightCostParts.length > 0 ? `| ${weightCostParts.join(', ')}` : '';
 
-    alert(`Item "${customItem.name}" forjado e adicionado ao topo do inventário!`);
+    // Monta a linha final removendo espaços vazios extras
+    const lineParts = ['-', rarityStr, customItem.name, attuneStr, details, propsStr, weightCostStr];
+    const entry = lineParts.filter(p => p && p.trim() !== '').join(' ') + "\n";
+    
+    setChar(prev => {
+        // Atualiza Inventário (Texto)
+        const newInventory = entry + (prev.inventory || '');
+        
+        // Atualiza Lista de Armas Personalizadas (para o menu 'Arsenal')
+        let newCustomWeapons = prev.customWeapons || [];
+        if (customItem.type === 'Arma') {
+            newCustomWeapons = [
+                { 
+                    n: customItem.name, 
+                    dmg: `${customItem.damage || '1d4'} ${customItem.damageType}`, 
+                    prop: customItem.props || 'Personalizada' 
+                },
+                ...newCustomWeapons
+            ];
+        }
 
-    // Reset Form
+        return { 
+            ...prev, 
+            inventory: newInventory,
+            customWeapons: newCustomWeapons 
+        };
+    });
+
+    // Feedback visual
+    setInvViewMode('list'); // Força a visualização da lista para ver o item novo
+    alert(`Item "${customItem.name}" criado e adicionado ao topo do inventário!`);
+
+    // Resetar formulário
     setCustomItem({ 
         name: '', type: 'Arma', rarity: 'Comum', damage: '', damageType: 'cortante',
         ac: 0, props: '', weight: '', cost: '', attunement: false, desc: '' 
     });
   };
 
-  // --- NEW SPELL CREATION LOGIC ---
   const addSpellToSheet = (name: string, spell: {level: string, desc: string}) => {
       addSpellLine(`[${spell.level}] ${name}: ${spell.desc}`);
   };
@@ -493,7 +567,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
           customSpells: [...(prev.customSpells || []), { name: customSpell.name, level: customSpell.level, desc }] 
       }));
 
-      // Reset Form
       setCustomSpell({ 
           name: '', level: 'Truque', school: 'Evocação', 
           time: '1 Ação', range: '18m', duration: 'Instantânea', 
@@ -504,7 +577,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
       });
   };
 
-  // --- SHOP LOGIC ---
   const buyItem = (item: { n: string, c: number, w: string, d: string }) => {
       const currentGP = char.wallet.gp || 0;
       if (currentGP >= item.c) {
@@ -518,7 +590,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
       }
   };
 
-  // --- FEATS LOGIC ---
   const addFeat = (featName: string) => {
       if ((char.feats || []).includes(featName)) { alert("Você já possui este talento!"); return; }
       setChar(prev => ({
@@ -535,7 +606,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
       }));
   };
 
-  // --- Helper Functions ---
   const getAcBreakdown = () => {
       const dexMod = getMod(char.attributes.dex);
       const conMod = getMod(char.attributes.con);
@@ -566,7 +636,7 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
   const addItem = () => {
       if(!newItemInput.trim()) return;
       const lines = getInventoryLines();
-      lines.unshift(`- ${newItemInput}`); // Add to top
+      lines.unshift(`- ${newItemInput}`); 
       setChar({...char, inventory: lines.join('\n')});
       setNewItemInput('');
   };
@@ -605,8 +675,27 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
       setDraggedItemIndex(null);
   };
 
-  // --- SPELLS HELPER FUNCTIONS ---
   const getSpellLines = () => char.spells.known.split('\n').filter(line => line.trim() !== '');
+  
+  // Spell Parsing for Accordion
+  const getSpellsByLevel = () => {
+      const lines = getSpellLines();
+      const groups: Record<string, {line: string, index: number}[]> = {};
+      let currentLevel = 'Outros';
+      
+      lines.forEach((line, idx) => {
+          const levelMatch = line.match(/^\[(.*?)\]/);
+          if (levelMatch) {
+              // This line defines a level block usually, but our logic is one spell per line often
+              // If the format is [1º Nível] Spell Name, we use that.
+              currentLevel = levelMatch[1];
+          } 
+          if (!groups[currentLevel]) groups[currentLevel] = [];
+          groups[currentLevel].push({line, index: idx});
+      });
+      return groups;
+  };
+
   const addSpellLine = (lineToAdd: string) => {
       const lines = getSpellLines();
       if (!lines.includes(lineToAdd)) {
@@ -640,6 +729,21 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
   const allSpells = [...(Object.entries(SPELLS_DB) as [string, {level: string, desc: string}][]).map(([n, s]) => ({name: n, ...s})), ...(char.customSpells || [])];
 
   const filteredFeats = Object.entries(FEATS_DB).filter(([name]) => name.toLowerCase().includes(featSearch.toLowerCase()));
+  
+  // Sort feats: Recommended first
+  filteredFeats.sort((a, b) => {
+      const availA = checkFeatAvailability(a[0]);
+      const availB = checkFeatAvailability(b[0]);
+      if (availA && !availB) return -1;
+      if (!availA && availB) return 1;
+      return 0;
+  });
+
+  // Extract unique monster images for gallery
+  const galleryImages = Array.from(new Set([
+      ...DEFAULT_MONSTERS.map(m => m.imageUrl).filter((url): url is string => !!url),
+      ...CREATURE_IMAGES
+  ])).filter(url => !avatarSearch || url.toLowerCase().includes(avatarSearch.toLowerCase()));
 
   return (
     <div className="bg-[#121212] text-stone-200 p-6 rounded-2xl shadow-2xl max-w-6xl mx-auto border border-stone-800 relative">
@@ -699,34 +803,88 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                       </div>
                   </div>
                   <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2 bg-[#121212]">
-                      {filteredFeats.map(([name, desc]) => (
-                          <div key={name} className="bg-[#1e1e24] p-3 rounded-lg border border-stone-800 hover:border-amber-600/50 transition-all group">
-                              <div className="flex justify-between items-start mb-1">
-                                  <h4 className="font-bold text-amber-400 text-sm">{name}</h4>
-                                  <button 
-                                    onClick={() => addFeat(name)} 
-                                    className="px-3 py-1 bg-stone-800 hover:bg-green-700 text-stone-400 hover:text-white text-xs font-bold rounded transition-colors"
-                                  >
-                                      Aprender
-                                  </button>
+                      {filteredFeats.map(([name, desc]) => {
+                          const isAvailable = checkFeatAvailability(name);
+                          return (
+                              <div key={name} className={`p-3 rounded-lg border transition-all group ${isAvailable ? 'bg-[#1e1e24] border-stone-800 hover:border-amber-600/50' : 'bg-[#151518] border-stone-800 opacity-60 grayscale'}`}>
+                                  <div className="flex justify-between items-start mb-1">
+                                      <div className="flex items-center gap-2">
+                                          <h4 className={`font-bold text-sm ${isAvailable ? 'text-amber-400' : 'text-stone-500'}`}>{name}</h4>
+                                          {isAvailable && <span className="px-1.5 py-0.5 bg-green-900/30 text-green-400 text-[9px] font-bold rounded border border-green-800 flex items-center gap-1"><ThumbsUp size={8}/> Recomendado</span>}
+                                      </div>
+                                      <button 
+                                        onClick={() => addFeat(name)} 
+                                        className={`px-3 py-1 text-xs font-bold rounded transition-colors ${isAvailable ? 'bg-stone-800 hover:bg-green-700 text-stone-400 hover:text-white' : 'bg-stone-900 text-stone-600 cursor-not-allowed'}`}
+                                      >
+                                          Aprender
+                                      </button>
+                                  </div>
+                                  <p className="text-xs text-stone-400 leading-relaxed">{desc}</p>
                               </div>
-                              <p className="text-xs text-stone-400 leading-relaxed">{desc}</p>
-                          </div>
-                      ))}
+                          );
+                      })}
                       {filteredFeats.length === 0 && <div className="text-center text-stone-500 text-xs py-8">Nenhum talento encontrado.</div>}
                   </div>
               </div>
           </div>
       )}
 
-      {/* ... Header and Tabs UI (Keep existing code) ... */}
+      {/* AVATAR SELECTION MODAL */}
+      {showAvatarModal && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[80] p-4 backdrop-blur-sm">
+              <div className="bg-stone-900 border border-stone-700 rounded-xl w-full max-w-3xl h-[80vh] flex flex-col shadow-2xl relative overflow-hidden">
+                  <div className="flex justify-between items-center p-4 border-b border-stone-800 bg-[#1a1a1d]">
+                      <h3 className="text-xl font-bold text-stone-200 font-cinzel flex items-center gap-2"><ImageIcon size={20}/> Escolher Avatar</h3>
+                      <button onClick={() => setShowAvatarModal(false)} className="text-stone-500 hover:text-white"><X size={20}/></button>
+                  </div>
+                  
+                  <div className="p-4 border-b border-stone-800 bg-[#1a1a1d] flex gap-4">
+                      <div className="relative flex-1">
+                          <Search className="absolute left-3 top-2.5 text-stone-500" size={16}/>
+                          <input 
+                            className="w-full bg-[#222] border border-stone-700 rounded-lg py-2 pl-10 text-sm text-white focus:outline-none focus:border-amber-600" 
+                            placeholder="Filtrar galeria..." 
+                            value={avatarSearch} 
+                            onChange={(e) => setAvatarSearch(e.target.value)}
+                          />
+                      </div>
+                      <button 
+                        onClick={() => fileInputRef.current?.click()} 
+                        className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold rounded-lg border border-stone-600 flex items-center gap-2 transition-colors"
+                      >
+                          <Upload size={16}/> Upload
+                      </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-[#121212]">
+                      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3">
+                          {galleryImages.map((url, idx) => (
+                              <div 
+                                key={idx} 
+                                onClick={() => handleSelectGalleryImage(url!)}
+                                className="aspect-square rounded-lg border border-stone-800 overflow-hidden cursor-pointer hover:border-amber-500 hover:shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all group relative bg-black"
+                              >
+                                  <img src={url} alt="Avatar" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" loading="lazy" />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <Check className="text-amber-500" size={24}/>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                      {galleryImages.length === 0 && <div className="text-center text-stone-500 py-10">Nenhuma imagem encontrada na galeria.</div>}
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Header and Tabs UI */}
       <div className="flex flex-col gap-6 mb-8 border-b border-stone-800 pb-6">
         <div className="flex flex-col md:flex-row gap-6 items-start">
             
             {/* Avatar Section */}
             <div className="relative group shrink-0 mx-auto md:mx-0">
                 <div 
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => setShowAvatarModal(true)}
                     className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-stone-900 border-2 border-stone-800 flex items-center justify-center overflow-hidden cursor-pointer hover:border-amber-500 transition-all shadow-lg"
                 >
                     {char.imageUrl ? (
@@ -783,7 +941,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
 
         {/* Detailed Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 text-xs">
-          {/* ... existing detailed stats inputs ... */}
           <div className="bg-stone-900 p-2 rounded-lg border border-stone-800">
               <label className="block text-stone-500 text-[9px] uppercase font-bold mb-1">Classe</label>
               <select className="w-full bg-transparent font-bold text-stone-300 outline-none" value={char.class} onChange={(e) => setChar({ ...char, class: e.target.value, subclass: '' })}>{Object.keys(CLASSES_DB).map(c => <option key={c} value={c}>{c}</option>)}</select>
@@ -810,9 +967,11 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                   <div className="text-center font-bold text-white group-hover:text-amber-500">{char.level}</div>
                   <ArrowUpCircle size={14} className="absolute top-1 right-1 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-              <div className="bg-stone-900 p-2 rounded-lg border border-stone-800 flex-[2]">
-                  <label className="block text-stone-500 text-[9px] uppercase font-bold mb-1 text-right">XP</label>
-                  <input type="number" className="w-full bg-transparent text-right font-mono text-stone-300 outline-none" value={char.xp} onChange={(e) => setChar({ ...char, xp: safeInt(e.target.value) })} />
+              <div className="bg-stone-900 p-2 rounded-lg border border-stone-800 flex-[2] relative overflow-hidden group/xp" title={`Progresso: ${Math.floor(xpProgress)}%`}>
+                  <div className="absolute inset-0 bg-amber-900/20"></div>
+                  <div className="absolute inset-0 bg-amber-600/30 transition-all duration-500" style={{ width: `${xpProgress}%` }}></div>
+                  <label className="block text-stone-500 text-[9px] uppercase font-bold mb-1 text-right relative z-10 mr-1">XP</label>
+                  <input type="number" className="w-full bg-transparent text-right font-mono text-stone-300 outline-none relative z-10" value={char.xp} onChange={(e) => setChar({ ...char, xp: safeInt(e.target.value) })} />
               </div>
           </div>
         </div>
@@ -829,8 +988,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
 
       {activeTab === 'main' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* ... Attributes, Stats, HP, Skills columns (unchanged) ... */}
-          {/* Attributes Column (Left) - Span 3 */}
           <div className="lg:col-span-3 space-y-3">
             <div className="grid grid-cols-3 lg:grid-cols-1 gap-3">
                 {Object.entries(char.attributes).map(([key, val]) => {
@@ -860,10 +1017,8 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
             </div>
           </div>
 
-          {/* Center Column (Stats & Health) - Span 5 */}
           <div className="lg:col-span-5 space-y-6">
              <div className="grid grid-cols-3 gap-3">
-               {/* AC */}
                <div className="bg-stone-900 p-3 rounded-2xl border border-stone-800 relative group">
                   <div className="flex flex-col items-center">
                       <div className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-1">Defesa</div>
@@ -881,7 +1036,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                   )}
                </div>
                
-               {/* Initiative */}
                <div className="bg-stone-900 p-3 rounded-2xl border border-stone-800 cursor-pointer hover:border-amber-600/50 group transition-all relative overflow-hidden" onClick={() => onRoll(20, getMod(char.attributes.dex), "Iniciativa")}>
                   <div className="absolute inset-0 bg-amber-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <div className="flex flex-col items-center relative z-10">
@@ -891,7 +1045,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                   </div>
                </div>
 
-               {/* Speed */}
                <div className="bg-stone-900 p-3 rounded-2xl border border-stone-800">
                   <div className="flex flex-col items-center">
                       <div className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-1">Desloc.</div>
@@ -901,7 +1054,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                </div>
              </div>
 
-             {/* HP Section - Visual Upgrade */}
              <div className="bg-stone-900 p-6 rounded-3xl border border-stone-800 shadow-xl relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-b from-red-900/5 to-transparent pointer-events-none"></div>
                 
@@ -925,26 +1077,21 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                     <input type="number" className="w-full text-center text-7xl font-cinzel font-bold bg-transparent text-white focus:outline-none drop-shadow-md" value={char.hp.current} onChange={e => setChar({...char, hp: {...char.hp, current: safeInt(e.target.value)}})} />
                 </div>
                 
-                {/* Health Bar Container */}
                 <div className="h-6 w-full bg-black rounded-full overflow-hidden border border-stone-800 relative shadow-inner">
-                    {/* Background Pattern */}
                     <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'linear-gradient(45deg, #222 25%, transparent 25%, transparent 75%, #222 75%, #222), linear-gradient(45deg, #222 25%, transparent 25%, transparent 75%, #222 75%, #222)', backgroundSize: '10px 10px', backgroundPosition: '0 0, 5px 5px'}}></div>
                     
-                    {/* Liquid Fill */}
                     <div 
                         className="h-full transition-all duration-500 ease-out relative"
                         style={{
                             width: `${Math.min(100, Math.max(0, (char.hp.current / char.hp.max) * 100))}%`,
-                            background: `linear-gradient(90deg, #7f1d1d, #ef4444)`,
-                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.5)'
+                            background: `linear-gradient(90deg, ${char.hp.current / char.hp.max > 0.5 ? '#16a34a, #22c55e' : char.hp.current / char.hp.max > 0.2 ? '#eab308, #facc15' : '#7f1d1d, #ef4444'})`,
+                            boxShadow: '0 0 20px rgba(0,0,0, 0.5)'
                         }}
                     >
-                        {/* Shimmer Effect */}
                         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/20 to-transparent"></div>
                     </div>
                 </div>
                 
-                {/* Temp HP */}
                 <div className="mt-4 flex justify-center">
                     <div className="flex items-center gap-2 bg-blue-900/20 px-4 py-1.5 rounded-full border border-blue-900/40">
                         <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Temporário</span>
@@ -982,12 +1129,10 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
              </div>
           </div>
 
-          {/* Right Column (Skills & Saves) - Span 4 */}
           <div className="lg:col-span-4 space-y-6">
              <div className="bg-stone-900 p-4 rounded-2xl border border-stone-800 h-full flex flex-col">
                <h3 className="font-black text-[10px] uppercase mb-4 text-stone-500 text-center tracking-[4px] flex items-center justify-center gap-2"><Brain size={14}/> PERÍCIAS & TESTES</h3>
                
-               {/* Saves Mini-Grid */}
                <div className="grid grid-cols-2 gap-2 mb-4 pb-4 border-b border-stone-800">
                   {Object.keys(char.attributes).map(attr => {
                      const mod = getMod(char.attributes[attr as keyof typeof char.attributes]) + (char.saves[attr] ? profBonus : 0);
@@ -1003,7 +1148,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                   })}
                </div>
 
-               {/* Skills List */}
                <div className="flex-1 overflow-y-auto pr-1 space-y-1 custom-scrollbar max-h-[400px]">
                  {SKILL_LIST.map(skill => {
                    const attrVal = char.attributes[skill.a as keyof typeof char.attributes];
@@ -1026,7 +1170,7 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
         </div>
       )}
 
-      {/* Massive Update on Spells Tab */}
+      {/* Rest of the component (Spells, Inv, Bio tabs) remains unchanged, just using the modal for avatar selection */}
       {activeTab === 'spells' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
            <div className="space-y-6">
@@ -1076,24 +1220,22 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                 </div>
              </div>
              
-             {/* LABORATÓRIO ARCANO (Novo Teclado de Criação de Magias) */}
+             {/* Custom Spell Creator (same as before) */}
              <div className="bg-stone-900 border-2 border-purple-900/30 rounded-3xl p-5 shadow-lg space-y-4">
+                {/* ... existing creator code ... */}
                 <h4 className="font-black text-purple-400 text-sm mb-2 flex items-center gap-2 uppercase tracking-widest"><Flame size={16}/> Laboratório Arcano</h4>
                 
-                {/* Linha 1: Nome e Nível */}
                 <div className="flex gap-2">
                     <input className="flex-[2] bg-stone-950 border border-stone-800 p-2.5 rounded-xl text-sm focus:border-purple-600 outline-none text-white" placeholder="Nome da Magia" value={customSpell.name} onChange={e => setCustomSpell({...customSpell, name: e.target.value})} />
                     <select className="flex-1 bg-stone-950 border border-stone-800 p-2.5 rounded-xl text-xs focus:border-purple-600 outline-none text-white" value={customSpell.level} onChange={e => setCustomSpell({...customSpell, level: e.target.value})}>{['Truque', '1º Nível', '2º Nível', '3º Nível', '4º Nível', '5º Nível', '6º Nível', '7º Nível', '8º Nível', '9º Nível'].map(l => <option key={l} value={l}>{l}</option>)}</select>
                 </div>
-
-                {/* Linha 2: Escola, Tempo, Alcance */}
+                {/* ... rest of the creator ... */}
                 <div className="grid grid-cols-3 gap-2">
                     <select className="bg-stone-950 border border-stone-800 p-2 rounded-xl text-xs outline-none text-stone-300" value={customSpell.school} onChange={e => setCustomSpell({...customSpell, school: e.target.value})}>{['Abjuração', 'Adivinhação', 'Conjuração', 'Encantamento', 'Evocação', 'Ilusão', 'Necromancia', 'Transmutação'].map(s => <option key={s} value={s}>{s}</option>)}</select>
                     <input className="bg-stone-950 border border-stone-800 p-2 rounded-xl text-xs outline-none text-white" placeholder="Tempo (1 Ação)" value={customSpell.time} onChange={e => setCustomSpell({...customSpell, time: e.target.value})} />
                     <input className="bg-stone-950 border border-stone-800 p-2 rounded-xl text-xs outline-none text-white" placeholder="Alcance (18m)" value={customSpell.range} onChange={e => setCustomSpell({...customSpell, range: e.target.value})} />
                 </div>
 
-                {/* Linha 3: Componentes e Tags */}
                 <div className="flex gap-2 items-center bg-stone-950 p-2 rounded-xl border border-stone-800">
                     <div className="flex gap-1 text-[10px] font-bold">
                         {['v', 's', 'm'].map(c => (
@@ -1109,7 +1251,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                     </label>
                 </div>
                 
-                {/* Linha 4: Dano e Save */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <div className="bg-stone-950 border border-stone-800 p-2 rounded-xl">
                         <div className="text-[9px] text-stone-500 uppercase font-bold mb-1">Dano / Cura</div>
@@ -1134,7 +1275,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                     </div>
                 </div>
 
-                {/* DICE PICKER RAPIDO */}
                 <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
                     {DICE_TYPES.map(d => (
                         <button key={d} onClick={() => setCustomSpell(prev => ({...prev, damage: appendDiceToString(prev.damage, d)}))} className="px-2 py-1 bg-purple-900/30 hover:bg-purple-600 text-purple-200 rounded text-[10px] font-bold border border-purple-700/50 transition-colors">d{d}</button>
@@ -1148,7 +1288,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
            </div>
 
            <div className="flex flex-col h-full">
-             {/* Spell List (Existing Code) */}
              <div className="flex items-center justify-between mb-4 border-b-2 border-amber-900/30 pb-1">
                 <h3 className="font-cinzel text-xl font-bold text-stone-400">GRIMÓRIO CONHECIDO</h3>
                 <div className="flex gap-1 bg-stone-900 p-1 rounded-lg border border-stone-800">
@@ -1193,39 +1332,57 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                              <button onClick={addNewSpellFromInput} className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-500 transition-colors"><Plus size={20}/></button>
                          </div>
 
+                         {/* Accordion Spell List */}
                          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
-                             {char.spells.known.split('\n').filter(i => i.trim() !== '').map((spellLine, idx) => {
-                                 const isPrepared = spellLine.includes('[P]');
-                                 const cleanName = spellLine.replace(/^- /, '').replace('[P]', '').trim();
-                                 const isLevelHeader = cleanName.startsWith('[');
+                             {(() => {
+                                 const spellsByLevel = getSpellsByLevel();
+                                 if (Object.keys(spellsByLevel).length === 0) return <div className="text-center text-stone-500 py-10 opacity-50 italic text-sm">Grimório vazio. Adicione magias.</div>;
                                  
-                                 return (
-                                     <div 
-                                        key={idx} 
-                                        draggable
-                                        onDragStart={(e) => handleSpellDragStart(e, idx)}
-                                        onDragOver={(e) => handleDragOver(e, idx)}
-                                        onDrop={(e) => handleSpellDrop(e, idx)}
-                                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-move group ${
-                                            isPrepared 
-                                            ? 'bg-purple-900/10 border-purple-600/40' 
-                                            : 'bg-stone-950 border-stone-800 hover:border-stone-600'
-                                        } ${draggedSpellIndex === idx ? 'opacity-50 border-dashed border-purple-500' : ''}`}
-                                     >
-                                         <GripVertical size={16} className="text-stone-500 cursor-grab active:cursor-grabbing"/>
-                                         <button onClick={() => togglePreparedSpell(idx)} className={`transition-colors ${isPrepared ? 'text-purple-400' : 'text-stone-600 hover:text-stone-400'}`} title={isPrepared ? "Despreparar" : "Preparar"}>
-                                             {isPrepared ? <BookOpen size={18} strokeWidth={2.5}/> : <Book size={18}/>}
+                                 return Object.entries(spellsByLevel).map(([level, spells]) => (
+                                     <div key={level} className="border border-stone-800 rounded-xl overflow-hidden mb-2">
+                                         <button 
+                                            onClick={() => setExpandedSpellLevels(prev => ({...prev, [level]: !prev[level]}))}
+                                            className="w-full flex justify-between items-center p-3 bg-stone-950 hover:bg-stone-900 transition-colors"
+                                         >
+                                             <span className="font-bold text-xs text-purple-400 uppercase tracking-wider">{level}</span>
+                                             {expandedSpellLevels[level] ? <ChevronDown size={14} className="text-stone-500"/> : <ChevronRight size={14} className="text-stone-500"/>}
                                          </button>
-                                         <span className={`flex-1 text-sm font-medium ${isPrepared ? 'text-purple-300' : isLevelHeader ? 'text-amber-500 font-bold' : 'text-stone-300'}`}>{cleanName}</span>
-                                         <button onClick={() => deleteSpellLine(idx)} className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-red-500 transition-all p-1">
-                                             <Trash2 size={16}/>
-                                         </button>
+                                         
+                                         {(expandedSpellLevels[level] || true) && ( // Default expanded or change `|| true` to control default state
+                                             <div className="bg-stone-900/50 p-2 space-y-1">
+                                                 {spells.map(({line, index}) => {
+                                                     const isPrepared = line.includes('[P]');
+                                                     const cleanName = line.replace(/^- /, '').replace(/\[.*?\]/, '').replace('[P]', '').trim();
+                                                     
+                                                     return (
+                                                         <div 
+                                                            key={index} 
+                                                            draggable
+                                                            onDragStart={(e) => handleSpellDragStart(e, index)}
+                                                            onDragOver={(e) => handleDragOver(e, index)}
+                                                            onDrop={(e) => handleSpellDrop(e, index)}
+                                                            className={`flex items-center gap-3 p-2 rounded-lg border transition-all cursor-move group ${
+                                                                isPrepared 
+                                                                ? 'bg-purple-900/10 border-purple-600/40' 
+                                                                : 'bg-stone-950 border-stone-800 hover:border-stone-600'
+                                                            } ${draggedSpellIndex === index ? 'opacity-50 border-dashed border-purple-500' : ''}`}
+                                                         >
+                                                             <GripVertical size={14} className="text-stone-600 cursor-grab active:cursor-grabbing"/>
+                                                             <button onClick={() => togglePreparedSpell(index)} className={`transition-colors ${isPrepared ? 'text-purple-400' : 'text-stone-600 hover:text-stone-400'}`} title={isPrepared ? "Despreparar" : "Preparar"}>
+                                                                 {isPrepared ? <BookOpen size={16} strokeWidth={2.5}/> : <Book size={16}/>}
+                                                             </button>
+                                                             <span className={`flex-1 text-xs font-medium ${isPrepared ? 'text-purple-300' : 'text-stone-300'}`}>{cleanName}</span>
+                                                             <button onClick={() => deleteSpellLine(index)} className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-red-500 transition-all p-1">
+                                                                 <Trash2 size={14}/>
+                                                             </button>
+                                                         </div>
+                                                     )
+                                                 })}
+                                             </div>
+                                         )}
                                      </div>
-                                 )
-                             })}
-                             {char.spells.known.trim() === '' && (
-                                 <div className="text-center text-stone-500 py-10 opacity-50 italic text-sm">Grimório vazio. Adicione magias.</div>
-                             )}
+                                 ));
+                             })()}
                          </div>
                      </div>
                  </div>
@@ -1238,7 +1395,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
         </div>
       )}
 
-      {/* Massive Update on Inventory Tab */}
       {activeTab === 'inv' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-6">
@@ -1259,7 +1415,6 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                 </div>
             )}
             
-            {/* Defesas e Equipamentos (Existing logic for equipping/viewing armor list) */}
             <div className="bg-stone-900 p-5 rounded-3xl border border-stone-800 shadow-md">
                 <div className="flex items-center justify-between mb-4 border-b border-stone-800 pb-2">
                     <h3 className="font-black text-[10px] text-blue-500 uppercase tracking-[4px] flex items-center gap-2"><Shield size={14}/> DEFESA & ARMADURAS</h3>
@@ -1268,7 +1423,7 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                 
                 {showArmors && (
                     <div className="h-64 overflow-y-auto bg-stone-950 rounded-2xl border border-stone-800 p-3 custom-scrollbar mb-4 shadow-inner">
-                        {Object.values(ARMOR_DB).map((armor) => {
+                        {Object.values(ARMOR_DB).map((armor: any) => {
                             const isEquipped = char.equippedArmor === armor.n || char.equippedShield === armor.n;
                             return (
                                 <div key={armor.n} className="flex justify-between items-center p-2.5 hover:bg-stone-900 rounded-xl group mb-1 border border-transparent hover:border-blue-600/30 transition-all">
@@ -1477,7 +1632,7 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                                          {isEquipped ? <Check size={18} strokeWidth={3}/> : <div className="w-4 h-4 rounded-full border-2 border-current"></div>}
                                      </button>
                                      <span className={`flex-1 text-sm font-medium ${isEquipped ? 'text-amber-400' : rarityColor}`}>{cleanName.replace(/\[.*?\]/g, '').trim()}</span>
-                                     {itemLine.includes('(S)') && <LinkIcon size={12} className="text-purple-400" title="Requer Sintonização"/>}
+                                     {itemLine.includes('(S)') && <span title="Requer Sintonização"><LinkIcon size={12} className="text-purple-400"/></span>}
                                      <button onClick={() => deleteItem(idx)} className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-red-500 transition-all p-1">
                                          <Trash2 size={16}/>
                                      </button>
@@ -1552,10 +1707,9 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
              <div className="bg-stone-950 p-6 rounded-3xl border-2 border-stone-900 shadow-2xl flex-1 flex flex-col">
                 <label className="text-[10px] font-black uppercase text-amber-500 tracking-[4px] block mb-4 flex items-center gap-2"><Calculator size={14}/> NOTAS DO MESTRE & OUTRAS HABILIDADES</label>
                 <textarea 
-                  className="w-full flex-1 min-h-[150px] bg-black/50 p-4 rounded-2xl border border-stone-900 resize-none text-sm outline-none focus:border-amber-600 transition-all leading-relaxed text-stone-400 font-mono shadow-inner"
+                  className="w-full flex-1 min-h-[150px] bg-transparent resize-none text-sm text-stone-300 outline-none focus:border-amber-600 transition-all leading-relaxed shadow-inner p-2 rounded-xl border border-stone-800"
                   value={char.bio.features}
                   onChange={(e) => setChar({...char, bio: {...char.bio, features: e.target.value}})}
-                  placeholder="Outras habilidades de classe, raça ou anotações..."
                 />
              </div>
            </div>

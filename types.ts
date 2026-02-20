@@ -1,6 +1,6 @@
 
 export interface Character {
-  id: string; // Identificador único para controle do React
+  id: string;
   name: string;
   class: string;
   subclass: string;
@@ -18,7 +18,7 @@ export interface Character {
     wis: number;
     cha: number;
   };
-  skills: Record<string, boolean>; // proficiencies
+  skills: Record<string, boolean>;
   saves: Record<string, boolean>;
   hp: { current: number; max: number; temp: number };
   hitDice: { current: number; max: string };
@@ -36,21 +36,24 @@ export interface Character {
     features: string;
   };
   spells: {
-    slots: boolean[][]; // [level][slotIndex]
+    slots: boolean[][];
     known: string;
     castingStat: string;
   };
   wallet: { cp: number; sp: number; ep: number; gp: number; pp: number };
-  // Campos para itens personalizados salvos
   customWeapons?: { n: string; dmg: string; prop: string }[];
   customSpells?: { name: string; level: string; desc: string }[];
+  feats?: string[];
   autoHp?: boolean;
   autoAc?: boolean;
   equippedArmor?: string;
   equippedShield?: string;
   stealthDisadvantage?: boolean;
   exhaustion: number;
-  imageUrl?: string; // URL ou Base64 da imagem do personagem
+  imageUrl?: string;
+  // Propriedades para Token Multi-tile
+  width?: number; 
+  height?: number;
 }
 
 export interface Monster {
@@ -62,16 +65,26 @@ export interface Monster {
   hp: number;
   speed: string;
   actions: { n: string; hit: number; dmg: string }[];
-  traits?: { n: string; d: string }[]; // Abilities/Passive
-  spells?: string[]; // List of spell names or descriptions
+  traits?: { n: string; d: string }[];
+  spells?: string[];
+  imageUrl?: string;
+  description?: string;
+  // Monstros também podem ter tamanho padrão no futuro, mas por enquanto default é 1x1
+  width?: number;
+  height?: number;
+  // Atributos opcionais
+  attributes?: { str: number; dex: number; con: number; int: number; wis: number; cha: number; };
 }
 
 export interface EncounterParticipant extends Monster {
-  uid: number; // Unique instance ID
+  uid: number;
   hpCurrent: number;
   hpMax: number;
   initiative: number;
   conditions: string[];
+  linkedCharId?: string;
+  imageUrl?: string;
+  attributes?: { str: number; dex: number; con: number; int: number; wis: number; cha: number; };
 }
 
 export interface MapTile {
@@ -85,25 +98,27 @@ export interface Token {
   x: number;
   y: number;
   icon: string;
-  image?: string; // URL ou Base64 da imagem personalizada
+  image?: string;
   hp: number;
   max: number;
   color: string;
-  size: number; // Backward compatibility
-  width?: number;
+  size: number;
+  // Multi-tile
+  width?: number; 
   height?: number;
   name?: string;
   ac?: number;
-  isProp?: boolean; // Se true, renderiza sem fundo, borda ou nome (estilo cenário)
-  markers?: string[]; // Cores de status (ex: ['red', 'blue'])
-  rotation?: number; // 0, 90, 180, 270
+  isProp?: boolean;
+  // Background Layer
+  isBackground?: boolean;
+  locked?: boolean;
+  markers?: string[];
+  rotation?: number;
   flipX?: boolean;
   flipY?: boolean;
-  // Novos campos para vínculo de ficha
-  linkedId?: string | number; // ID do Personagem ou Monstro
+  linkedId?: string | number;
   linkedType?: 'character' | 'monster';
-  // Novos campos de Aura
-  auraRadius?: number; // Em metros/unidades do grid
+  auraRadius?: number;
   auraColor?: string;
 }
 
@@ -113,7 +128,7 @@ export interface MapConfig {
     gridColor: string;
     gridOpacity: number;
     gridStyle: 'line' | 'dot';
-    tileSize?: number; // Nova propriedade para resolução em pixels
+    tileSize?: number;
     bgUrl: string | null;
     bgX: number;
     bgY: number;
@@ -121,7 +136,7 @@ export interface MapConfig {
     weather?: 'none' | 'rain' | 'snow' | 'ember' | 'fog';
 }
 
-export type AppMode = 'SHEET' | 'DM' | 'VTT' | 'CHAT' | 'NPC';
+export type AppMode = 'SHEET' | 'DM' | 'VTT' | 'CHAT' | 'NPC' | 'GM_DASHBOARD';
 
 export interface LogEntry {
   id: number;
@@ -140,27 +155,38 @@ export interface ChatMessage {
   isSystem?: boolean;
 }
 
+export interface AudioTrack {
+    id: string;
+    name: string;
+    url: string;
+    volume: number;
+    loop: boolean;
+    isPlaying: boolean;
+    category: 'music' | 'ambience' | 'sfx';
+}
+
 export interface CampaignData {
   version: string;
   timestamp: number;
-  name?: string; // Campaign Display Name
-  password?: string; // Optional Password
+  name?: string;
+  password?: string;
   characters: Character[];
-  npcs?: Character[]; // Novo campo para NPCs
+  npcs?: Character[];
   encounter: EncounterParticipant[];
   logs: LogEntry[];
   map: {
     grid: string[][];
     tokens: Token[];
     fog?: boolean[][];
-    weather?: 'none' | 'rain' | 'snow' | 'ember' | 'fog'; // Novo campo de clima
+    weather?: 'none' | 'rain' | 'snow' | 'ember' | 'fog';
     config?: Partial<MapConfig>;
   };
-  // Adicionado para suportar monstros customizados salvos
   monsters?: Monster[];
   combat?: {
     turnIndex: number;
     targetUid: number | null;
+    round?: number; // Novo campo
   };
   notes?: string;
+  lastUpdate?: number;
 }

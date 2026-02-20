@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Token, Character, Monster, MapConfig } from '../types';
-import { Pencil, Eraser, PaintBucket, Ruler, Undo2, Redo2, Trash2, Download, Swords, Plus, Users, Minus, Upload, Eye, EyeOff, Edit, Copy, Shield, X, Hand, Target, Circle, Triangle, Palette, Loader2, Save, Scaling, ArrowRightLeft, RotateCw, CheckCircle2, Flame, PencilRuler, LayoutGrid, Snowflake, CloudFog, Zap, Filter, Sun, CloudRain, Box, ChevronRight, ChevronLeft, Map as MapIcon, Move, Maximize, AlertTriangle, Square, RotateCcw, ChevronsUp, ChevronsDown, FileJson, Image as ImageIcon } from 'lucide-react';
+import { Pencil, Eraser, PaintBucket, Ruler, Undo2, Redo2, Trash2, Download, Swords, Plus, Users, Minus, Upload, Eye, EyeOff, Edit, Copy, Shield, X, Hand, Target, Circle, Triangle, Palette, Loader2, Save, Scaling, ArrowRightLeft, RotateCw, CheckCircle2, Flame, PencilRuler, LayoutGrid, Snowflake, CloudFog, Zap, Filter, Sun, CloudRain, Box, ChevronRight, ChevronLeft, Map as MapIcon, Move, Maximize, AlertTriangle, Square, RotateCcw, ChevronsUp, ChevronsDown, Lock, Unlock, Layers } from 'lucide-react';
 
 interface Props {
   mapGrid: string[][];
@@ -9,6 +9,7 @@ interface Props {
   tokens: Token[];
   setTokens: React.Dispatch<React.SetStateAction<Token[]>>;
   characters: Character[];
+  npcs?: Character[];
   monsters: Monster[];
   fogGrid: boolean[][];
   setFogGrid: (fog: boolean[][]) => void;
@@ -24,20 +25,17 @@ interface CustomAsset {
     type?: 'upload' | 'edited';
 }
 
-interface MapSaveData {
-    version: string;
-    timestamp: number;
-    mapGrid: string[][];
-    fogGrid: boolean[][];
-    tokens: Token[];
-    mapConfig?: MapConfig;
-}
-
 type WeatherType = 'none' | 'rain' | 'snow' | 'ember' | 'fog';
+
+const getName = (url: string) => {
+    const filename = url.split('/').pop() || '';
+    return filename.split('.')[0].replace(/[_-]/g, ' ');
+};
 
 const convertDriveLink = (url: string) => {
     if (!url) return '';
-    if (url.startsWith('/') || url.startsWith('http://localhost') || url.startsWith('data:')) return url; // Local or Base64
+    if (url.startsWith('data:')) return url; // Base64 check
+    if (url.startsWith('/textures')) return url; // Local path check
     try {
         let id = '';
         const patterns = [/\/file\/d\/([^/]+)/, /id=([^&]+)/, /\/d\/([^/]+)/];
@@ -90,39 +88,68 @@ const LIST_VEGETACAO = [
 ].map(f => `/textures/vegetacao/${f}`);
 
 const LIST_MAPS = [
-    'https://drive.google.com/file/d/1BUaI_x0bWCgsmwoiYZDnXUWUn3XS6Rf0/view?usp=drive_link',
-    'https://drive.google.com/file/d/1T2KkK8Q-n4vLSpTiaFrXNIx8r0TBfY05/view?usp=drive_link',
-    'https://drive.google.com/file/d/1wgPbVkWglt7R00F_pLzrU4Xc3LIWP7m3/view?usp=drive_link',
-    'https://drive.google.com/file/d/1zMZKNDaNFw7DNrsAKiGrh4SAu4H2wszl/view?usp=drive_link',
-    'https://drive.google.com/file/d/1wu3acfuQh4Cn9mszHWjBEaFyEE-uKvIk/view?usp=drive_link',
-    'https://drive.google.com/file/d/1KihAokJygTVlAgoBly7c18tX9HHPpl9-/view?usp=drive_link',
-    'https://drive.google.com/file/d/1T3o1Y_wq5nIb0FfttEal9HJhJG1chKGs/view?usp=drive_link'
-];
+    'Gemini_Generated_Image_1yp7rs1yp7rs1yp7.png',
+    'Gemini_Generated_Image_mt9xb5mt9xb5mt9x (1).png',
+    'Gemini_Generated_Image_2364ch2364ch2364.png',
+    'Gemini_Generated_Image_mx16jemx16jemx16.png',
+    'Gemini_Generated_Image_3zj1cj3zj1cj3zj1.png',
+    'Gemini_Generated_Image_puuhqdpuuhqdpuuh.png',
+    'Gemini_Generated_Image_6g2oyn6g2oyn6g2o.png',
+    'Gemini_Generated_Image_rx5hpprx5hpprx5h.png',
+    'Gemini_Generated_Image_9zi8p69zi8p69zi8.png',
+    'Gemini_Generated_Image_tmsd2ttmsd2ttmsd.png',
+    'Gemini_Generated_Image_fqn04xfqn04xfqn0.png',
+    'Gemini_Generated_Image_und11uund11uund1.png',
+    'Gemini_Generated_Image_h81ra7h81ra7h81r.png',
+    'Gemini_Generated_Image_vnrd5dvnrd5dvnrd.png',
+    'Gemini_Generated_Image_jkg28ujkg28ujkg2.png',
+    'Gemini_Generated_Image_wigz7iwigz7iwigz.png',
+    'Gemini_Generated_Image_lbsuaclbsuaclbsu.png',
+    'Gemini_Generated_Image_x3kgihx3kgihx3kg.png',
+    'Gemini_Generated_Image_lrx6zzlrx6zzlrx6.png',
+    'Gemini_Generated_Image_y1tpexy1tpexy1tp.png',
+    'Gemini_Generated_Image_m6rhf9m6rhf9m6rh.png',
+    'Gemini_Generated_Image_yeqn2ayeqn2ayeqn.png'
+].map(f => `/textures/salas_fundo/${f}`);
 
-const getName = (path: string) => {
-    const filename = path.split('/').pop() || 'Item';
-    return filename.split('.')[0].replace(/_/g, ' ').replace(/%20/g, ' ');
+const TEXTURE_LINKS = {
+    base: '/textures/img/textura.PNG',
+    wall: '/textures/murro/murro.PNG',
+    water: '/textures/img/g_pantano9.png',
+    grass: '/textures/img/g_pantano1.png',
+    wood: '/textures/img/mesa.png',
+    stone: '/textures/img/dunge1.PNG'
 };
 
 const PALETTES: Record<string, {c: string, n: string}[]> = {
-    "Pisos & Masmorra": LIST_IMG.map(url => ({ c: url, n: getName(url) })),
-    "Paredes & Muros": LIST_MURRO.map(url => ({ c: url, n: getName(url) })),
-    "Estruturas & Prédios": LIST_PREDIOS.map(url => ({ c: url, n: getName(url) })),
-    "Natureza & Animais": LIST_VEGETACAO.map(url => ({ c: url, n: getName(url) })),
+    "Básicos": [
+        {c: TEXTURE_LINKS.base, n: 'Base'}, {c: TEXTURE_LINKS.wall, n: 'Parede'},
+        {c: TEXTURE_LINKS.water, n: 'Água'}, {c: TEXTURE_LINKS.grass, n: 'Grama'},
+        {c: TEXTURE_LINKS.wood, n: 'Madeira'}, {c: TEXTURE_LINKS.stone, n: 'Pedra'}
+    ],
+    "Pisos e Chão": LIST_IMG.map(url => ({ c: url, n: getName(url) })),
+    "Paredes e Muros": LIST_MURRO.map(url => ({ c: url, n: getName(url) })),
+    "Estruturas": LIST_PREDIOS.map(url => ({ c: url, n: getName(url) })),
+    "Natureza": LIST_VEGETACAO.map(url => ({ c: url, n: getName(url) })),
+    "Mapas Prontos": LIST_MAPS.map(url => ({ c: url, n: getName(url) })),
 };
 
 const MARKER_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#000000'];
 
-export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, setTokens, characters, monsters, fogGrid, setFogGrid, mapConfig: propMapConfig, setMapConfig: propSetMapConfig, activeTokenIds }) => {
+export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, setTokens, characters, npcs = [], monsters, fogGrid, setFogGrid, mapConfig: propMapConfig, setMapConfig: propSetMapConfig, activeTokenIds }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editCanvasRef = useRef<HTMLCanvasElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
-  const mapInputRef = useRef<HTMLInputElement>(null);
   const particlesRef = useRef<any[]>([]);
   
-  const gridW = mapGrid[0]?.length || 50;
-  const gridH = mapGrid.length || 50;
+  // Safe grid dimensions - fallback to 0 if empty
+  const gridH = mapGrid?.length || 0;
+  const gridW = (gridH > 0 && mapGrid[0]) ? mapGrid[0].length : 0;
+
+  // Local State for Map Dimensions Inputs
+  const [mapDimW, setMapDimW] = useState<string>((gridW || 40).toString());
+  const [mapDimH, setMapDimH] = useState<string>((gridH || 40).toString());
 
   // Initialize tileSize from prop if available, else default to 32
   const [tileSize, setTileSize] = useState(propMapConfig?.tileSize || 32); 
@@ -135,9 +162,10 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   const [sidebarTab, setSidebarTab] = useState<'tools' | 'assets' | 'map' | 'tokens' | 'weather'>('tools');
   const [tool, setTool] = useState<'pencil' | 'eraser' | 'fill' | 'ruler' | 'move' | 'rect' | 'line' | 'fog-hide' | 'fog-reveal' | 'hand' | 'measure-circle' | 'measure-cone' | 'measure-cube'>('pencil');
   
-  // Set initial tile to first item of first palette
-  const [selectedTile, setSelectedTile] = useState(LIST_IMG[0] || '');
+  // NEW: Layer Control
+  const [editLayer, setEditLayer] = useState<'token' | 'background'>('token');
   
+  const [selectedTile, setSelectedTile] = useState(TEXTURE_LINKS.base);
   const [assetTab, setAssetTab] = useState<'standard' | 'upload' | 'edited'>('standard');
   const [assetDims, setAssetDims] = useState({ w: 1, h: 1 });
   const [assetTransform, setAssetTransform] = useState({ r: 0, fx: false, fy: false });
@@ -146,7 +174,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   const [brushSize, setBrushSize] = useState(1);
   
   // Palette State
-  const [activePalette, setActivePalette] = useState('Pisos & Masmorra');
+  const [activePalette, setActivePalette] = useState('Básicos');
 
   // Editor State
   const [editingTexture, setEditingTexture] = useState<{id: string, url: string, name: string} | null>(null);
@@ -189,6 +217,9 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   const [ping, setPing] = useState<{x: number, y: number, t: number} | null>(null);
   const [selectedTokenId, setSelectedTokenId] = useState<number | null>(null);
   const [weather, setWeather] = useState<WeatherType>(propMapConfig?.weather || 'none');
+  
+  // Dynamic Canvas Resizing
+  const [canvasSize, setCanvasSize] = useState({ w: 800, h: 600 });
 
   // Sync Logic
   const hasSyncedInitial = useRef(false);
@@ -209,6 +240,12 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
           hasSyncedInitial.current = true;
       }
   }, [propMapConfig]);
+
+  // Sync Local Grid Dimensions state with prop
+  useEffect(() => {
+    setMapDimW(gridW.toString());
+    setMapDimH(gridH.toString());
+  }, [gridW, gridH]);
 
   // Push changes to App (debounce could be added for performance)
   useEffect(() => {
@@ -233,6 +270,18 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
       }
   }, [gridScale, gridUnit, gridColor, gridOpacity, gridStyle, backgroundImage, bgProps, weather, tileSize]);
 
+  // Resize Observer for Canvas
+  useEffect(() => {
+      if (!containerRef.current) return;
+      const resizeObserver = new ResizeObserver(entries => {
+          for (const entry of entries) {
+              setCanvasSize({ w: entry.contentRect.width, h: entry.contentRect.height });
+          }
+      });
+      resizeObserver.observe(containerRef.current);
+      return () => resizeObserver.disconnect();
+  }, []);
+
   // Animation Loop
   useEffect(() => {
       let animId: number;
@@ -252,6 +301,12 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
       const newFog = Array(newH).fill(null).map((_, y) => Array(newW).fill(null).map((_, x) => (y < gridH && x < gridW) ? fogGrid[y][x] : true));
       setMapGrid(newGrid);
       setFogGrid(newFog);
+  };
+
+  const handleApplyDimensions = () => {
+      const w = parseInt(mapDimW) || 10;
+      const h = parseInt(mapDimH) || 10;
+      resizeMap(w, h);
   };
 
   const clearLayer = (layerIndex: number) => {
@@ -275,9 +330,10 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
               if (Array.isArray(parsed)) setCustomAssets(parsed);
           } catch (e) { console.error("Erro ao carregar assets", e); }
       }
+      Object.values(TEXTURE_LINKS).forEach(url => preloadImage(url));
       // Preload current palette
       if (PALETTES[activePalette]) {
-          PALETTES[activePalette].forEach(p => preloadImage(p.c));
+          PALETTES[activePalette].forEach(p => { if (p.c.startsWith('http')) preloadImage(p.c); });
       }
   }, [activePalette]);
 
@@ -521,7 +577,6 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
           failedImages.current.delete(cleanUrl);
           imageCache.current[cleanUrl] = img;
           if (attempt === 1) taintedImages.current.add(cleanUrl);
-          setTick(t => t + 1); // Force redraw
       };
       img.onerror = () => {
           if (attempt === 0) preloadImage(cleanUrl, 1);
@@ -531,13 +586,13 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   };
 
   useEffect(() => {
-      mapGrid.forEach(row => {
+      mapGrid?.forEach(row => {
           row.forEach(cell => {
               if (cell) {
                   const parts = cell.split('|');
                   parts.forEach(p => {
                       const { url } = parseTileData(p);
-                      if (url && (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:'))) preloadImage(url);
+                      if (url && (url.startsWith('http') || url.startsWith('data:'))) preloadImage(url);
                   });
               }
           });
@@ -550,16 +605,16 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   const getGridPos = (e: React.MouseEvent | MouseEvent) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left - pan.x) / (tileSize * zoom));
-    const y = Math.floor((e.clientY - rect.top - pan.y) / (tileSize * zoom));
+    const x = Math.floor((e.clientX - rect.left - pan.x) / zoom / tileSize);
+    const y = Math.floor((e.clientY - rect.top - pan.y) / zoom / tileSize);
     return { x: Math.min(Math.max(0, x), gridW - 1), y: Math.min(Math.max(0, y), gridH - 1) };
   };
 
   const getExactGridPos = (e: React.MouseEvent | MouseEvent) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left - pan.x) / (tileSize * zoom);
-    const y = (e.clientY - rect.top - pan.y) / (tileSize * zoom);
+    const x = (e.clientX - rect.left - pan.x) / zoom / tileSize;
+    const y = (e.clientY - rect.top - pan.y) / zoom / tileSize;
     return { x, y };
   };
 
@@ -629,66 +684,6 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
     }
   };
 
-  const exportMap = () => {
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = gridW * tileSize;
-    tempCanvas.height = gridH * tileSize;
-    const ctx = tempCanvas.getContext('2d');
-    if (ctx) {
-        renderScene(ctx, tempCanvas.width, tempCanvas.height, true);
-        try {
-            const dataUrl = tempCanvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = `mapa-rpgnep-${Date.now()}.png`;
-            link.href = dataUrl;
-            link.click();
-        } catch (e) {
-            alert("Não foi possível exportar o mapa devido a restrições de segurança (imagens externas protegidas/CORS).");
-            console.error(e);
-        }
-    }
-  };
-
-  // --- JSON EXPORT/IMPORT ---
-  const saveMapToJson = () => {
-      const data: MapSaveData = {
-          version: 'rpgnep-map-v1',
-          timestamp: Date.now(),
-          mapGrid,
-          fogGrid,
-          tokens,
-          mapConfig: propMapConfig
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `mapa-rpgnep-${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-  };
-
-  const loadMapFromJson = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-          try {
-              const json = JSON.parse(ev.target?.result as string);
-              if (json.mapGrid) setMapGrid(json.mapGrid);
-              if (json.fogGrid) setFogGrid(json.fogGrid);
-              if (json.tokens) setTokens(json.tokens);
-              if (json.mapConfig && propSetMapConfig) propSetMapConfig(json.mapConfig);
-              alert("Mapa carregado com sucesso!");
-          } catch (err) {
-              alert("Erro ao ler o arquivo de mapa.");
-              console.error(err);
-          }
-      };
-      reader.readAsText(file);
-      e.target.value = ''; // Reset input
-  };
-
   const fillFog = (visible: boolean) => setFogGrid(Array(gridH).fill(null).map(() => Array(gridW).fill(!visible)));
 
   const addCustomAsset = (url: string, name: string = 'Custom', type: 'upload' | 'edited' = 'upload') => {
@@ -745,6 +740,320 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
     setFogGrid(newFog);
   };
 
+  // --- TOKEN FUNCTIONS (Hoisted) ---
+  const deleteToken = (id: number) => { setTokens(prev=>prev.filter(t=>t.id!==id)); setContextMenu(null); };
+  const updateTokenSize = (id:number, delta:number) => setTokens(prev=>prev.map(t=>t.id===id ? {...t, size: Math.max(0.5, (t.size||1) + delta), width: Math.max(0.5, (t.width||1) + delta), height: Math.max(0.5, (t.height||1) + delta)} : t));
+  const rotateToken = (id: number, deg: number) => setTokens(prev=>prev.map(t=>t.id===id ? {...t, rotation: ((t.rotation||0)+deg+360)%360} : t));
+  const flipToken = (id: number, axis: 'x'|'y') => setTokens(prev=>prev.map(t=>t.id===id ? (axis==='x' ? {...t, flipX: !t.flipX} : {...t, flipY: !t.flipY}) : t));
+  const openTokenEditor = (id:number) => { const t = tokens.find(tk=>tk.id===id); if(t) setEditingToken(t); setContextMenu(null); };
+  const duplicateToken = (id:number) => { const t = tokens.find(tk=>tk.id===id); if(t) setTokens([...tokens, {...t, id:Date.now(), x:t.x+1, y:t.y+1}]); setContextMenu(null); };
+  const toggleTokenMarker = (id:number, color:string) => setTokens(prev => prev.map(t => t.id === id ? { ...t, markers: t.markers?.includes(color) ? t.markers.filter(c=>c!==color) : [...(t.markers||[]), color] } : t));
+  const toggleTokenLock = (id: number) => setTokens(prev => prev.map(t => t.id === id ? { ...t, locked: !t.locked } : t));
+  const saveTokenChanges = () => { 
+      if(editingToken) { 
+          if (tokenBench.some(t => t.id === editingToken.id)) {
+              setTokenBench(prev => prev.map(t => t.id === editingToken.id ? editingToken : t));
+          } else {
+              setTokens(prev=>prev.map(t=>t.id===editingToken.id?editingToken:t)); 
+          }
+          setEditingToken(null); 
+      }
+  };
+  const handleTokenImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file && editingToken) { const r = new FileReader(); r.onload = (ev) => { if (ev.target?.result) setEditingToken({ ...editingToken, image: ev.target.result as string }); }; r.readAsDataURL(file); }};
+  const addTokenToBench = (isProp: boolean = false) => { setTokenBench([...tokenBench, {id: Date.now(), x: 0, y: 0, icon: isProp ? '' : '💀', hp: isProp ? 0 : 10, max: isProp ? 0 : 10, color: isProp ? 'transparent' : '#ef4444', size: 1, width: 1, height: 1, name: isProp ? 'Objeto' : 'Monstro', isProp }]); };
+  const handleAddPropFromSelection = () => { if (!selectedTile) return; setTokenBench([...tokenBench, { id: Date.now(), x: 0, y: 0, icon: '', image: selectedTile, hp: 10, max: 10, color: 'transparent', size: Math.max(assetDims.w, assetDims.h), width: assetDims.w, height: assetDims.h, name: 'Objeto', isProp: true, rotation: assetTransform.r, flipX: assetTransform.fx, flipY: assetTransform.fy }]); };
+  
+  const importCharacterToBench = (char: Character) => { 
+      setTokenBench([...tokenBench, { id: Date.now(), x: 0, y: 0, icon: '👤', image: char.imageUrl, hp: char.hp.current, max: char.hp.max, ac: char.ac, color: '#3b82f6', size: 1, width: 1, height: 1, name: char.name, isProp: false, linkedId: char.id, linkedType: 'character' }]); 
+  };
+  const importMonsterToBench = (mon: Monster) => { 
+      setTokenBench([...tokenBench, { id: Date.now(), x: 0, y: 0, icon: '💀', image: mon.imageUrl, hp: mon.hp, max: mon.hp, ac: mon.ac, color: '#ef4444', size: 1, width: 1, height: 1, name: mon.name, isProp: false, linkedId: mon.id, linkedType: 'monster' }]); 
+  };
+  
+  const removeTokenFromBench = (id: number) => { setTokenBench(prev => prev.filter(t => t.id !== id)); setContextMenu(null); };
+  
+  const handleLinkChange = (type: 'character' | 'monster', id: string) => { 
+      if (!editingToken) return; 
+      let name = editingToken.name || ''; 
+      let hp = editingToken.hp; 
+      let max = editingToken.max; 
+      let ac = editingToken.ac; 
+      let image = editingToken.image;
+
+      if (type === 'character') { 
+          const c = characters.find(char => char.id === id); 
+          if (c) { 
+              name = c.name; hp = c.hp.current; max = c.hp.max; ac = c.ac; 
+              if (c.imageUrl) image = c.imageUrl;
+          } 
+      } else { 
+          const m = monsters.find(mon => mon.id === Number(id)); 
+          if (m) { 
+              name = m.name; hp = m.hp; max = m.hp; ac = m.ac; 
+              if (m.imageUrl) image = m.imageUrl;
+          } 
+      } 
+      setEditingToken({ ...editingToken, linkedType: type, linkedId: id, name, hp, max, ac: ac || 10, image }); 
+  };
+  
+  const rotateAsset = (deg: number) => setAssetTransform(prev => ({...prev, r: (prev.r + deg + 360) % 360 }));
+  const resetTransform = () => { setAssetTransform({ r: 0, fx: false, fy: false }); setAssetDims({w: 1, h: 1}); };
+
+  // --- DRAW FUNCTIONS ---
+
+  const drawToken = (ctx: CanvasRenderingContext2D, token: Token) => {
+      const tx = token.x * tileSize;
+      const ty = token.y * tileSize;
+      const tw = (token.width || token.size || 1) * tileSize;
+      const th = (token.height || token.size || 1) * tileSize;
+      
+      ctx.save();
+      ctx.translate(tx + tw/2, ty + th/2);
+      ctx.rotate((token.rotation || 0) * Math.PI / 180);
+      ctx.scale(token.flipX ? -1 : 1, token.flipY ? -1 : 1);
+      
+      if (token.image) {
+          if (imageCache.current[token.image]) {
+              // Exibir imagem completa sem recorte circular
+              ctx.drawImage(imageCache.current[token.image], -tw/2, -th/2, tw, th);
+          } else {
+              ctx.fillStyle = token.color || '#ccc';
+              if (!token.isProp) {
+                  ctx.beginPath(); ctx.arc(0, 0, Math.min(tw, th)/2, 0, Math.PI*2); ctx.fill();
+              } else {
+                  ctx.fillRect(-tw/2, -th/2, tw, th);
+              }
+          }
+      } else {
+          ctx.fillStyle = token.color;
+          if (!token.isProp) {
+              ctx.beginPath(); ctx.arc(0, 0, Math.min(tw, th)/2, 0, Math.PI*2); ctx.fill();
+          } else {
+              ctx.fillRect(-tw/2, -th/2, tw, th);
+          }
+          ctx.fillStyle = '#fff';
+          ctx.font = `${Math.min(tw, th)/2}px Arial`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(token.icon || token.name?.substring(0,1) || '?', 0, 0);
+      }
+      
+      ctx.restore();
+
+      if (token.id === selectedTokenId) {
+          ctx.strokeStyle = '#ffb74d';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(tx, ty, tw, th);
+      }
+
+      // ACTIVE TURN INDICATOR
+      if (activeTokenIds && activeTokenIds.includes(token.id)) {
+          const time = Date.now() / 500;
+          const pulsing = 3 + Math.sin(time) * 1.5;
+          
+          ctx.beginPath();
+          // Retângulo pulsante ao redor do token quadrado
+          ctx.rect(tx, ty, tw, th);
+          ctx.strokeStyle = '#22c55e'; // Green
+          ctx.lineWidth = pulsing;
+          ctx.stroke();
+      }
+      
+      if (token.auraRadius && token.auraRadius > 0) {
+          ctx.beginPath();
+          const radiusPixels = (token.auraRadius / gridScale) * tileSize;
+          ctx.arc(tx + tw/2, ty + th/2, radiusPixels, 0, Math.PI*2);
+          ctx.fillStyle = (token.auraColor || '#FFC800') + '33';
+          ctx.fill();
+          ctx.strokeStyle = (token.auraColor || '#FFC800') + '88';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+      }
+      
+      if (token.markers && token.markers.length > 0) {
+          token.markers.forEach((m, i) => {
+              ctx.beginPath();
+              ctx.arc(tx + tw - 5 - (i*8), ty + 5, 3, 0, Math.PI*2);
+              ctx.fillStyle = m;
+              ctx.fill();
+          });
+      }
+  };
+
+  const drawWeather = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+      if (weather === 'none') return;
+      
+      if (particlesRef.current.length === 0 || particlesRef.current[0].type !== weather) {
+          particlesRef.current = [];
+          for(let i=0; i<100; i++) {
+              particlesRef.current.push({
+                  x: Math.random() * width,
+                  y: Math.random() * height,
+                  speed: Math.random() * 2 + 1,
+                  size: Math.random() * 2 + 1,
+                  type: weather
+              });
+          }
+      }
+
+      ctx.save();
+      // Reset transform to draw weather in screen space (overlay)
+      ctx.setTransform(1, 0, 0, 1, 0, 0); 
+      
+      particlesRef.current.forEach(p => {
+          p.y += p.speed;
+          if (p.y > height) p.y = 0;
+          
+          if (weather === 'rain') {
+              ctx.strokeStyle = 'rgba(174, 194, 224, 0.5)';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(p.x - 1, p.y + 5);
+              ctx.stroke();
+          } else if (weather === 'snow') {
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+              ctx.fill();
+          } else if (weather === 'ember') {
+              ctx.fillStyle = `rgba(255, ${Math.random()*100}, 0, ${Math.random()})`;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+              ctx.fill();
+          }
+      });
+      ctx.restore();
+  };
+
+  const renderScene = (ctx: CanvasRenderingContext2D, width: number, height: number, exportMode: boolean = false) => {
+      // 1. Reset Transform & Clear
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      
+      // 2. Draw Background (Dark)
+      ctx.fillStyle = '#0a0a10';
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+      // 3. Apply Camera Transform
+      if (exportMode) {
+          // For export, we draw exactly 1:1 of the map size without zoom/pan
+      } else {
+          ctx.translate(pan.x, pan.y);
+          ctx.scale(zoom, zoom);
+      }
+
+      // 4. Draw Custom Background Image
+      if (backgroundImage && imageCache.current[backgroundImage]) {
+          const img = imageCache.current[backgroundImage];
+          if (img.naturalWidth > 0) {
+             const dw = img.naturalWidth * bgProps.scale;
+             const dh = img.naturalHeight * bgProps.scale;
+             ctx.drawImage(img, bgProps.x, bgProps.y, dw, dh);
+          }
+      }
+
+      const drawTileAt = (c: number, r: number, cellData: string) => {
+          if (!cellData) return;
+          const parts = cellData.split('|');
+          parts.forEach((part, layerIndex) => {
+              if (!part) return;
+              const { url, r: rotation, fx, fy } = parseTileData(part);
+              
+              // REMOVED: White Fill Logic for VOID/Square
+              if (url === '⬜' || url === 'VOID') {
+                  return; 
+              }
+
+              if (imageCache.current[url]) {
+                  const img = imageCache.current[url];
+                  ctx.save();
+                  const cx = c * tileSize + tileSize / 2;
+                  const cy = r * tileSize + tileSize / 2;
+                  ctx.translate(cx, cy);
+                  ctx.rotate((rotation * Math.PI) / 180);
+                  ctx.scale(fx ? -1 : 1, fy ? -1 : 1);
+                  ctx.drawImage(img, -tileSize / 2, -tileSize / 2, tileSize, tileSize);
+                  ctx.restore();
+              }
+          });
+      };
+
+      for (let y = 0; y < gridH; y++) {
+          if (!mapGrid[y]) continue; 
+          for (let x = 0; x < gridW; x++) {
+              // Optimization: Only draw if within approximate view (optional, skipped for simplicity)
+              drawTileAt(x, y, mapGrid[y][x]);
+          }
+      }
+
+      if (showGrid) {
+          ctx.strokeStyle = gridColor;
+          ctx.globalAlpha = gridOpacity;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (gridStyle === 'line') {
+              for (let x = 0; x <= gridW; x++) { ctx.moveTo(x * tileSize, 0); ctx.lineTo(x * tileSize, gridH * tileSize); }
+              for (let y = 0; y <= gridH; y++) { ctx.moveTo(0, y * tileSize); ctx.lineTo(gridW * tileSize, y * tileSize); }
+          } else {
+              for (let y = 0; y <= gridH; y++) for (let x = 0; x <= gridW; x++) { ctx.rect(x*tileSize-1, y*tileSize-1, 2, 2); }
+          }
+          ctx.stroke();
+          ctx.globalAlpha = 1.0;
+      }
+
+      tokens.filter(t => t.isBackground).forEach(token => drawToken(ctx, token));
+      tokens.filter(t => !t.isBackground).forEach(token => drawToken(ctx, token));
+
+      if (showFog && !exportMode) {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+          for (let y = 0; y < gridH; y++) {
+              for (let x = 0; x < gridW; x++) {
+                  if (fogGrid[y] && fogGrid[y][x]) {
+                      ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                  }
+              }
+          }
+      }
+      
+      if (ping && !exportMode) {
+          const px = ping.x * tileSize + tileSize / 2;
+          const py = ping.y * tileSize + tileSize / 2;
+          ctx.beginPath();
+          ctx.arc(px, py, 20 + Math.sin(Date.now() / 100) * 10, 0, Math.PI * 2);
+          ctx.strokeStyle = 'red';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+      }
+
+      if (weather !== 'none' && !exportMode) {
+          // Weather draws in screen space, handled inside function
+          drawWeather(ctx, ctx.canvas.width, ctx.canvas.height);
+      }
+  };
+
+  const exportMap = () => {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = gridW * tileSize;
+    tempCanvas.height = gridH * tileSize;
+    const ctx = tempCanvas.getContext('2d');
+    if (ctx) {
+        renderScene(ctx, tempCanvas.width, tempCanvas.height, true);
+        try {
+            const dataUrl = tempCanvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = `mapa-rpgnep-${Date.now()}.png`;
+            link.href = dataUrl;
+            link.click();
+        } catch (e) {
+            alert("Não foi possível exportar o mapa devido a restrições de segurança (imagens externas protegidas/CORS).");
+            console.error(e);
+        }
+    }
+  };
+
+  // --- HANDLERS ---
+
   const handleMouseDown = (e: React.MouseEvent) => {
       if (contextMenu) setContextMenu(null);
       if (tool === 'hand' || e.button === 1 || e.button === 2) {
@@ -757,7 +1066,8 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
       
       const p = getGridPos(e);
       if(tool==='move') { 
-          const t = [...tokens].reverse().find(tk => {
+          const targetTokens = tokens.filter(t => editLayer === 'background' ? t.isBackground : !t.isBackground);
+          const t = [...targetTokens].reverse().find(tk => {
               const w = tk.width || tk.size || 1;
               const h = tk.height || tk.size || 1;
               return p.x >= tk.x && p.x < tk.x + w && p.y >= tk.y && p.y < tk.y + h;
@@ -770,7 +1080,8 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
               id: Date.now(),
               x: p.x, y: p.y, icon: '', image: selectedTile, hp: 10, max: 10, color: 'transparent',
               size: Math.max(assetDims.w, assetDims.h), width: assetDims.w, height: assetDims.h,
-              name: 'Objeto', isProp: true, rotation: assetTransform.r, flipX: assetTransform.fx, flipY: assetTransform.fy
+              name: 'Objeto', isProp: true, rotation: assetTransform.r, flipX: assetTransform.fx, flipY: assetTransform.fy,
+              isBackground: editLayer === 'background'
           };
           setTokens(prev => [...prev, newToken]);
           return; 
@@ -778,7 +1089,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
       setIsDrawing(true); setStartPos(p);
       if(tool==='pencil'||tool==='eraser') drawTile(p.x, p.y);
       else if(tool==='fill') { 
-          const parts = mapGrid[p.y][p.x].split('|'); 
+          const parts = mapGrid[p.y]?.[p.x]?.split('|') || ['']; 
           floodFill(p.x, p.y, parts[activeLayer]||'', selectedTile, activeLayer); 
       }
   };
@@ -816,10 +1127,10 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
               const x1=Math.min(startPos.x, end.x), x2=Math.max(startPos.x, end.x);
               const y1=Math.min(startPos.y, end.y), y2=Math.max(startPos.y, end.y);
               if (tool==='rect') {
-                  for(let y=y1; y<=y2; y++) for(let x=x1; x<=x2; x++) nG[y][x] = mergeCell(nG[y][x], selectedTile, activeLayer);
+                  for(let y=y1; y<=y2; y++) for(let x=x1; x<=x2; x++) if(nG[y] && nG[y][x]) nG[y][x] = mergeCell(nG[y][x], selectedTile, activeLayer);
               } else {
                   let x0=startPos.x, y0=startPos.y, dx=Math.abs(end.x-x0), dy=Math.abs(end.y-y0), sx=x0<end.x?1:-1, sy=y0<end.y?1:-1, err=dx-dy;
-                  while(true){ nG[y0][x0]=mergeCell(nG[y0][x0], selectedTile, activeLayer); if(x0===end.x && y0===end.y)break; const e2=2*err; if(e2>-dy){err-=dy;x0+=sx;} if(e2<dx){err+=dx;y0+=sy;} }
+                  while(true){ if(nG[y0] && nG[y0][x0]) nG[y0][x0]=mergeCell(nG[y0][x0], selectedTile, activeLayer); if(x0===end.x && y0===end.y)break; const e2=2*err; if(e2>-dy){err-=dy;x0+=sx;} if(e2<dx){err+=dx;y0+=sy;} }
               }
               setMapGrid(nG); saveToHistory(nG);
           }
@@ -829,11 +1140,11 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
       setStartPos(null);
   };
 
-  // ... (Other handlers like handleContextMenu, handleBenchDragStart etc remain) ...
   const handleContextMenu = (e: React.MouseEvent) => {
       e.preventDefault();
       const p = getGridPos(e);
-      const t = [...tokens].reverse().find(tk => {
+      const targetTokens = tokens.filter(t => editLayer === 'background' ? t.isBackground : !t.isBackground);
+      const t = [...targetTokens].reverse().find(tk => {
           const w = tk.width || tk.size || 1;
           const h = tk.height || tk.size || 1;
           return p.x >= tk.x && p.x < tk.x + w && p.y >= tk.y && p.y < tk.y + h;
@@ -856,7 +1167,8 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
 
   const handleDoubleClick = (e: React.MouseEvent) => {
       const p = getGridPos(e);
-      const t = [...tokens].reverse().find(tk => {
+      const targetTokens = tokens.filter(t => editLayer === 'background' ? t.isBackground : !t.isBackground);
+      const t = [...targetTokens].reverse().find(tk => {
           const w = tk.width || tk.size || 1;
           const h = tk.height || tk.size || 1;
           return p.x >= tk.x && p.x < tk.x + w && p.y >= tk.y && p.y < tk.y + h;
@@ -882,14 +1194,19 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
           const tokenTemplate = JSON.parse(tokenDataStr) as Token;
           if (!canvasRef.current) return;
           const rect = canvasRef.current.getBoundingClientRect();
-          const x = Math.floor((e.clientX - rect.left - pan.x) / (tileSize * zoom));
-          const y = Math.floor((e.clientY - rect.top - pan.y) / (tileSize * zoom));
-          const newToken: Token = { ...tokenTemplate, id: Date.now(), x: Math.min(Math.max(0, x), gridW - 1), y: Math.min(Math.max(0, y), gridH - 1) };
+          const x = Math.floor((e.clientX - rect.left - pan.x) / zoom / tileSize);
+          const y = Math.floor((e.clientY - rect.top - pan.y) / zoom / tileSize);
+          const newToken: Token = { 
+              ...tokenTemplate, 
+              id: Date.now(), 
+              x: Math.min(Math.max(0, x), gridW - 1), 
+              y: Math.min(Math.max(0, y), gridH - 1),
+              isBackground: editLayer === 'background'
+          };
           setTokens(prev => [...prev, newToken]);
       }
   };
 
-  // ... (handleWheel, fitToScreen, centerMap, drawWeather, renderScene) ...
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault(); 
     if (!containerRef.current) return;
@@ -941,342 +1258,17 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
 
   const centerMap = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
 
-  const drawWeather = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-      if (weather === 'none') return;
-      
-      const time = Date.now() / 1000;
-      const targetCount = weather === 'fog' ? 30 : 100;
-      if (particlesRef.current.length !== targetCount) {
-          particlesRef.current = Array.from({length: targetCount}).map(() => ({
-              x: Math.random() * width,
-              y: Math.random() * height,
-              vx: (Math.random() - 0.5) * 50,
-              vy: Math.random() * 100 + 50,
-              size: Math.random() * 3 + 1,
-              life: Math.random(),
-              offset: Math.random() * 100
-          }));
-      }
-
-      ctx.save();
-      particlesRef.current.forEach(p => {
-          if (weather === 'rain') {
-              p.y += (p.vy / 20); p.x += (p.vx / 20);
-              if (p.y > height) { p.y = -10; p.x = Math.random() * width; }
-              ctx.strokeStyle = 'rgba(150, 180, 255, 0.6)';
-              ctx.lineWidth = 1;
-              ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.vx/10, p.y + p.vy/5); ctx.stroke();
-          } else if (weather === 'snow') {
-              p.y += (p.vy / 60); p.x += Math.sin(time + p.offset) * 0.5;
-              if (p.y > height) { p.y = -10; p.x = Math.random() * width; }
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-              ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
-          } else if (weather === 'ember') {
-              p.y -= (p.vy / 40); p.x += (p.vx / 30);
-              if (p.y < 0) { p.y = height + 10; p.x = Math.random() * width; }
-              ctx.fillStyle = `rgba(255, ${100 + Math.random()*100}, 0, ${Math.random()})`;
-              ctx.beginPath(); ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2); ctx.fill();
-          } else if (weather === 'fog') {
-              p.x += (p.vx / 100);
-              if (p.x > width) p.x = -100;
-              ctx.fillStyle = `rgba(200, 200, 220, 0.1)`;
-              ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 30, 0, Math.PI * 2); ctx.fill();
-          }
-      });
-      ctx.restore();
-  };
-
-  const renderScene = (ctx: CanvasRenderingContext2D, width: number, height: number, isExport: boolean = false) => {
-      if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return;
-
-      ctx.fillStyle = '#0a0a10'; 
-      ctx.fillRect(0,0, width, height);
-      
-      if (!isExport) { 
-          ctx.save(); 
-          const safeZoom = Number.isFinite(zoom) ? zoom : 1;
-          const safePanX = Number.isFinite(pan.x) ? pan.x : 0;
-          const safePanY = Number.isFinite(pan.y) ? pan.y : 0;
-          ctx.translate(safePanX, safePanY);
-          ctx.scale(safeZoom, safeZoom); 
-      }
-      
-      let bgDrawn = false;
-      if (backgroundImage) {
-          const img = imageCache.current[backgroundImage];
-          const isTainted = taintedImages.current.has(backgroundImage.split('$')[0]);
-          if (img && img.complete && img.naturalWidth > 0 && (!isExport || !isTainted)) {
-              const s = Number.isFinite(bgProps.scale) ? bgProps.scale : 1;
-              const bgX = Number.isFinite(bgProps.x) ? bgProps.x : 0;
-              const bgY = Number.isFinite(bgProps.y) ? bgProps.y : 0;
-              try {
-                  ctx.drawImage(img, bgX, bgY, img.naturalWidth * s, img.naturalHeight * s);
-                  bgDrawn = true;
-              } catch (e) { console.error("Error drawing BG", e); }
-          } else if (isExport && isTainted) { bgDrawn = false; }
-      }
-
-      for(let y=0; y<gridH; y++) for(let x=0; x<gridW; x++) {
-          if (!mapGrid[y]) continue;
-          const parts = (mapGrid[y][x] || '').split('|');
-          parts.forEach((p, layerIndex) => {
-              const { url, r, fx, fy } = parseTileData(p);
-              if(!url || url ==='VOID') return;
-              if(url ==='⬜') { 
-                  if (!bgDrawn) {
-                      ctx.fillStyle='#2a2a35'; ctx.fillRect(x*tileSize,y*tileSize,tileSize,tileSize); 
-                      ctx.strokeStyle='#333'; ctx.strokeRect(x*tileSize,y*tileSize,tileSize,tileSize); 
-                  }
-                  return; 
-              }
-              const img = imageCache.current[url];
-              const isTainted = taintedImages.current.has(url);
-              if(img && img.complete && img.naturalWidth > 0 && (!isExport || !isTainted)) {
-                  ctx.save();
-                  ctx.translate(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2);
-                  if (r) ctx.rotate((r * Math.PI) / 180);
-                  if (fx || fy) ctx.scale(fx ? -1 : 1, fy ? -1 : 1);
-                  try { ctx.drawImage(img, -tileSize / 2, -tileSize / 2, tileSize, tileSize); } catch (e) {}
-                  ctx.restore();
-              } else if (isExport && isTainted) { 
-                  if (layerIndex === 0) ctx.fillStyle = '#3d3d3d'; 
-                  else if (layerIndex === 1) ctx.fillStyle = '#854d0e'; 
-                  else ctx.fillStyle = '#57534e'; 
-                  ctx.fillRect(x*tileSize,y*tileSize,tileSize,tileSize); 
-              } else { 
-                  ctx.fillStyle = '#222'; ctx.fillRect(x*tileSize,y*tileSize,tileSize,tileSize); 
-              }
-          });
-          if(showFog && fogGrid[y] && fogGrid[y][x]) { ctx.fillStyle='rgba(0,0,0,0.95)'; ctx.fillRect(x*tileSize,y*tileSize,tileSize,tileSize); }
-      }
-      
-      if(showGrid) {
-          ctx.strokeStyle=gridColor; ctx.globalAlpha=gridOpacity; ctx.lineWidth=1; ctx.beginPath();
-          if(gridStyle === 'line') {
-              for(let x=0;x<=gridW;x++){ctx.moveTo(x*tileSize,0);ctx.lineTo(x*tileSize,gridH*tileSize);}
-              for(let y=0;y<=gridH;y++){ctx.moveTo(0,y*tileSize);ctx.lineTo(gridW*tileSize,y*tileSize);}
-              ctx.stroke();
-          } else {
-              ctx.fillStyle = gridColor;
-              for(let y=0; y<=gridH; y++) for(let x=0; x<=gridW; x++) { ctx.beginPath(); ctx.arc(x*tileSize, y*tileSize, 1, 0, 2*Math.PI); ctx.fill(); }
-          }
-          ctx.globalAlpha=1;
-
-          // Draw Grid Coordinates
-          if(!isExport) {
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-              ctx.font = '10px sans-serif';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              
-              for(let x=0; x<gridW; x++) {
-                  let label = '';
-                  let n = x;
-                  do {
-                      label = String.fromCharCode(65 + (n % 26)) + label;
-                      n = Math.floor(n / 26) - 1;
-                  } while (n >= 0);
-                  ctx.fillText(label, x * tileSize + tileSize / 2, -10);
-              }
-              for(let y=0; y<gridH; y++) {
-                  ctx.fillText((y + 1).toString(), -15, y * tileSize + tileSize / 2);
-              }
-          }
-      }
-
-      // ... (Tokens, Auras, Selection Ring, HP Bars, Drawings, Pings etc - same as before) ...
-      tokens.forEach((t: Token) => {
-          if (!t.auraRadius || (showFog && fogGrid[Math.min(gridH-1,t.y)] && fogGrid[Math.min(gridH-1,t.y)][Math.min(gridW-1,t.x)])) return;
-          const tx = t.x * tileSize + (t.width || 1) * tileSize / 2;
-          const ty = t.y * tileSize + (t.height || 1) * tileSize / 2;
-          const radiusPixels = (t.auraRadius / gridScale) * tileSize;
-          ctx.beginPath(); ctx.arc(tx, ty, radiusPixels, 0, Math.PI * 2);
-          ctx.fillStyle = t.auraColor || 'rgba(255, 200, 0, 0.2)'; ctx.fill();
-          ctx.strokeStyle = t.auraColor?.replace(/[\d.]+\)$/g, '0.5)') || 'rgba(255, 200, 0, 0.5)'; ctx.lineWidth = 1; ctx.stroke();
-      });
-
-      tokens.forEach((t: Token) => {
-          if(showFog && fogGrid[Math.min(gridH-1,t.y)] && fogGrid[Math.min(gridH-1,t.y)][Math.min(gridW-1,t.x)]) return;
-          const tx = t.x*tileSize, ty = t.y*tileSize;
-          const w = (t.width || t.size || 1) * tileSize;
-          const h = (t.height || t.size || 1) * tileSize;
-          
-          if(selectedTokenId===t.id && !isExport) { 
-              ctx.strokeStyle='#f59e0b'; ctx.lineWidth=3; ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 10;
-              ctx.strokeRect(tx-3,ty-3,w+6,h+6); ctx.shadowBlur = 0;
-          }
-
-          if (activeTokenIds && activeTokenIds.includes(t.id) && !isExport) {
-              const time = Date.now() / 1000;
-              ctx.save(); ctx.translate(tx + w/2, ty + h/2); ctx.rotate(time);
-              ctx.beginPath(); const radius = Math.max(w, h) * 0.7 + Math.sin(time * 5) * 4;
-              ctx.arc(0, 0, radius, 0, Math.PI * 2);
-              ctx.strokeStyle = '#06b6d4'; ctx.lineWidth = 3; ctx.setLineDash([15, 10]); ctx.shadowColor = '#06b6d4'; ctx.shadowBlur = 15; ctx.stroke();
-              ctx.restore();
-          }
-
-          const isTainted = t.image ? taintedImages.current.has(t.image.split('$')[0]) : false;
-          if(t.image && imageCache.current[t.image]?.complete && (!isExport || !isTainted)) {
-              ctx.save();
-              const cx = tx + w/2; const cy = ty + h/2;
-              ctx.translate(cx, cy);
-              if (t.rotation) ctx.rotate((t.rotation * Math.PI) / 180);
-              if (t.flipX || t.flipY) ctx.scale(t.flipX ? -1 : 1, t.flipY ? -1 : 1);
-              if(!t.isProp) { ctx.beginPath(); const r = Math.min(w, h)/2; ctx.arc(0, 0, r, 0, 2*Math.PI); ctx.clip(); }
-              try { ctx.drawImage(imageCache.current[t.image], -w/2, -h/2, w, h); } catch(e) {}
-              ctx.restore();
-          } else { 
-              if(!t.isProp) { ctx.fillStyle=t.color; ctx.beginPath(); const cx = tx + w/2; const cy = ty + h/2; const r = Math.min(w, h)/2; ctx.arc(cx, cy, r, 0, 2*Math.PI); ctx.fill(); }
-              ctx.fillStyle='#fff'; ctx.font=`${Math.min(w,h)/2}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(t.icon, tx+w/2, ty+h/2);
-          }
-          if (t.markers && t.markers.length > 0) {
-            t.markers.forEach((m: string, i: number) => { ctx.fillStyle = m; ctx.beginPath(); ctx.arc(tx + w - 4 - (i*6), ty + 4, 3, 0, 2*Math.PI); ctx.fill(); });
-          }
-
-          if (!t.isProp && !isExport) {
-              const barW = w * 0.8; const barH = 6; const barX = tx + (w - barW) / 2; const barY = ty - 10;
-              if (t.max > 0) {
-                  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'; ctx.fillRect(barX, barY, barW, barH);
-                  const pct = Math.max(0, Math.min(1, t.hp / t.max));
-                  ctx.fillStyle = pct > 0.5 ? '#22c55e' : pct > 0.25 ? '#eab308' : '#ef4444';
-                  ctx.fillRect(barX+1, barY+1, (barW-2) * pct, barH-2);
-              }
-              ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.shadowColor = 'black'; ctx.shadowBlur = 3;
-              ctx.fillText(t.name || '', tx + w/2, barY - 2); ctx.shadowBlur = 0;
-          }
-      });
-
-      if (!isExport && mousePos && tool === 'pencil' && selectedTile) {
-          const img = imageCache.current[selectedTile];
-          if (img && img.complete) {
-              const gw = placeMode === 'object' ? assetDims.w : 1;
-              const gh = placeMode === 'object' ? assetDims.h : 1;
-              const px = Math.floor(mousePos.x) * tileSize;
-              const py = Math.floor(mousePos.y) * tileSize;
-              
-              ctx.save();
-              ctx.globalAlpha = 0.5;
-              ctx.translate(px + (gw*tileSize)/2, py + (gh*tileSize)/2);
-              if (assetTransform.r) ctx.rotate((assetTransform.r * Math.PI) / 180);
-              if (assetTransform.fx || assetTransform.fy) ctx.scale(assetTransform.fx ? -1 : 1, assetTransform.fy ? -1 : 1);
-              try { ctx.drawImage(img, -(gw*tileSize)/2, -(gh*tileSize)/2, gw*tileSize, gh*tileSize); } catch(e) {}
-              ctx.restore();
-              ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1; ctx.setLineDash([4, 2]);
-              ctx.strokeRect(px, py, gw*tileSize, gh*tileSize); ctx.setLineDash([]);
-          }
-      }
-
-      if (!isExport && mousePos && isDrawing && startPos) {
-          ctx.strokeStyle='#3b82f6'; ctx.lineWidth=2;
-          const sx=startPos.x*tileSize+tileSize/2, sy=startPos.y*tileSize+tileSize/2;
-          const ex=(Math.floor(mousePos.x)*tileSize)+tileSize/2, ey=(Math.floor(mousePos.y)*tileSize)+tileSize/2;
-          
-          if(tool==='line' || tool==='ruler'){ 
-              ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(ex,ey); ctx.stroke(); 
-              if(tool==='ruler') {
-                  const dist = Math.sqrt(Math.pow(ex-sx, 2) + Math.pow(ey-sy, 2)) / tileSize * gridScale;
-                  const mx = (sx+ex)/2, my = (sy+ey)/2 - 15;
-                  const text = `${dist.toFixed(1)}${gridUnit}`;
-                  ctx.font='bold 14px sans-serif'; const metrics = ctx.measureText(text);
-                  ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(mx - metrics.width/2 - 6, my - 14, metrics.width + 12, 20);
-                  ctx.fillStyle = '#60a5fa'; ctx.textAlign = 'center'; ctx.fillText(text, mx, my);
-              }
-          }
-          else if (tool==='rect' || tool==='fog-hide' || tool==='fog-reveal') { 
-              const w=(Math.floor(mousePos.x)-startPos.x)*tileSize, h=(Math.floor(mousePos.y)-startPos.y)*tileSize; 
-              const rw = w+(w>=0?tileSize:-tileSize); const rh = h+(h>=0?tileSize:-tileSize);
-              ctx.strokeRect(sx-tileSize/2, sy-tileSize/2, rw, rh); ctx.fillStyle = 'rgba(59, 130, 246, 0.2)'; ctx.fillRect(sx-tileSize/2, sy-tileSize/2, rw, rh);
-          }
-          else if (tool==='measure-circle') {
-              const radius = Math.sqrt(Math.pow(ex-sx, 2) + Math.pow(ey-sy, 2));
-              ctx.beginPath(); ctx.arc(sx, sy, radius, 0, 2*Math.PI); ctx.stroke(); ctx.fillStyle = 'rgba(59, 130, 246, 0.2)'; ctx.fill();
-          }
-          else if (tool==='measure-cone') {
-              ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); 
-              const angle = Math.atan2(ey-sy, ex-sx); const len = Math.sqrt(Math.pow(ex-sx, 2) + Math.pow(ey-sy, 2));
-              ctx.lineTo(sx + len * Math.cos(angle + 0.5), sy + len * Math.sin(angle + 0.5));
-              ctx.lineTo(sx + len * Math.cos(angle - 0.5), sy + len * Math.sin(angle - 0.5));
-              ctx.closePath(); ctx.stroke(); ctx.fillStyle = 'rgba(59, 130, 246, 0.2)'; ctx.fill();
-          }
-          else if (tool==='measure-cube') {
-              const w=(Math.floor(mousePos.x)-startPos.x)*tileSize, h=(Math.floor(mousePos.y)-startPos.y)*tileSize;
-              const rw = w+(w>=0?tileSize:-tileSize); const rh = h+(h>=0?tileSize:-tileSize);
-              ctx.strokeRect(sx-tileSize/2, sy-tileSize/2, rw, rh); ctx.fillStyle = 'rgba(59, 130, 246, 0.2)'; ctx.fillRect(sx-tileSize/2, sy-tileSize/2, rw, rh);
-          }
-      }
-
-      if (!isExport) {
-          drawWeather(ctx, gridW * tileSize, gridH * tileSize);
-      }
-
-      if (!isExport && ping) {
-          const px = ping.x * tileSize + tileSize/2; const py = ping.y * tileSize + tileSize/2; const age = Date.now() - ping.t;
-          if (age < 2000) {
-              const r = (age / 2000) * 100; const alpha = 1 - (age / 2000);
-              ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.strokeStyle = `rgba(255, 50, 50, ${alpha})`; ctx.lineWidth = 4; ctx.stroke();
-              ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.fillStyle = `rgba(255, 50, 50, ${alpha})`; ctx.fill();
-          }
-      }
-
-      if (!isExport) ctx.restore();
-  };
-
-  useEffect(() => {
-      const ctx = canvasRef.current?.getContext('2d');
-      if(ctx) renderScene(ctx, gridW * tileSize, gridH * tileSize, false);
-  }, [mapGrid, zoom, pan, tokens, selectedTokenId, tool, mousePos, startPos, showGrid, gridColor, gridOpacity, gridStyle, showFog, fogGrid, tick, backgroundImage, isDraggingToken, tokenBench, assetDims, placeMode, tileSize, gridScale, gridUnit, bgProps, gridW, gridH, assetTransform, weather, ping, activeTokenIds]);
-
-  const deleteToken = (id: number) => { setTokens(prev=>prev.filter(t=>t.id!==id)); setContextMenu(null); };
-  const updateTokenSize = (id:number, delta:number) => setTokens(prev=>prev.map(t=>t.id===id ? {...t, size: Math.max(0.5, (t.size||1) + delta), width: Math.max(0.5, (t.width||1) + delta), height: Math.max(0.5, (t.height||1) + delta)} : t));
-  const rotateToken = (id: number, deg: number) => setTokens(prev=>prev.map(t=>t.id===id ? {...t, rotation: ((t.rotation||0)+deg+360)%360} : t));
-  const flipToken = (id: number, axis: 'x'|'y') => setTokens(prev=>prev.map(t=>t.id===id ? (axis==='x' ? {...t, flipX: !t.flipX} : {...t, flipY: !t.flipY}) : t));
-  const openTokenEditor = (id:number) => { const t = tokens.find(tk=>tk.id===id); if(t) setEditingToken(t); setContextMenu(null); };
-  const duplicateToken = (id:number) => { const t = tokens.find(tk=>tk.id===id); if(t) setTokens([...tokens, {...t, id:Date.now(), x:t.x+1, y:t.y+1}]); setContextMenu(null); };
-  const toggleTokenMarker = (id:number, color:string) => setTokens(prev => prev.map(t => t.id === id ? { ...t, markers: t.markers?.includes(color) ? t.markers.filter(c=>c!==color) : [...(t.markers||[]), color] } : t));
-  const saveTokenChanges = () => { 
-      if(editingToken) { 
-          if (tokenBench.some(t => t.id === editingToken.id)) {
-              setTokenBench(prev => prev.map(t => t.id === editingToken.id ? editingToken : t));
-          } else {
-              setTokens(prev=>prev.map(t=>t.id===editingToken.id?editingToken:t)); 
-          }
-          setEditingToken(null); 
-      }
-  };
-  const handleTokenImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file && editingToken) { const r = new FileReader(); r.onload = (ev) => { if (ev.target?.result) setEditingToken({ ...editingToken, image: ev.target.result as string }); }; r.readAsDataURL(file); }};
-  const addTokenToBench = (isProp: boolean = false) => { setTokenBench([...tokenBench, {id: Date.now(), x: 0, y: 0, icon: isProp ? '' : '💀', hp: isProp ? 0 : 10, max: isProp ? 0 : 10, color: isProp ? 'transparent' : '#ef4444', size: 1, width: 1, height: 1, name: isProp ? 'Objeto' : 'Monstro', isProp }]); };
-  const handleAddPropFromSelection = () => { if (!selectedTile) return; setTokenBench([...tokenBench, { id: Date.now(), x: 0, y: 0, icon: '', image: selectedTile, hp: 10, max: 10, color: 'transparent', size: Math.max(assetDims.w, assetDims.h), width: assetDims.w, height: assetDims.h, name: 'Objeto', isProp: true, rotation: assetTransform.r, flipX: assetTransform.fx, flipY: assetTransform.fy }]); };
-  const importCharacterToBench = (char: Character) => { setTokenBench([...tokenBench, { id: Date.now(), x: 0, y: 0, icon: '👤', hp: char.hp.current, max: char.hp.max, ac: char.ac, color: '#3b82f6', size: 1, width: 1, height: 1, name: char.name, isProp: false, linkedId: char.id, linkedType: 'character' }]); };
-  const importMonsterToBench = (mon: Monster) => { setTokenBench([...tokenBench, { id: Date.now(), x: 0, y: 0, icon: '💀', hp: mon.hp, max: mon.hp, ac: mon.ac, color: '#ef4444', size: 1, width: 1, height: 1, name: mon.name, isProp: false, linkedId: mon.id, linkedType: 'monster' }]); };
-  const removeTokenFromBench = (id: number) => { setTokenBench(prev => prev.filter(t => t.id !== id)); setContextMenu(null); };
-  
-  const handleLinkChange = (type: 'character' | 'monster', id: string) => { 
-      if (!editingToken) return; 
-      let name = editingToken.name || ''; 
-      let hp = editingToken.hp; 
-      let max = editingToken.max; 
-      let ac = editingToken.ac; 
-      if (type === 'character') { 
-          const c = characters.find(char => char.id === id); 
-          if (c) { name = c.name; hp = c.hp.current; max = c.hp.max; ac = c.ac; } 
-      } else { 
-          const m = monsters.find(mon => mon.id === Number(id)); 
-          if (m) { name = m.name; hp = m.hp; max = m.hp; ac = m.ac; } 
-      } 
-      setEditingToken({ ...editingToken, linkedType: type, linkedId: id, name, hp, max, ac: ac || 10 }); 
-  };
-  
-  const rotateAsset = (deg: number) => setAssetTransform(prev => ({...prev, r: (prev.r + deg + 360) % 360 }));
-  const resetTransform = () => { setAssetTransform({ r: 0, fx: false, fy: false }); setAssetDims({w: 1, h: 1}); };
-
-  // Calculate HUD Position
   const getSelectedTokenHUD = () => {
       if (!selectedTokenId || !canvasRef.current) return null;
       const token = tokens.find(t => t.id === selectedTokenId);
       if (!token) return null;
+      if (editLayer === 'token' && token.isBackground) return null;
+      if (editLayer === 'background' && !token.isBackground) return null;
 
-      const screenX = (token.x * tileSize + pan.x) * zoom;
-      const screenY = (token.y * tileSize + pan.y) * zoom;
+      // HUD position calculation needs to account for the canvas transform
+      // Since HUD is an HTML overlay, we need screen coordinates
+      const screenX = (token.x * tileSize * zoom) + pan.x;
+      const screenY = (token.y * tileSize * zoom) + pan.y;
       const w = (token.width || 1) * tileSize * zoom;
       
       return (
@@ -1298,349 +1290,85 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
       );
   };
 
+  useEffect(() => {
+      const ctx = canvasRef.current?.getContext('2d');
+      if(ctx && canvasRef.current) renderScene(ctx, canvasRef.current.width, canvasRef.current.height, false);
+  }, [mapGrid, zoom, pan, tokens, selectedTokenId, tool, mousePos, startPos, showGrid, gridColor, gridOpacity, gridStyle, showFog, fogGrid, tick, backgroundImage, isDraggingToken, tokenBench, assetDims, placeMode, tileSize, gridScale, gridUnit, bgProps, gridW, gridH, assetTransform, weather, ping, activeTokenIds, editLayer]);
+
+  // Viewport resize handling
+  useEffect(() => {
+      if (!containerRef.current || !canvasRef.current) return;
+      const resizeObserver = new ResizeObserver(entries => {
+          for (const entry of entries) {
+              if (canvasRef.current) {
+                  canvasRef.current.width = entry.contentRect.width;
+                  canvasRef.current.height = entry.contentRect.height;
+                  const ctx = canvasRef.current.getContext('2d');
+                  if (ctx) renderScene(ctx, entry.contentRect.width, entry.contentRect.height, false);
+              }
+          }
+      });
+      resizeObserver.observe(containerRef.current);
+      return () => resizeObserver.disconnect();
+  }, [containerRef]);
+
   return (
     <div className="flex h-full bg-[#0a0a10] text-[#e8e8ff] font-lato overflow-hidden relative" onContextMenu={e => e.preventDefault()}>
-        {!sidebarOpen && ( <button onClick={() => setSidebarOpen(true)} className="absolute top-4 left-4 z-30 p-2 bg-[#181822] border border-[#444] rounded-lg text-[#ffb74d] hover:bg-[#252535] shadow-lg opacity-80 hover:opacity-100"><ChevronRight size={20} /></button> )}
+        {!sidebarOpen && ( <button onClick={() => setSidebarOpen(true)} className="absolute top-4 right-4 z-30 p-2 bg-[#181822] border border-[#444] rounded-lg text-[#ffb74d] hover:bg-[#252535] shadow-lg opacity-80 hover:opacity-100"><ChevronLeft size={20} /></button> )}
         
-        {/* RESPONSIVE SIDEBAR: Drawer on Mobile, Sidebar on Desktop */}
-        <div className={`fixed inset-0 md:static z-50 md:z-20 bg-[#181822] md:bg-transparent md:flex md:flex-col md:border-r-[3px] md:border-[#2a2a3a] md:shadow-2xl md:shrink-0 transition-all duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0 w-full md:w-[300px]' : '-translate-x-full w-0 md:opacity-0 md:overflow-hidden'}`}>
-            <div className="flex items-center justify-between p-3 border-b border-[#2a2a3a] bg-[#181822]"><h1 className="font-cinzel text-[#ffb74d] text-base tracking-[2px] truncate">FERRAMENTAS</h1><button onClick={() => setSidebarOpen(false)} className="p-1 text-stone-500 hover:text-white"><ChevronLeft size={18} /></button></div>
-            <div className="flex-1 overflow-y-auto p-2 custom-scrollbar bg-[#181822]">
-                {/* ... (Sidebar buttons logic remains same until Map Tab) ... */}
-                <button onClick={() => { setIsGameMode(!isGameMode); setTool(isGameMode ? 'pencil' : 'move'); }} className={`w-full py-2 mb-3 rounded font-bold border transition-all flex items-center justify-center gap-2 text-xs ${isGameMode ? 'bg-green-700 border-green-500 text-white' : 'bg-[#252535] border-[#444]'}`}>{isGameMode ? <><Swords size={14}/> MODO JOGO</> : <><Pencil size={14}/> MODO EDIÇÃO</>}</button>
-                
-                <div className="flex gap-1 mb-3 bg-[#1a1a24] p-1 rounded border border-[#333]">
-                    {!isGameMode && <button onClick={() => setSidebarTab('tools')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'tools' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Ferramentas"><PencilRuler size={16}/></button>}
-                    {!isGameMode && <button onClick={() => setSidebarTab('assets')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'assets' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Ativos"><LayoutGrid size={16}/></button>}
-                    {!isGameMode && <button onClick={() => setSidebarTab('map')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'map' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Mapa"><MapIcon size={16}/></button>}
-                    <button onClick={() => setSidebarTab('tokens')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'tokens' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Tokens"><Users size={16}/></button>
-                    {!isGameMode && <button onClick={() => setSidebarTab('weather')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'weather' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Efeitos"><CloudRain size={16}/></button>}
-                </div>
-
-                {sidebarTab === 'tools' && !isGameMode && (
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-4 gap-1">
-                            {[
-                                { id: 'pencil', icon: Pencil, title: 'Lápis' }, { id: 'eraser', icon: Eraser, title: 'Borracha' },
-                                { id: 'fill', icon: PaintBucket, title: 'Balde' }, { id: 'move', icon: Move, title: 'Mover' },
-                                { id: 'rect', icon: Square, title: 'Retângulo' }, { id: 'line', icon: Minus, title: 'Linha' },
-                                { id: 'fog-hide', icon: EyeOff, title: 'Esconder (Névoa)' }, { id: 'fog-reveal', icon: Eye, title: 'Revelar (Névoa)' },
-                                { id: 'ruler', icon: Ruler, title: 'Régua' }, { id: 'hand', icon: Hand, title: 'Panorâmica' }
-                            ].map(t => (
-                                <button key={t.id} onClick={() => setTool(t.id as any)} className={`p-2 rounded border flex items-center justify-center transition-all ${tool === t.id ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#252535] border-[#333] text-stone-400 hover:text-white'}`} title={t.title}>
-                                    <t.icon size={18} />
-                                </button>
-                            ))}
-                        </div>
-                        <div className="bg-[#1a1a24] p-2 rounded border border-[#333]">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-[10px] uppercase font-bold text-stone-500">Tamanho Pincel</span>
-                                <span className="text-[10px] text-[#ffb74d] font-bold">{brushSize}x{brushSize}</span>
-                            </div>
-                            <input type="range" min="1" max="5" step="1" value={brushSize} onChange={e => setBrushSize(parseInt(e.target.value))} className="w-full h-2 bg-[#333] rounded-lg appearance-none cursor-pointer accent-[#ffb74d]"/>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1">
-                            <button onClick={() => setTool('measure-circle')} className={`p-2 rounded border flex items-center justify-center ${tool==='measure-circle'?'bg-blue-600 text-white':'bg-[#252535] border-[#333] text-stone-400'}`} title="Área Circular"><Circle size={16}/></button>
-                            <button onClick={() => setTool('measure-cone')} className={`p-2 rounded border flex items-center justify-center ${tool==='measure-cone'?'bg-blue-600 text-white':'bg-[#252535] border-[#333] text-stone-400'}`} title="Cone"><Triangle size={16}/></button>
-                            <button onClick={() => setTool('measure-cube')} className={`p-2 rounded border flex items-center justify-center ${tool==='measure-cube'?'bg-blue-600 text-white':'bg-[#252535] border-[#333] text-stone-400'}`} title="Cubo"><Box size={16}/></button>
-                        </div>
-                        <div className="bg-[#1a1a24] p-2 rounded border border-[#333]">
-                            <div className="text-[10px] uppercase font-bold text-stone-500 mb-2">Camadas</div>
-                            <div className="flex gap-1">
-                                {[0,1,2].map(l => (
-                                    <button key={l} onClick={() => setActiveLayer(l as any)} className={`flex-1 py-1 text-xs font-bold rounded transition-all ${activeLayer === l ? 'bg-[#ffb74d] text-black' : 'bg-[#252535] text-stone-400'}`}>
-                                        {l === 0 ? 'Base' : l === 1 ? 'Obj' : 'Topo'}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex gap-1 mt-2">
-                                <button onClick={() => fillFog(true)} className="flex-1 text-[10px] bg-[#252535] hover:bg-[#333] text-stone-400 py-1 rounded" title="Cobrir Tudo">Névoa Total</button>
-                                <button onClick={() => fillFog(false)} className="flex-1 text-[10px] bg-[#252535] hover:bg-[#333] text-stone-400 py-1 rounded" title="Revelar Tudo">Sem Névoa</button>
-                            </div>
-                            <button onClick={() => clearLayer(activeLayer)} className="w-full mt-2 text-[10px] text-red-400 hover:bg-red-900/20 p-1 rounded flex items-center justify-center gap-1"><Trash2 size={12}/> Limpar Camada</button>
-                        </div>
-                    </div>
-                )}
-
-                {sidebarTab === 'assets' && !isGameMode && (
-                    <div className="space-y-4">
-                        <div className="flex border-b border-[#333]">
-                            <button onClick={() => setAssetTab('standard')} className={`flex-1 pb-2 text-xs font-bold ${assetTab === 'standard' ? 'text-[#ffb74d] border-b-2 border-[#ffb74d]' : 'text-stone-500'}`}>Padrão</button>
-                            <button onClick={() => setAssetTab('upload')} className={`flex-1 pb-2 text-xs font-bold ${assetTab === 'upload' ? 'text-[#ffb74d] border-b-2 border-[#ffb74d]' : 'text-stone-500'}`}>Meus Assets</button>
-                            <button onClick={() => setAssetTab('edited')} className={`flex-1 pb-2 text-xs font-bold ${assetTab === 'edited' ? 'text-[#ffb74d] border-b-2 border-[#ffb74d]' : 'text-stone-500'}`}>Editados</button>
-                        </div>
-                        {/* Asset UI contents... (Asset Dims, Rotation, etc - keeping same) */}
-                        <div className="bg-[#1a1a24] p-3 rounded-lg border border-[#333] space-y-3 shadow-sm">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] uppercase font-bold text-stone-500 flex items-center gap-1"><Scaling size={12}/> Tamanho (Grid)</span>
-                                <div className="flex items-center gap-1 bg-[#252535] rounded p-0.5 border border-[#444]">
-                                    <input type="number" className="w-8 bg-transparent text-center text-xs font-bold outline-none" value={assetDims.w} onChange={e => setAssetDims({...assetDims, w: Math.max(1, parseInt(e.target.value)||1)})} />
-                                    <span className="text-stone-500 text-[10px]">x</span>
-                                    <input type="number" className="w-8 bg-transparent text-center text-xs font-bold outline-none" value={assetDims.h} onChange={e => setAssetDims({...assetDims, h: Math.max(1, parseInt(e.target.value)||1)})} />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] uppercase font-bold text-stone-500 flex items-center gap-1"><ArrowRightLeft size={12}/> Espelhar</span>
-                                    <div className="flex gap-1">
-                                        <button onClick={() => setAssetTransform(p => ({...p, fx: !p.fx}))} className={`px-2 py-1 rounded text-[10px] font-bold border transition-colors ${assetTransform.fx ? 'bg-blue-600 border-blue-500 text-white' : 'bg-[#252535] border-[#444] text-stone-400'}`}>H</button>
-                                        <button onClick={() => setAssetTransform(p => ({...p, fy: !p.fy}))} className={`px-2 py-1 rounded text-[10px] font-bold border transition-colors ${assetTransform.fy ? 'bg-blue-600 border-blue-500 text-white' : 'bg-[#252535] border-[#444] text-stone-400'}`}>V</button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-[10px] uppercase font-bold text-stone-500 flex items-center gap-1"><RotateCw size={12}/> Rotação</span>
-                                        <span className="text-[10px] font-mono text-amber-500">{assetTransform.r}°</span>
-                                    </div>
-                                    <input type="range" min="0" max="360" step="45" value={assetTransform.r} onChange={e => setAssetTransform(p => ({...p, r: parseInt(e.target.value)}))} className="w-full accent-amber-500 h-1.5 bg-[#333] rounded-lg appearance-none cursor-pointer" />
-                                    <div className="flex justify-between mt-1">
-                                        <button onClick={() => resetTransform()} className="text-[9px] text-red-400 hover:text-red-300">Resetar</button>
-                                        <div className="flex gap-1">
-                                            <button onClick={() => rotateAsset(-45)} className="text-[9px] bg-[#333] px-1.5 rounded hover:text-white">-45°</button>
-                                            <button onClick={() => rotateAsset(45)} className="text-[9px] bg-[#333] px-1.5 rounded hover:text-white">+45°</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="pt-2 border-t border-[#333] flex gap-2">
-                                <button onClick={() => setPlaceMode('tile')} className={`flex-1 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${placeMode === 'tile' ? 'bg-[#ffb74d] text-black shadow' : 'bg-[#252535] text-stone-400 hover:bg-[#333]'}`}>Pintar</button>
-                                <button onClick={() => setPlaceMode('object')} className={`flex-1 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${placeMode === 'object' ? 'bg-[#ffb74d] text-black shadow' : 'bg-[#252535] text-stone-400 hover:bg-[#333]'}`}>Objeto</button>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar p-1">
-                            {/* ... Asset List Render ... */}
-                            {assetTab === 'standard' && (
-                                <div className="col-span-4 space-y-2">
-                                    <div className="relative">
-                                        <select value={activePalette} onChange={(e) => setActivePalette(e.target.value)} className="w-full bg-[#252535] text-xs p-2 rounded border border-[#333] focus:border-[#ffb74d] outline-none appearance-none">
-                                            {Object.keys(PALETTES).map(k => <option key={k} value={k}>{k}</option>)}
-                                        </select>
-                                        <div className="absolute right-2 top-2 pointer-events-none text-stone-500"><Filter size={14}/></div>
-                                    </div>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        {(PALETTES[activePalette] || PALETTES['Pisos & Masmorra']).map((t, i) => (
-                                            <div key={i} onClick={() => { setSelectedTile(t.c); setTool('pencil'); }} onContextMenu={(e) => handleAssetContextMenu(e, t.c)} className={`aspect-square rounded border cursor-pointer overflow-hidden relative group ${selectedTile === t.c ? 'border-[#ffb74d] ring-2 ring-[#ffb74d]/50' : 'border-[#444] hover:border-white'}`} title={t.n}>
-                                                <img src={t.c} className="w-full h-full object-cover" loading="lazy" />
-                                                <button onClick={(e) => { e.stopPropagation(); openTextureEditor(t.c); }} className="absolute top-0 right-0 bg-black/60 p-1 text-white opacity-0 group-hover:opacity-100 hover:bg-blue-600"><Edit size={10}/></button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            {(assetTab === 'upload' || assetTab === 'edited') && (
-                                <>
-                                    <label className="aspect-square rounded border border-dashed border-[#444] hover:border-[#ffb74d] flex flex-col items-center justify-center cursor-pointer text-stone-500 hover:text-[#ffb74d]">
-                                        <Upload size={20}/>
-                                        <span className="text-[9px] font-bold mt-1">Upload</span>
-                                        <input type="file" hidden accept="image/*" onChange={handleFileUpload} />
-                                    </label>
-                                    {customAssets.filter(a => assetTab === 'upload' ? a.type !== 'edited' : a.type === 'edited').map((a) => (
-                                        <div key={a.id} onClick={() => { setSelectedTile(a.url); setTool('pencil'); }} onContextMenu={(e) => handleAssetContextMenu(e, a.url)} className={`aspect-square rounded border cursor-pointer overflow-hidden relative group ${selectedTile === a.url ? 'border-[#ffb74d] ring-2 ring-[#ffb74d]/50' : 'border-[#444] hover:border-white'}`}>
-                                            <img src={a.url} className="w-full h-full object-cover" />
-                                            <button onClick={(e) => { e.stopPropagation(); openTextureEditor(a); }} className="absolute top-0 right-0 bg-black/60 p-1 text-white opacity-0 group-hover:opacity-100 hover:bg-blue-600"><Edit size={10}/></button>
-                                        </div>
-                                    ))}
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {sidebarTab === 'weather' && !isGameMode && (
-                    <div className="space-y-4">
-                        {/* Weather UI contents... */}
-                        <div className="text-xs text-stone-400 mb-2 p-2 bg-[#1a1a24] rounded border border-[#333]">
-                            Adicione efeitos visuais sobre o mapa.
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button onClick={() => setWeather('none')} className={`p-3 rounded border flex flex-col items-center gap-2 ${weather === 'none' ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#252535] border-[#333] text-stone-400'}`}><Sun size={24}/> <span>Limpo</span></button>
-                            <button onClick={() => setWeather('rain')} className={`p-3 rounded border flex flex-col items-center gap-2 ${weather === 'rain' ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#252535] border-[#333] text-stone-400'}`}><CloudRain size={24}/> <span>Chuva</span></button>
-                            <button onClick={() => setWeather('snow')} className={`p-3 rounded border flex flex-col items-center gap-2 ${weather === 'snow' ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#252535] border-[#333] text-stone-400'}`}><Snowflake size={24}/> <span>Neve</span></button>
-                            <button onClick={() => setWeather('fog')} className={`p-3 rounded border flex flex-col items-center gap-2 ${weather === 'fog' ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#252535] border-[#333] text-stone-400'}`}><CloudFog size={24}/> <span>Névoa</span></button>
-                            <button onClick={() => setWeather('ember')} className={`p-3 rounded border flex flex-col items-center gap-2 ${weather === 'ember' ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#252535] border-[#333] text-stone-400'}`}><Flame size={24}/> <span>Cinzas</span></button>
-                        </div>
-                    </div>
-                )}
-
-                {sidebarTab === 'map' && !isGameMode && (
-                    <div className="space-y-4 text-xs">
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <span className="text-stone-400 font-bold">Mostrar Grid</span>
-                                <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="accent-[#ffb74d]"/>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-stone-400 font-bold">Estilo Grid</span>
-                                <select className="bg-[#252535] border border-[#333] rounded px-1" value={gridStyle} onChange={(e) => setGridStyle(e.target.value as any)}>
-                                    <option value="line">Linhas</option>
-                                    <option value="dot">Pontos</option>
-                                </select>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-stone-400">Opacidade</span>
-                                <input type="range" min="0.05" max="1" step="0.05" value={gridOpacity} onChange={e => setGridOpacity(parseFloat(e.target.value))} className="w-20 accent-[#ffb74d]"/>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-stone-400">Cor</span>
-                                <input type="color" value={gridColor} onChange={e => setGridColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"/>
-                            </div>
-                            <div className="flex items-center justify-between border-t border-[#333] pt-2 mt-2">
-                                <span className="text-stone-400 font-bold text-[#ffb74d]">Resolução (Px)</span>
-                                <div className="flex items-center gap-2">
-                                    <input type="range" min="16" max="128" value={tileSize} onChange={e => setTileSize(parseInt(e.target.value))} className="w-20 accent-[#ffb74d]" />
-                                    <input type="number" className="w-12 bg-[#252535] border border-[#333] rounded px-1 text-center font-bold" value={tileSize} onChange={e => setTileSize(parseInt(e.target.value))} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="border-t border-[#333] pt-2 space-y-2">
-                            <span className="block font-bold text-[#ffb74d] uppercase mb-1">Dimensões & Escala</span>
-                            <div className="flex gap-2">
-                                <div className="flex-1">
-                                    <label className="block text-[9px] text-stone-500 uppercase">Largura</label>
-                                    <input type="number" className="w-full bg-[#252535] rounded p-1 text-center" value={gridW} onChange={e => resizeMap(parseInt(e.target.value), gridH)} />
-                                </div>
-                                <div className="flex-1">
-                                    <label className="block text-[9px] text-stone-500 uppercase">Altura</label>
-                                    <input type="number" className="w-full bg-[#252535] rounded p-1 text-center" value={gridH} onChange={e => resizeMap(gridW, parseInt(e.target.value))} />
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <div className="flex-1">
-                                    <label className="block text-[9px] text-stone-500 uppercase">Escala ({gridUnit})</label>
-                                    <div className="flex items-center gap-1">
-                                        <button onClick={() => setGridScale(s => Math.max(0.1, parseFloat((s - 0.5).toFixed(1))))} className="bg-[#333] p-1 rounded hover:text-white"><Minus size={12}/></button>
-                                        <input type="number" step="0.5" className="w-full bg-[#252535] rounded p-1 text-center" value={gridScale} onChange={e => setGridScale(parseFloat(e.target.value))} />
-                                        <button onClick={() => setGridScale(s => parseFloat((s + 0.5).toFixed(1)))} className="bg-[#333] p-1 rounded hover:text-white"><Plus size={12}/></button>
-                                    </div>
-                                </div>
-                                <div className="flex-1">
-                                    <label className="block text-[9px] text-stone-500 uppercase">Unidade</label>
-                                    <input type="text" className="w-full bg-[#252535] rounded p-1 text-center" value={gridUnit} onChange={e => setGridUnit(e.target.value)} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="border-t border-[#333] pt-2 space-y-2">
-                            <span className="block font-bold text-[#ffb74d] uppercase mb-1">Imagem de Fundo</span>
-                            <div className="flex gap-2">
-                                <label className="flex-1 bg-[#252535] hover:bg-[#333] text-center p-2 rounded cursor-pointer border border-[#333] hover:text-white transition-colors">
-                                    <Upload size={16} className="mx-auto mb-1"/> Upload
-                                    <input type="file" hidden accept="image/*" onChange={handleBgUpload} ref={bgInputRef} />
-                                </label>
-                                <button onClick={() => setBackgroundImage(null)} className="flex-1 bg-[#252535] hover:bg-red-900/30 text-center p-2 rounded border border-[#333] hover:text-red-400 transition-colors">
-                                    <Trash2 size={16} className="mx-auto mb-1"/> Remover
-                                </button>
-                            </div>
-                            
-                            <div className="mt-2">
-                                <span className="text-[9px] text-stone-500 font-bold uppercase mb-1 block">Mapas Prontos</span>
-                                <div className="grid grid-cols-3 gap-1">
-                                    {LIST_MAPS.map((url, i) => (
-                                        <div key={i} className="aspect-video bg-stone-800 border border-stone-600 rounded cursor-pointer hover:border-amber-500 relative group overflow-hidden" onClick={() => setBgFromPreset(url)}>
-                                            <img src={convertDriveLink(url)} className="w-full h-full object-cover" loading="lazy" />
-                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs font-bold text-white transition-opacity">Usar</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {backgroundImage && (
-                                <div className="space-y-2 mt-2 bg-[#1a1a24] p-2 rounded border border-[#333]">
-                                    <button onClick={fitBackgroundToGrid} className="w-full bg-blue-900/30 text-blue-400 text-[10px] py-1 rounded border border-blue-900/50 hover:bg-blue-900/50">Ajustar ao Grid</button>
-                                    <div className="flex items-center justify-between">
-                                        <span>Escala BG</span>
-                                        <div className="flex items-center gap-1">
-                                            <button onClick={() => setBgProps(p => ({...p, scale: Math.max(0.01, parseFloat((p.scale - 0.05).toFixed(2)))}))} className="bg-[#333] p-1 rounded hover:text-white"><Minus size={10}/></button>
-                                            <input type="number" step="0.01" className="w-14 bg-[#000] p-1 rounded text-right text-xs" value={bgProps.scale} onChange={e => setBgProps({...bgProps, scale: parseFloat(e.target.value)})} />
-                                            <button onClick={() => setBgProps(p => ({...p, scale: parseFloat((p.scale + 0.05).toFixed(2))}))} className="bg-[#333] p-1 rounded hover:text-white"><Plus size={10}/></button>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span>Pos X</span>
-                                        <div className="flex items-center gap-1">
-                                            <button onClick={() => setBgProps(p => ({...p, x: p.x - tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronLeft size={10}/></button>
-                                            <input type="number" className="w-14 bg-[#000] p-1 rounded text-right text-xs" value={bgProps.x} onChange={e => setBgProps({...bgProps, x: parseInt(e.target.value)})} />
-                                            <button onClick={() => setBgProps(p => ({...p, x: p.x + tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronRight size={10}/></button>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span>Pos Y</span>
-                                        <div className="flex items-center gap-1">
-                                            <button onClick={() => setBgProps(p => ({...p, y: p.y - tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronsUp size={10}/></button>
-                                            <input type="number" className="w-14 bg-[#000] p-1 rounded text-right text-xs" value={bgProps.y} onChange={e => setBgProps({...bgProps, y: parseInt(e.target.value)})} />
-                                            <button onClick={() => setBgProps(p => ({...p, y: p.y + tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronsDown size={10}/></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* NEW SECTION: EXPORT & SAVE */}
-                        <div className="border-t border-[#333] pt-2 space-y-2">
-                            <span className="block font-bold text-[#ffb74d] uppercase mb-1 flex items-center gap-2"><Save size={12}/> Salvar & Exportar</span>
-                            
-                            {/* Option 1: PNG (Print) */}
-                            <button onClick={exportMap} className="w-full py-3 bg-[#252535] hover:bg-[#333] border border-[#444] rounded flex items-center justify-center gap-3 font-bold text-stone-300 hover:text-white transition-all group shadow-sm">
-                                <div className="p-1.5 bg-green-900/30 rounded text-green-400 group-hover:bg-green-600 group-hover:text-white transition-colors border border-green-900/50"><ImageIcon size={18}/></div>
-                                <div className="flex flex-col items-start leading-none gap-1">
-                                    <span className="text-xs font-bold uppercase">Imagem (PNG)</span>
-                                    <span className="text-[9px] text-stone-500 font-normal">Foto do mapa completo</span>
-                                </div>
-                            </button>
-
-                            {/* Option 2: JSON (Data) */}
-                            <div className="grid grid-cols-2 gap-2">
-                                <button onClick={saveMapToJson} className="p-2 bg-[#252535] hover:bg-[#333] border border-[#444] rounded flex flex-col items-center justify-center gap-1 text-stone-300 hover:text-white transition-all group">
-                                    <FileJson size={16} className="text-blue-400 group-hover:text-blue-300"/> 
-                                    <span className="text-[10px] font-bold">Salvar Dados (.json)</span>
-                                </button>
-                                <label className="p-2 bg-[#252535] hover:bg-[#333] border border-[#444] rounded flex flex-col items-center justify-center gap-1 text-stone-300 hover:text-white transition-all cursor-pointer group">
-                                    <Upload size={16} className="text-amber-400 group-hover:text-amber-300"/>
-                                    <span className="text-[10px] font-bold">Carregar Dados</span>
-                                    <input type="file" hidden accept=".json" onChange={loadMapFromJson} ref={mapInputRef} />
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="border-t border-[#333] pt-2">
-                            <button onClick={clearMap} className="w-full py-2 bg-red-900/20 text-red-500 hover:bg-red-900/40 rounded flex items-center justify-center gap-2 font-bold mb-2 text-xs">
-                                <Trash2 size={14}/> Limpar Tudo
-                            </button>
-                            <button onClick={clearToBackground} className="w-full py-2 bg-stone-800 text-stone-400 hover:bg-stone-700 rounded flex items-center justify-center gap-2 font-bold text-xs">
-                                <Eraser size={14}/> Limpar Tiles (Manter Fundo)
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {sidebarTab === 'tokens' && (
-                    <div className="space-y-2">
-                        {/* Token list content... */}
-                        <div className="text-xs text-stone-500 text-center mb-2">Arraste para o mapa ou clique para adicionar</div>
-                        {characters.map(char => (
-                            <div key={char.id} onClick={() => importCharacterToBench(char)} className="bg-[#222] p-2 rounded border border-[#333] flex justify-between items-center cursor-pointer hover:bg-[#333]">
-                                <span className="font-bold text-blue-400 text-xs">{char.name}</span>
-                                <Plus size={14} className="text-stone-500"/>
-                            </div>
-                        ))}
-                        <div className="border-t border-[#333] my-2"></div>
-                        {monsters.map(mon => (
-                            <div key={mon.id} onClick={() => importMonsterToBench(mon)} className="bg-[#222] p-2 rounded border border-[#333] flex justify-between items-center cursor-pointer hover:bg-[#333]">
-                                <span className="font-bold text-red-400 text-xs">{mon.name}</span>
-                                <Plus size={14} className="text-stone-500"/>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-            
-            {/* Removed the bottom "Export" button since it's now in the Map tab */}
-        </div>
-        
-        {/* Main Canvas Area */}
         <div className="flex-1 relative overflow-hidden bg-[#0a0a10]" ref={containerRef} onWheel={handleWheel}>
             {getSelectedTokenHUD()}
+            
+            <div className="absolute top-4 left-4 z-30 flex flex-col gap-3 animate-in slide-in-from-left duration-300 pointer-events-none">
+                <div className="bg-[#181822] rounded-xl border border-[#444] shadow-xl overflow-hidden flex flex-col pointer-events-auto">
+                    <button onClick={exportMap} className="p-3 text-green-400 hover:bg-[#252535] hover:text-white transition-colors border-b border-[#444]" title="Exportar Mapa / Salvar">
+                        <Download size={20}/>
+                    </button>
+                    {!isGameMode && (
+                        <>
+                            <button onClick={() => setTool('move')} className={`p-3 transition-colors ${tool === 'move' ? 'bg-[#ffb74d] text-black' : 'text-stone-400 hover:text-white hover:bg-[#252535]'}`} title="Mover">
+                                <Move size={20}/>
+                            </button>
+                            <button onClick={() => setTool('pencil')} className={`p-3 transition-colors ${tool === 'pencil' ? 'bg-[#ffb74d] text-black' : 'text-stone-400 hover:text-white hover:bg-[#252535]'}`} title="Lápis">
+                                <Pencil size={20}/>
+                            </button>
+                            <button onClick={() => setTool('eraser')} className={`p-3 transition-colors ${tool === 'eraser' ? 'bg-[#ffb74d] text-black' : 'text-stone-400 hover:text-white hover:bg-[#252535]'}`} title="Borracha">
+                                <Eraser size={20}/>
+                            </button>
+                            <button onClick={() => setTool('fill')} className={`p-3 transition-colors ${tool === 'fill' ? 'bg-[#ffb74d] text-black' : 'text-stone-400 hover:text-white hover:bg-[#252535]'}`} title="Preencher">
+                                <PaintBucket size={20}/>
+                            </button>
+                            <button onClick={() => setTool('ruler')} className={`p-3 transition-colors ${tool === 'ruler' ? 'bg-[#ffb74d] text-black' : 'text-stone-400 hover:text-white hover:bg-[#252535]'}`} title="Régua">
+                                <Ruler size={20}/>
+                            </button>
+                        </>
+                    )}
+                </div>
+
+                {!isGameMode && (
+                    <div className="bg-[#181822] rounded-xl border border-[#444] shadow-xl overflow-hidden flex flex-col pointer-events-auto">
+                         <button 
+                            onClick={() => setEditLayer(editLayer === 'token' ? 'background' : 'token')} 
+                            className={`p-3 transition-colors flex flex-col items-center justify-center gap-1 ${editLayer === 'background' ? 'bg-purple-600 text-white' : 'text-stone-400 hover:text-white hover:bg-[#252535]'}`} 
+                            title={`Editando: ${editLayer === 'token' ? 'Tokens' : 'Fundo'}`}
+                        >
+                            <Layers size={20}/>
+                            <span className="text-[8px] font-bold uppercase">{editLayer === 'token' ? 'Tokens' : 'Fundo'}</span>
+                        </button>
+                    </div>
+                )}
+
+                <div className="bg-[#181822] rounded-xl border border-[#444] shadow-xl overflow-hidden flex flex-col pointer-events-auto">
+                    <button onClick={() => setZoom(z => Math.min(5, z + 0.1))} className="p-3 text-stone-300 hover:bg-[#252535] hover:text-white transition-colors"><Plus size={20}/></button>
+                    <button onClick={() => setZoom(z => Math.max(0.1, z - 0.1))} className="p-3 text-stone-300 hover:bg-[#252535] hover:text-white transition-colors"><Minus size={20}/></button>
+                    <div className="h-px bg-[#444] mx-2"></div>
+                    <button onClick={centerMap} className="p-3 text-stone-300 hover:bg-[#252535] hover:text-white transition-colors" title="Centralizar"><Target size={20}/></button>
+                    <button onClick={fitToScreen} className="p-3 text-stone-300 hover:bg-[#252535] hover:text-white transition-colors" title="Ajustar à Tela"><Maximize size={20}/></button>
+                </div>
+                
+                <button onClick={() => setShowFog(!showFog)} className={`p-3 rounded-xl border shadow-xl pointer-events-auto transition-all ${showFog ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#181822] border-[#444] text-stone-400 hover:text-white hover:bg-[#252535]'}`} title="Alternar Névoa"><CloudRain size={20}/></button>
+            </div>
+
             <canvas
                 ref={canvasRef}
                 onMouseDown={handleMouseDown}
@@ -1650,31 +1378,20 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                 onDoubleClick={handleDoubleClick}
                 onDragOver={handleCanvasDragOver}
                 onDrop={handleCanvasDrop}
-                width={gridW * tileSize}
-                height={gridH * tileSize}
                 style={{
-                    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                    transformOrigin: 'top left',
+                    width: '100%',
+                    height: '100%',
+                    display: 'block',
                     cursor: tool === 'hand' || isPanning ? 'grab' : (tool === 'move' ? 'move' : 'crosshair')
                 }}
             />
-            {/* ... Rest of Canvas UI ... */}
-            <div className="absolute top-4 right-4 flex flex-col gap-2">
-                <button onClick={centerMap} className="bg-[#181822] p-2 rounded-full border border-[#444] text-white hover:bg-[#252535] shadow-lg" title="Resetar Vista"><Target size={20}/></button>
-                <button onClick={fitToScreen} className="bg-[#181822] p-2 rounded-full border border-[#444] text-white hover:bg-[#252535] shadow-lg" title="Ajustar à Tela"><Maximize size={20}/></button>
-                <div className="bg-[#181822] rounded-full border border-[#444] flex flex-col overflow-hidden shadow-lg mt-2">
-                    <button onClick={() => setZoom(z => Math.min(5, z + 0.1))} className="p-2 hover:bg-[#252535] text-white"><Plus size={16}/></button>
-                    <button onClick={() => setZoom(z => Math.max(0.1, z - 0.1))} className="p-2 hover:bg-[#252535] text-white"><Minus size={16}/></button>
-                </div>
-                {/* Export button moved to sidebar, removed duplicate here */}
-                <button onClick={() => setShowFog(!showFog)} className={`p-2 rounded-full border shadow-lg mt-2 ${showFog ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#181822] border-[#444] text-stone-400'}`} title="Alternar Névoa"><CloudRain size={20}/></button>
-            </div>
 
-            <div className="absolute bottom-24 left-4 flex gap-2">
-                <button onClick={undo} disabled={historyIndex <= 0} className="bg-[#181822] p-2 rounded-full border border-[#444] text-white disabled:opacity-50 hover:bg-[#252535] shadow-lg"><Undo2 size={20}/></button>
-                <button onClick={redo} disabled={historyIndex >= history.length - 1} className="bg-[#181822] p-2 rounded-full border border-[#444] text-white disabled:opacity-50 hover:bg-[#252535] shadow-lg"><Redo2 size={20}/></button>
+            <div className="absolute bottom-24 left-24 flex gap-2 pointer-events-none">
+                <button onClick={undo} disabled={historyIndex <= 0} className="bg-[#181822] p-2 rounded-full border border-[#444] text-white disabled:opacity-50 hover:bg-[#252535] shadow-lg pointer-events-auto"><Undo2 size={20}/></button>
+                <button onClick={redo} disabled={historyIndex >= history.length - 1} className="bg-[#181822] p-2 rounded-full border border-[#444] text-white disabled:opacity-50 hover:bg-[#252535] shadow-lg pointer-events-auto"><Redo2 size={20}/></button>
             </div>
-
+            
+            {/* Context Menu and Editing Panels (omitted for brevity as they remain unchanged) */}
             {contextMenu && (
                 <div 
                     className="fixed z-50 bg-[#181822] border border-[#444] rounded shadow-xl py-1 w-40 text-sm"
@@ -1683,6 +1400,17 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                 >
                     {contextMenu.tokenId ? (
                         <>
+                            {(() => {
+                                const t = tokens.find(tk => tk.id === contextMenu.tokenId);
+                                return (
+                                    <button 
+                                        onClick={() => { toggleTokenLock(contextMenu.tokenId!); setContextMenu(null); }} 
+                                        className={`w-full text-left px-4 py-2 hover:bg-[#252535] flex items-center gap-2 ${t?.locked ? 'text-green-400' : 'text-stone-200'}`}
+                                    >
+                                        {t?.locked ? <><Unlock size={14}/> Destravar</> : <><Lock size={14}/> Travar</>}
+                                    </button>
+                                )
+                            })()}
                             <button onClick={() => openTokenEditor(contextMenu.tokenId!)} className="w-full text-left px-4 py-2 hover:bg-[#252535] text-stone-200 flex items-center gap-2"><Edit size={14}/> Editar</button>
                             <button onClick={() => duplicateToken(contextMenu.tokenId!)} className="w-full text-left px-4 py-2 hover:bg-[#252535] text-stone-200 flex items-center gap-2"><Copy size={14}/> Duplicar</button>
                             <div className="border-t border-[#333] my-1"></div>
@@ -1718,7 +1446,6 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                 </div>
             )}
 
-            {/* Token Editor Modal */}
             {editingToken && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setEditingToken(null)}>
                     <div className="bg-[#1a1a1d] border border-[#333] rounded-xl w-full max-w-md p-5 shadow-2xl animate-in zoom-in-95 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -1742,15 +1469,32 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                                 </div>
                                 <div className="flex gap-2">
                                     <div className="flex-1">
-                                        <label className="block text-[10px] text-stone-500 uppercase font-bold">Tamanho</label>
-                                        <input type="number" step="0.5" className="w-full bg-[#252535] border border-[#333] rounded p-1.5 text-sm" value={editingToken.size} onChange={e => setEditingToken({...editingToken, size: parseFloat(e.target.value), width: parseFloat(e.target.value), height: parseFloat(e.target.value)})} />
+                                        <label className="block text-[10px] text-stone-500 uppercase font-bold">Largura</label>
+                                        <input type="number" step="0.5" className="w-full bg-[#252535] border border-[#333] rounded p-1.5 text-sm" value={editingToken.width || editingToken.size || 1} onChange={e => setEditingToken({...editingToken, width: parseFloat(e.target.value) || 1, size: Math.max(parseFloat(e.target.value), editingToken.height || 1)})} />
                                     </div>
+                                    <div className="flex-1">
+                                        <label className="block text-[10px] text-stone-500 uppercase font-bold">Altura</label>
+                                        <input type="number" step="0.5" className="w-full bg-[#252535] border border-[#333] rounded p-1.5 text-sm" value={editingToken.height || editingToken.size || 1} onChange={e => setEditingToken({...editingToken, height: parseFloat(e.target.value) || 1, size: Math.max(editingToken.width || 1, parseFloat(e.target.value))})} />
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
                                     <div className="flex-1">
                                         <label className="block text-[10px] text-stone-500 uppercase font-bold">Cor</label>
                                         <input type="color" className="w-full h-8 bg-transparent cursor-pointer" value={editingToken.color} onChange={e => setEditingToken({...editingToken, color: e.target.value})} />
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        <div className="mb-4 space-y-2">
+                            <label className="flex items-center gap-2 text-xs font-bold text-stone-300 cursor-pointer bg-[#222] p-2 rounded border border-[#333] hover:bg-[#333]">
+                                <input type="checkbox" checked={editingToken.locked || false} onChange={e => setEditingToken({...editingToken, locked: e.target.checked})} className="accent-[#ffb74d]"/>
+                                {editingToken.locked ? <><Lock size={14}/> Objeto Travado (Cenário)</> : <><Unlock size={14}/> Destravado (Móvel)</>}
+                            </label>
+                            <label className="flex items-center gap-2 text-xs font-bold text-stone-300 cursor-pointer bg-[#222] p-2 rounded border border-[#333] hover:bg-[#333]">
+                                <input type="checkbox" checked={editingToken.isBackground || false} onChange={e => setEditingToken({...editingToken, isBackground: e.target.checked})} className="accent-[#ffb74d]"/>
+                                {editingToken.isBackground ? <><Layers size={14} className="text-purple-500"/> Camada de Fundo (Abaixo do Grid)</> : <><Layers size={14}/> Camada de Tokens (Acima do Grid)</>}
+                            </label>
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 mb-4 bg-[#222] p-2 rounded border border-[#333]">
@@ -1822,8 +1566,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                     </div>
                 </div>
             )}
-
-            {/* Texture Editor Modal */}
+            
             {editingTexture && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[60] p-4" onClick={() => setEditingTexture(null)}>
                     <div className="bg-[#1a1a1d] border border-[#333] rounded-xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl relative overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -1913,6 +1656,341 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                     </div>
                 </div>
             )}
+        </div>
+
+        {/* RESPONSIVE SIDEBAR: Drawer on Mobile, Sidebar on Desktop */}
+        <div className={`fixed inset-0 md:static z-50 md:z-20 bg-[#181822] md:bg-transparent md:flex md:flex-col md:border-l-[3px] md:border-[#2a2a3a] md:shadow-2xl md:shrink-0 transition-all duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0 w-full md:w-[300px]' : 'translate-x-full w-0 md:opacity-0 md:overflow-hidden'}`}>
+            <div className="flex items-center justify-between p-3 border-b border-[#2a2a3a] bg-[#181822]">
+                <button onClick={() => setSidebarOpen(false)} className="p-1 text-stone-500 hover:text-white"><ChevronRight size={18} /></button>
+                <h1 className="font-cinzel text-[#ffb74d] text-base tracking-[2px] truncate">FERRAMENTAS</h1>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 custom-scrollbar bg-[#181822]">
+                <button onClick={() => { setIsGameMode(!isGameMode); setTool(isGameMode ? 'pencil' : 'move'); }} className={`w-full py-2 mb-3 rounded font-bold border transition-all flex items-center justify-center gap-2 text-xs ${isGameMode ? 'bg-green-700 border-green-500 text-white' : 'bg-[#252535] border-[#444]'}`}>{isGameMode ? <><Swords size={14}/> MODO JOGO</> : <><Pencil size={14}/> MODO EDIÇÃO</>}</button>
+                
+                <div className="flex gap-1 mb-3 bg-[#1a1a24] p-1 rounded border border-[#333]">
+                    {!isGameMode && <button onClick={() => setSidebarTab('tools')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'tools' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Ferramentas"><PencilRuler size={16}/></button>}
+                    {!isGameMode && <button onClick={() => setSidebarTab('assets')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'assets' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Ativos"><LayoutGrid size={16}/></button>}
+                    {!isGameMode && <button onClick={() => setSidebarTab('map')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'map' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Mapa"><MapIcon size={16}/></button>}
+                    <button onClick={() => setSidebarTab('tokens')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'tokens' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Tokens"><Users size={16}/></button>
+                    {!isGameMode && <button onClick={() => setSidebarTab('weather')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'weather' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Efeitos"><CloudRain size={16}/></button>}
+                </div>
+
+                {sidebarTab === 'tools' && !isGameMode && (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-4 gap-1">
+                            {[
+                                { id: 'pencil', icon: Pencil, title: 'Lápis' }, { id: 'eraser', icon: Eraser, title: 'Borracha' },
+                                { id: 'fill', icon: PaintBucket, title: 'Balde' }, { id: 'move', icon: Move, title: 'Mover' },
+                                { id: 'rect', icon: Square, title: 'Retângulo' }, { id: 'line', icon: Minus, title: 'Linha' },
+                                { id: 'fog-hide', icon: EyeOff, title: 'Esconder (Névoa)' }, { id: 'fog-reveal', icon: Eye, title: 'Revelar (Névoa)' },
+                                { id: 'ruler', icon: Ruler, title: 'Régua' }, { id: 'hand', icon: Hand, title: 'Panorâmica' }
+                            ].map(t => (
+                                <button key={t.id} onClick={() => setTool(t.id as any)} className={`p-2 rounded border flex items-center justify-center transition-all ${tool === t.id ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#252535] border-[#333] text-stone-400 hover:text-white'}`} title={t.title}>
+                                    <t.icon size={18} />
+                                </button>
+                            ))}
+                        </div>
+                        <div className="bg-[#1a1a24] p-2 rounded border border-[#333]">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="text-[10px] uppercase font-bold text-stone-500">Tamanho Pincel</span>
+                                <span className="text-[10px] text-[#ffb74d] font-bold">{brushSize}x{brushSize}</span>
+                            </div>
+                            <input type="range" min="1" max="5" step="1" value={brushSize} onChange={e => setBrushSize(parseInt(e.target.value))} className="w-full h-2 bg-[#333] rounded-lg appearance-none cursor-pointer accent-[#ffb74d]"/>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                            <button onClick={() => setTool('measure-circle')} className={`p-2 rounded border flex items-center justify-center ${tool==='measure-circle'?'bg-blue-600 text-white':'bg-[#252535] border-[#333] text-stone-400'}`} title="Área Circular"><Circle size={16}/></button>
+                            <button onClick={() => setTool('measure-cone')} className={`p-2 rounded border flex items-center justify-center ${tool==='measure-cone'?'bg-blue-600 text-white':'bg-[#252535] border-[#333] text-stone-400'}`} title="Cone"><Triangle size={16}/></button>
+                            <button onClick={() => setTool('measure-cube')} className={`p-2 rounded border flex items-center justify-center ${tool==='measure-cube'?'bg-blue-600 text-white':'bg-[#252535] border-[#333] text-stone-400'}`} title="Cubo"><Box size={16}/></button>
+                        </div>
+                        <div className="bg-[#1a1a24] p-2 rounded border border-[#333]">
+                            <div className="text-[10px] uppercase font-bold text-stone-500 mb-2">Camadas</div>
+                            <div className="flex gap-1">
+                                {[0,1,2].map(l => (
+                                    <button key={l} onClick={() => setActiveLayer(l as any)} className={`flex-1 py-1 text-xs font-bold rounded transition-all ${activeLayer === l ? 'bg-[#ffb74d] text-black' : 'bg-[#252535] text-stone-400'}`}>
+                                        {l === 0 ? 'Base' : l === 1 ? 'Obj' : 'Topo'}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex gap-1 mt-2">
+                                <button onClick={() => fillFog(true)} className="flex-1 text-[10px] bg-[#252535] hover:bg-[#333] text-stone-400 py-1 rounded" title="Cobrir Tudo">Névoa Total</button>
+                                <button onClick={() => fillFog(false)} className="flex-1 text-[10px] bg-[#252535] hover:bg-[#333] text-stone-400 py-1 rounded" title="Revelar Tudo">Sem Névoa</button>
+                            </div>
+                            <button onClick={() => clearLayer(activeLayer)} className="w-full mt-2 text-[10px] text-red-400 hover:bg-red-900/20 p-1 rounded flex items-center justify-center gap-1"><Trash2 size={12}/> Limpar Camada</button>
+                        </div>
+                    </div>
+                )}
+
+                {sidebarTab === 'assets' && !isGameMode && (
+                    <div className="space-y-4">
+                        <div className="flex border-b border-[#333]">
+                            <button onClick={() => setAssetTab('standard')} className={`flex-1 pb-2 text-xs font-bold ${assetTab === 'standard' ? 'text-[#ffb74d] border-b-2 border-[#ffb74d]' : 'text-stone-500'}`}>Padrão</button>
+                            <button onClick={() => setAssetTab('upload')} className={`flex-1 pb-2 text-xs font-bold ${assetTab === 'upload' ? 'text-[#ffb74d] border-b-2 border-[#ffb74d]' : 'text-stone-500'}`}>Meus Assets</button>
+                            <button onClick={() => setAssetTab('edited')} className={`flex-1 pb-2 text-xs font-bold ${assetTab === 'edited' ? 'text-[#ffb74d] border-b-2 border-[#ffb74d]' : 'text-stone-500'}`}>Editados</button>
+                        </div>
+                        <div className="bg-[#1a1a24] p-3 rounded-lg border border-[#333] space-y-3 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] uppercase font-bold text-stone-500 flex items-center gap-1"><Scaling size={12}/> Tamanho (Grid)</span>
+                                <div className="flex items-center gap-1 bg-[#252535] rounded p-0.5 border border-[#444]">
+                                    <input type="number" className="w-8 bg-transparent text-center text-xs font-bold outline-none" value={assetDims.w} onChange={e => setAssetDims({...assetDims, w: Math.max(1, parseInt(e.target.value)||1)})} />
+                                    <span className="text-stone-500 text-[10px]">x</span>
+                                    <input type="number" className="w-8 bg-transparent text-center text-xs font-bold outline-none" value={assetDims.h} onChange={e => setAssetDims({...assetDims, h: Math.max(1, parseInt(e.target.value)||1)})} />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] uppercase font-bold text-stone-500 flex items-center gap-1"><ArrowRightLeft size={12}/> Espelhar</span>
+                                    <div className="flex gap-1">
+                                        <button onClick={() => setAssetTransform(p => ({...p, fx: !p.fx}))} className={`px-2 py-1 rounded text-[10px] font-bold border transition-colors ${assetTransform.fx ? 'bg-blue-600 border-blue-500 text-white' : 'bg-[#252535] border-[#444] text-stone-400'}`}>H</button>
+                                        <button onClick={() => setAssetTransform(p => ({...p, fy: !p.fy}))} className={`px-2 py-1 rounded text-[10px] font-bold border transition-colors ${assetTransform.fy ? 'bg-blue-600 border-blue-500 text-white' : 'bg-[#252535] border-[#444] text-stone-400'}`}>V</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-[10px] uppercase font-bold text-stone-500 flex items-center gap-1"><RotateCw size={12}/> Rotação</span>
+                                        <span className="text-[10px] font-mono text-amber-500">{assetTransform.r}°</span>
+                                    </div>
+                                    <input type="range" min="0" max="360" step="45" value={assetTransform.r} onChange={e => setAssetTransform(p => ({...p, r: parseInt(e.target.value)}))} className="w-full accent-amber-500 h-1.5 bg-[#333] rounded-lg appearance-none cursor-pointer" />
+                                    <div className="flex justify-between mt-1">
+                                        <button onClick={() => resetTransform()} className="text-[9px] text-red-400 hover:text-red-300">Resetar</button>
+                                        <div className="flex gap-1">
+                                            <button onClick={() => rotateAsset(-45)} className="text-[9px] bg-[#333] px-1.5 rounded hover:text-white">-45°</button>
+                                            <button onClick={() => rotateAsset(45)} className="text-[9px] bg-[#333] px-1.5 rounded hover:text-white">+45°</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="pt-2 border-t border-[#333] flex flex-col gap-2">
+                                <div className="flex gap-2">
+                                    <button onClick={() => setPlaceMode('tile')} className={`flex-1 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${placeMode === 'tile' ? 'bg-[#ffb74d] text-black shadow' : 'bg-[#252535] text-stone-400 hover:bg-[#333]'}`}>Pintar</button>
+                                    <button onClick={() => setPlaceMode('object')} className={`flex-1 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${placeMode === 'object' ? 'bg-[#ffb74d] text-black shadow' : 'bg-[#252535] text-stone-400 hover:bg-[#333]'}`}>Objeto</button>
+                                </div>
+                                {placeMode === 'object' && (
+                                    <div className="flex bg-[#252535] p-1 rounded border border-[#444]">
+                                        <button onClick={() => setEditLayer('token')} className={`flex-1 py-1 rounded text-[10px] font-bold uppercase transition-colors ${editLayer === 'token' ? 'bg-[#ffb74d] text-black' : 'text-stone-400'}`}>Token (Topo)</button>
+                                        <button onClick={() => setEditLayer('background')} className={`flex-1 py-1 rounded text-[10px] font-bold uppercase transition-colors ${editLayer === 'background' ? 'bg-[#ffb74d] text-black' : 'text-stone-400'}`}>Fundo (Baixo)</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar p-1">
+                            {assetTab === 'standard' && (
+                                <div className="col-span-4 space-y-2">
+                                    <div className="relative">
+                                        <select value={activePalette} onChange={(e) => setActivePalette(e.target.value)} className="w-full bg-[#252535] text-xs p-2 rounded border border-[#333] focus:border-[#ffb74d] outline-none appearance-none">
+                                            {Object.keys(PALETTES).map(k => <option key={k} value={k}>{k}</option>)}
+                                        </select>
+                                        <div className="absolute right-2 top-2 pointer-events-none text-stone-500"><Filter size={14}/></div>
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {(PALETTES[activePalette] || PALETTES['Básicos']).map((t, i) => (
+                                            <div key={i} onClick={() => { setSelectedTile(t.c); setTool('pencil'); }} onContextMenu={(e) => handleAssetContextMenu(e, t.c)} className={`aspect-square rounded border cursor-pointer overflow-hidden relative group ${selectedTile === t.c ? 'border-[#ffb74d] ring-2 ring-[#ffb74d]/50' : 'border-[#444] hover:border-white'}`} title={t.n}>
+                                                <img src={t.c} className="w-full h-full object-cover" loading="lazy" />
+                                                <button onClick={(e) => { e.stopPropagation(); openTextureEditor(t.c); }} className="absolute top-0 right-0 bg-black/60 p-1 text-white opacity-0 group-hover:opacity-100 hover:bg-blue-600"><Edit size={10}/></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {(assetTab === 'upload' || assetTab === 'edited') && (
+                                <>
+                                    <label className="aspect-square rounded border border-dashed border-[#444] hover:border-[#ffb74d] flex flex-col items-center justify-center cursor-pointer text-stone-500 hover:text-[#ffb74d]">
+                                        <Upload size={20}/>
+                                        <span className="text-[9px] font-bold mt-1">Upload</span>
+                                        <input type="file" hidden accept="image/*" onChange={handleFileUpload} />
+                                    </label>
+                                    {customAssets.filter(a => assetTab === 'upload' ? a.type !== 'edited' : a.type === 'edited').map((a) => (
+                                        <div key={a.id} onClick={() => { setSelectedTile(a.url); setTool('pencil'); }} onContextMenu={(e) => handleAssetContextMenu(e, a.url)} className={`aspect-square rounded border cursor-pointer overflow-hidden relative group ${selectedTile === a.url ? 'border-[#ffb74d] ring-2 ring-[#ffb74d]/50' : 'border-[#444] hover:border-white'}`}>
+                                            <img src={a.url} className="w-full h-full object-cover" />
+                                            <button onClick={(e) => { e.stopPropagation(); openTextureEditor(a); }} className="absolute top-0 right-0 bg-black/60 p-1 text-white opacity-0 group-hover:opacity-100 hover:bg-blue-600"><Edit size={10}/></button>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {sidebarTab === 'map' && !isGameMode && (
+                    <div className="space-y-4 text-xs">
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-stone-400 font-bold">Mostrar Grid</span>
+                                <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="accent-[#ffb74d]"/>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-stone-400 font-bold">Estilo Grid</span>
+                                <select className="bg-[#252535] border border-[#333] rounded px-1" value={gridStyle} onChange={(e) => setGridStyle(e.target.value as any)}>
+                                    <option value="line">Linhas</option>
+                                    <option value="dot">Pontos</option>
+                                </select>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-stone-400">Opacidade</span>
+                                <input type="range" min="0.05" max="1" step="0.05" value={gridOpacity} onChange={e => setGridOpacity(parseFloat(e.target.value))} className="w-20 accent-[#ffb74d]"/>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-stone-400">Cor</span>
+                                <input type="color" value={gridColor} onChange={e => setGridColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"/>
+                            </div>
+                            <div className="flex items-center justify-between border-t border-[#333] pt-2 mt-2">
+                                <span className="text-stone-400 font-bold text-[#ffb74d]">Resolução (Px)</span>
+                                <div className="flex items-center gap-2">
+                                    <input type="range" min="16" max="128" value={tileSize} onChange={e => setTileSize(parseInt(e.target.value))} className="w-20 accent-[#ffb74d]" />
+                                    <input type="number" className="w-12 bg-[#252535] border border-[#333] rounded px-1 text-center font-bold" value={tileSize} onChange={e => setTileSize(parseInt(e.target.value))} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-[#333] pt-2 space-y-2">
+                            <span className="block font-bold text-[#ffb74d] uppercase mb-1">Dimensões & Escala</span>
+                            <div className="flex gap-2">
+                                <div className="flex-1">
+                                    <label className="block text-[9px] text-stone-500 uppercase">Largura</label>
+                                    <input type="number" className="w-full bg-[#252535] rounded p-1 text-center" value={mapDimW} onChange={e => setMapDimW(e.target.value)} onBlur={handleApplyDimensions} onKeyDown={e => e.key === 'Enter' && handleApplyDimensions()}/>
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-[9px] text-stone-500 uppercase">Altura</label>
+                                    <input type="number" className="w-full bg-[#252535] rounded p-1 text-center" value={mapDimH} onChange={e => setMapDimH(e.target.value)} onBlur={handleApplyDimensions} onKeyDown={e => e.key === 'Enter' && handleApplyDimensions()}/>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <div className="flex-1">
+                                    <label className="block text-[9px] text-stone-500 uppercase">Escala ({gridUnit})</label>
+                                    <div className="flex items-center gap-1">
+                                        <button onClick={() => setGridScale(s => Math.max(0.1, parseFloat((s - 0.5).toFixed(1))))} className="bg-[#333] p-1 rounded hover:text-white"><Minus size={12}/></button>
+                                        <input type="number" step="0.5" className="w-full bg-[#252535] rounded p-1 text-center" value={gridScale} onChange={e => setGridScale(parseFloat(e.target.value))} />
+                                        <button onClick={() => setGridScale(s => parseFloat((s + 0.5).toFixed(1)))} className="bg-[#333] p-1 rounded hover:text-white"><Plus size={12}/></button>
+                                    </div>
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-[9px] text-stone-500 uppercase">Unidade</label>
+                                    <input type="text" className="w-full bg-[#252535] rounded p-1 text-center" value={gridUnit} onChange={e => setGridUnit(e.target.value)} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-[#333] pt-2 space-y-2">
+                            <span className="block font-bold text-[#ffb74d] uppercase mb-1">Imagem de Fundo</span>
+                            <div className="flex gap-2">
+                                <label className="flex-1 bg-[#252535] hover:bg-[#333] text-center p-2 rounded cursor-pointer border border-[#333] hover:text-white transition-colors">
+                                    <Upload size={16} className="mx-auto mb-1"/> Upload
+                                    <input type="file" hidden accept="image/*" onChange={handleBgUpload} ref={bgInputRef} />
+                                </label>
+                                <button onClick={() => setBackgroundImage(null)} className="flex-1 bg-[#252535] hover:bg-red-900/30 text-center p-2 rounded border border-[#333] hover:text-red-400 transition-colors">
+                                    <Trash2 size={16} className="mx-auto mb-1"/> Remover
+                                </button>
+                            </div>
+                            
+                            <div className="mt-2">
+                                <span className="text-[9px] text-stone-500 font-bold uppercase mb-1 block">Mapas Prontos</span>
+                                <div className="grid grid-cols-3 gap-1">
+                                    {LIST_MAPS.map((url, i) => (
+                                        <div key={i} className="aspect-video bg-stone-800 border border-stone-600 rounded cursor-pointer hover:border-amber-500 relative group overflow-hidden" onClick={() => setBgFromPreset(url)}>
+                                            <img src={convertDriveLink(url)} className="w-full h-full object-cover" loading="lazy" />
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs font-bold text-white transition-opacity">Usar</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {backgroundImage && (
+                                <div className="space-y-2 mt-2 bg-[#1a1a24] p-2 rounded border border-[#333]">
+                                    <button onClick={fitBackgroundToGrid} className="w-full bg-blue-900/30 text-blue-400 text-[10px] py-1 rounded border border-blue-900/50 hover:bg-blue-900/50">Ajustar ao Grid</button>
+                                    <div className="flex items-center justify-between">
+                                        <span>Escala BG</span>
+                                        <div className="flex items-center gap-1">
+                                            <button onClick={() => setBgProps(p => ({...p, scale: Math.max(0.01, parseFloat((p.scale - 0.05).toFixed(2)))}))} className="bg-[#333] p-1 rounded hover:text-white"><Minus size={10}/></button>
+                                            <input type="number" step="0.01" className="w-14 bg-[#000] p-1 rounded text-right text-xs" value={bgProps.scale} onChange={e => setBgProps({...bgProps, scale: parseFloat(e.target.value)})} />
+                                            <button onClick={() => setBgProps(p => ({...p, scale: parseFloat((p.scale + 0.05).toFixed(2))}))} className="bg-[#333] p-1 rounded hover:text-white"><Plus size={10}/></button>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span>Pos X</span>
+                                        <div className="flex items-center gap-1">
+                                            <button onClick={() => setBgProps(p => ({...p, x: p.x - tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronLeft size={10}/></button>
+                                            <input type="number" className="w-14 bg-[#000] p-1 rounded text-right text-xs" value={bgProps.x} onChange={e => setBgProps({...bgProps, x: parseInt(e.target.value)})} />
+                                            <button onClick={() => setBgProps(p => ({...p, x: p.x + tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronRight size={10}/></button>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span>Pos Y</span>
+                                        <div className="flex items-center gap-1">
+                                            <button onClick={() => setBgProps(p => ({...p, y: p.y - tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronsUp size={10}/></button>
+                                            <input type="number" className="w-14 bg-[#000] p-1 rounded text-right text-xs" value={bgProps.y} onChange={e => setBgProps({...bgProps, y: parseInt(e.target.value)})} />
+                                            <button onClick={() => setBgProps(p => ({...p, y: p.y + tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronsDown size={10}/></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="border-t border-[#333] pt-2">
+                            <button onClick={clearMap} className="w-full py-2 bg-red-900/20 text-red-500 hover:bg-red-900/40 rounded flex items-center justify-center gap-2 font-bold mb-2">
+                                <Trash2 size={16}/> Limpar Tudo
+                            </button>
+                            <button onClick={clearToBackground} className="w-full py-2 bg-stone-800 text-stone-400 hover:bg-stone-700 rounded flex items-center justify-center gap-2 font-bold">
+                                <Eraser size={16}/> Limpar Tiles (Manter Fundo)
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {sidebarTab === 'tokens' && (
+                    <div className="space-y-2">
+                        <div className="text-xs text-stone-500 text-center mb-2">Arraste para o mapa ou clique para adicionar</div>
+                        {characters.map(char => (
+                            <div key={char.id} onClick={() => importCharacterToBench(char)} className="bg-[#222] p-2 rounded border border-[#333] flex justify-between items-center cursor-pointer hover:bg-[#333]">
+                                <span className="font-bold text-blue-400 text-xs">{char.name}</span>
+                                <Plus size={14} className="text-stone-500"/>
+                            </div>
+                        ))}
+                        {npcs && npcs.map(npc => (
+                            <div key={npc.id} onClick={() => importCharacterToBench(npc)} className="bg-[#222] p-2 rounded border border-[#333] flex justify-between items-center cursor-pointer hover:bg-[#333]">
+                                <span className="font-bold text-green-400 text-xs">{npc.name}</span>
+                                <Plus size={14} className="text-stone-500"/>
+                            </div>
+                        ))}
+                        <div className="border-t border-[#333] my-2"></div>
+                        {monsters.map(mon => (
+                            <div key={mon.id} onClick={() => importMonsterToBench(mon)} className="bg-[#222] p-2 rounded border border-[#333] flex justify-between items-center cursor-pointer hover:bg-[#333]">
+                                <span className="font-bold text-red-400 text-xs">{mon.name}</span>
+                                <Plus size={14} className="text-stone-500"/>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {sidebarTab === 'weather' && !isGameMode && (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-2">
+                            <button onClick={() => setWeather('none')} className={`p-2 rounded border flex flex-col items-center justify-center ${weather==='none'?'bg-[#ffb74d] text-black border-[#ffb74d]':'bg-[#252535] border-[#333] text-stone-400 hover:text-white'}`}>
+                                <Sun size={20}/>
+                                <span className="text-[10px] font-bold mt-1">Limpo</span>
+                            </button>
+                            <button onClick={() => setWeather('rain')} className={`p-2 rounded border flex flex-col items-center justify-center ${weather==='rain'?'bg-[#ffb74d] text-black border-[#ffb74d]':'bg-[#252535] border-[#333] text-stone-400 hover:text-white'}`}>
+                                <CloudRain size={20}/>
+                                <span className="text-[10px] font-bold mt-1">Chuva</span>
+                            </button>
+                            <button onClick={() => setWeather('snow')} className={`p-2 rounded border flex flex-col items-center justify-center ${weather==='snow'?'bg-[#ffb74d] text-black border-[#ffb74d]':'bg-[#252535] border-[#333] text-stone-400 hover:text-white'}`}>
+                                <Snowflake size={20}/>
+                                <span className="text-[10px] font-bold mt-1">Neve</span>
+                            </button>
+                            <button onClick={() => setWeather('fog')} className={`p-2 rounded border flex flex-col items-center justify-center ${weather==='fog'?'bg-[#ffb74d] text-black border-[#ffb74d]':'bg-[#252535] border-[#333] text-stone-400 hover:text-white'}`}>
+                                <CloudFog size={20}/>
+                                <span className="text-[10px] font-bold mt-1">Neblina</span>
+                            </button>
+                            <button onClick={() => setWeather('ember')} className={`p-2 rounded border flex flex-col items-center justify-center ${weather==='ember'?'bg-[#ffb74d] text-black border-[#ffb74d]':'bg-[#252535] border-[#333] text-stone-400 hover:text-white'}`}>
+                                <Flame size={20}/>
+                                <span className="text-[10px] font-bold mt-1">Brasas</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+            
+            <div className="p-3 border-t border-[#2a2a3a] bg-[#1a1a24]">
+                <button onClick={exportMap} className="w-full py-2 bg-green-700 hover:bg-green-600 text-white rounded flex items-center justify-center gap-2 font-bold text-xs"><Download size={14}/> EXPORTAR MAPA</button>
+            </div>
         </div>
         
         {/* Token Bench */}

@@ -41,10 +41,10 @@ export const DiceTray: React.FC<Props> = ({ onRoll }) => {
   const totalDice = (Object.values(dicePool) as number[]).reduce((a: number, b: number) => a + b, 0);
 
   return (
-    <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-[100] flex flex-col items-end gap-3 pointer-events-none">
+    <div className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-[100] flex flex-col items-end gap-3 pointer-events-none">
       <div className="pointer-events-auto flex flex-col items-end gap-3">
       {isOpen && (
-        <div className="bg-stone-900/90 backdrop-blur-md border border-stone-800 rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom-5 w-72 ring-1 ring-white/10 mb-2">
+        <div className="bg-stone-900/90 backdrop-blur-md border border-stone-700/50 rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom-5 w-72 ring-1 ring-white/10 mb-2">
           <div className="flex justify-between items-center mb-4 border-b border-stone-800 pb-2">
             <span className="text-xs font-bold uppercase tracking-widest text-amber-500 font-cinzel">Bandeja de Dados</span>
             <button onClick={clearPool} className="text-stone-500 hover:text-red-500 transition-colors p-1"><Trash2 size={16}/></button>
@@ -91,7 +91,7 @@ export const DiceTray: React.FC<Props> = ({ onRoll }) => {
       
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.5)] transition-all hover:scale-110 active:scale-95 z-50 ${isOpen ? 'bg-amber-500 text-stone-950 rotate-45' : 'bg-stone-800 text-amber-500 border border-stone-700 hover:border-amber-500'}`}
+        className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-all hover:scale-105 active:scale-95 z-50 ${isOpen ? 'bg-amber-500 text-stone-950 rotate-90 shadow-amber-500/20' : 'bg-stone-900/80 backdrop-blur-md text-amber-500 border border-stone-700 hover:border-amber-500'}`}
       >
         {isOpen ? <X size={28}/> : <Dices size={28}/>}
         {!isOpen && totalDice > 0 && (

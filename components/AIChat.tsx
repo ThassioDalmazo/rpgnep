@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { Sparkles, Send, X, Bot, User, Loader2, BookOpen, Swords, AlertTriangle, ScrollText } from 'lucide-react';
-import { Character, EncounterParticipant } from '../types';
+import { Sparkles, Send, X, Bot, User, Loader2, BookOpen, Swords, AlertTriangle, ScrollText, MapPin } from 'lucide-react';
+import { Character, EncounterParticipant, Token } from '../types';
 
 interface AIMessage {
     role: 'user' | 'model';
@@ -15,12 +15,15 @@ interface AIChatProps {
   onClose: () => void;
   characters: Character[];
   encounter: EncounterParticipant[];
+  mapTokens?: Token[]; // Adicionado contexto do mapa
+  notes?: string;
+  campaignName?: string;
 }
 
-export const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, characters, encounter }) => {
+export const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, characters, encounter, mapTokens = [], notes = '', campaignName = 'Campanha' }) => {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<AIMessage[]>([
-    { role: 'model', text: 'Saudações, nobre mestre ou aventureiro! Sou o Oráculo Arcano. O que as estrelas e o grimório devem revelar para sua jornada hoje?', isError: false }
+    { role: 'model', text: 'Saudações, Mestre do Jogo. Sou o Oráculo Arcano. O que as estrelas e o grimório devem revelar para sua jornada hoje?', isError: false }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -49,22 +52,30 @@ export const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, characters, enc
       const ai = new GoogleGenAI({ apiKey });
       
       const partySummary = characters.map(c => `${c.name} (Nvl ${c.level} ${c.class})`).join(', ') || 'Nenhum aventureiro detectado.';
+      
       const combatSummary = encounter.length > 0 
         ? `Combate Ativo: ${encounter.map(e => `${e.name} (CA ${e.ac}, HP:${e.hpCurrent}/${e.hpMax})`).join(', ')}`
-        : 'Paz momentânea (sem combate ativo).';
+        : 'Paz momentânea (sem combate ativo no tracker).';
 
-      const systemInstruction = `Você é o "Oráculo Arcano", o assistente definitivo para D&D 5e (Dungeons & Dragons 5ª Edição).
-      Contexto Atual da Mesa:
-      - Grupo: ${partySummary}
-      - Status: ${combatSummary}
+      // Criar resumo espacial simplificado
+      const mapSummary = mapTokens.length > 0
+        ? mapTokens.map(t => `${t.name} em (${t.x},${t.y})`).join('; ')
+        : 'Nenhum token no mapa.';
+
+      const systemInstruction = `Você é o "Oráculo Arcano", o assistente definitivo para D&D 5e (Dungeons & Dragons 5ª Edição) integrado ao RPGNEP.
       
-      Diretrizes de Personalidade e Resposta:
-      1. Use um tom místico, erudito e prestativo.
-      2. Conheça profundamente as regras da 5e (SRD). Se uma regra for solicitada, explique-a claramente.
+      CONTEXTO ATUAL DA MESA "${campaignName}":
+      - Grupo de Aventureiros: ${partySummary}
+      - Status de Combate: ${combatSummary}
+      - Posicionamento no Mapa (Grid X,Y): ${mapSummary}
+      - Notas Atuais do Mestre: "${notes.substring(0, 500)}..."
+      
+      DIRETRIZES DE PERSONALIDADE E RESPOSTA:
+      1. Use um tom místico, porém erudito e extremamente prestativo (como um Arquimago conselheiro).
+      2. Conheça profundamente as regras da 5e (SRD).
       3. Seja conciso. Não escreva romances a menos que solicitado para narrar uma cena.
-      4. Ajude o Mestre com: nomes de NPCs, descrições de salas, loot aleatório, ou estatísticas de monstros.
-      5. Se solicitado um item mágico, adapte o nível de raridade ao nível médio do grupo.
-      6. Você pode interpretar rolagens de dados se o usuário fornecer o resultado.`;
+      4. Use o contexto do mapa para descrever distâncias e posicionamento se perguntado (ex: "O Goblin está a 3 casas do Herói").
+      5. Se solicitado um item mágico, adapte o nível de raridade ao nível médio do grupo.`;
 
       const history = messages.filter(m => !m.isError).map(m => ({
           role: m.role,
@@ -133,7 +144,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, characters, enc
       <div className="p-4 bg-stone-950 border-t border-stone-800 space-y-3">
         <div className="grid grid-cols-2 gap-2">
             <button onClick={() => handleSend('Crie um encontro de nível fácil em uma floresta.')} className="text-[10px] bg-stone-800 hover:bg-stone-700 p-2 rounded text-stone-400 flex items-center gap-2 transition-colors"><Swords size={12}/> Encontro Rápido</button>
-            <button onClick={() => handleSend('Sugira 3 nomes de NPCs para uma taverna portuária.')} className="text-[10px] bg-stone-800 hover:bg-stone-700 p-2 rounded text-stone-400 flex items-center gap-2 transition-colors"><ScrollText size={12}/> Nomes de NPCs</button>
+            <button onClick={() => handleSend('Analise a situação tática do mapa atual.')} className="text-[10px] bg-stone-800 hover:bg-stone-700 p-2 rounded text-stone-400 flex items-center gap-2 transition-colors"><MapPin size={12}/> Analisar Mapa</button>
         </div>
         <div className="flex gap-2">
             <input 
