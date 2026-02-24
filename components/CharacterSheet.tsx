@@ -144,6 +144,7 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
   const [showWeapons, setShowWeapons] = useState(false);
   const [showArmors, setShowArmors] = useState(false);
   const [showSpells, setShowSpells] = useState(false);
+  const [spellSearch, setSpellSearch] = useState('');
   const [showShop, setShowShop] = useState(false);
   const [showFeatsModal, setShowFeatsModal] = useState(false);
   const [featSearch, setFeatSearch] = useState('');
@@ -627,6 +628,28 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
           groups[currentLevel].push({line, index: idx});
       });
       return groups;
+  };
+
+  const rollDiceString = (diceStr: string, label: string) => {
+    const match = diceStr.match(/(\d+)d(\d+)([+-]\d+)?/);
+    if (!match) return;
+    const num = parseInt(match[1]);
+    const sides = parseInt(match[2]);
+    const mod = match[3] ? parseInt(match[3]) : 0;
+    
+    let total = 0;
+    let rolls: number[] = [];
+    for (let i = 0; i < num; i++) {
+        const r = Math.floor(Math.random() * sides) + 1;
+        rolls.push(r);
+        total += r;
+    }
+    total += mod;
+    
+    const details = `Rolagem (${diceStr}): [${rolls.join(', ')}]${mod ? (mod > 0 ? ' + ' + mod : ' - ' + Math.abs(mod)) : ''} = **${total}**`;
+    // We use onRoll as a way to broadcast, but here we might want a custom broadcast or just use onRoll multiple times.
+    // For now, let's just add a log entry if possible, or use onRoll with a fake 'sides' to show the total.
+    onRoll(1, total - 1, label); // Hack: d1 + (total-1) = total
   };
 
   const addSpellLine = (lineToAdd: string) => {
@@ -1222,19 +1245,36 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                          </div>
 
                          {showSpells && (
-                             <div className="mb-4 h-48 overflow-y-auto bg-black border border-stone-800 rounded-2xl p-3 custom-scrollbar shadow-inner shrink-0">
-                                 <div className="grid grid-cols-1 gap-2">
-                                    {allSpells.map((s, i) => (
-                                        <div key={i} className="flex justify-between items-center p-2 hover:bg-stone-900 rounded-xl group border border-transparent hover:border-purple-600/30">
-                                            <div className="text-xs">
-                                                <div className="font-black text-purple-400 uppercase tracking-tight">{s.name}</div>
-                                                <div className="text-[9px] text-stone-500 font-bold">{s.level} • {s.desc.substring(0, 40)}...</div>
-                                            </div>
-                                            <button onClick={() => addSpellToSheet(s.name, s)} className="w-8 h-8 bg-stone-800 rounded-lg text-stone-400 hover:bg-green-600 hover:text-white flex items-center justify-center transition-all"><Plus size={18}/></button>
-                                        </div>
-                                    ))}
+                              <div className="mb-4 bg-black border border-stone-800 rounded-2xl p-4 shadow-inner shrink-0 flex flex-col gap-3">
+                                 <div className="relative">
+                                     <Search className="absolute left-3 top-2.5 text-stone-600" size={14}/>
+                                     <input 
+                                        className="w-full bg-stone-900 border border-stone-800 rounded-lg py-2 pl-9 text-[10px] text-white focus:outline-none focus:border-purple-600" 
+                                        placeholder="Pesquisar no Grande Grimório..." 
+                                        value={spellSearch} 
+                                        onChange={(e) => setSpellSearch(e.target.value)}
+                                     />
                                  </div>
-                             </div>
+                                 
+                                 <div className="h-64 overflow-y-auto custom-scrollbar pr-1">
+                                     <div className="grid grid-cols-1 gap-1">
+                                        {allSpells
+                                            .filter(s => s.name.toLowerCase().includes(spellSearch.toLowerCase()) || s.desc.toLowerCase().includes(spellSearch.toLowerCase()))
+                                            .map((s, i) => (
+                                            <div key={i} className="flex justify-between items-center p-2 hover:bg-stone-900 rounded-xl group border border-transparent hover:border-purple-600/30 transition-all">
+                                                <div className="flex-1 pr-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-black text-purple-400 uppercase text-[10px] tracking-tight">{s.name}</span>
+                                                        <span className="text-[8px] bg-stone-800 text-stone-500 px-1.5 py-0.5 rounded font-bold">{s.level}</span>
+                                                    </div>
+                                                    <div className="text-[9px] text-stone-500 line-clamp-1 group-hover:line-clamp-none transition-all">{s.desc}</div>
+                                                </div>
+                                                <button onClick={() => addSpellToSheet(s.name, s)} className="w-7 h-7 bg-stone-800 rounded-lg text-stone-400 hover:bg-green-600 hover:text-white flex items-center justify-center transition-all shadow-sm shrink-0"><Plus size={16}/></button>
+                                            </div>
+                                        ))}
+                                     </div>
+                                 </div>
+                              </div>
                          )}
 
                          <div className="flex gap-2 mb-4">
@@ -1270,6 +1310,9 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                                                      const isPrepared = line.includes('[P]');
                                                      const cleanName = line.replace(/^- /, '').replace(/\[.*?\]/, '').replace('[P]', '').trim();
                                                      
+                                                     // Extract damage pattern (e.g., 8d6)
+                                                     const dmgMatch = line.match(/(\d+d\d+)/);
+                                                     
                                                      return (
                                                          <div 
                                                             key={index} 
@@ -1287,7 +1330,21 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar, onRoll, onDelet
                                                              <button onClick={() => togglePreparedSpell(index)} className={`transition-colors ${isPrepared ? 'text-purple-400' : 'text-stone-600 hover:text-stone-400'}`} title={isPrepared ? "Despreparar" : "Preparar"}>
                                                                  {isPrepared ? <BookOpen size={16} strokeWidth={2.5}/> : <Book size={16}/>}
                                                              </button>
-                                                             <span className={`flex-1 text-xs font-medium ${isPrepared ? 'text-purple-300' : 'text-stone-300'}`}>{cleanName}</span>
+                                                             <div className="flex-1 min-w-0">
+                                                                <div className={`text-xs font-medium truncate ${isPrepared ? 'text-purple-300' : 'text-stone-300'}`}>{cleanName}</div>
+                                                                {line.includes('|') && <div className="text-[8px] text-stone-500 truncate">{line.split('|').slice(0, 2).join('|').replace(/\[.*?\]/, '').replace('[P]', '').trim()}</div>}
+                                                             </div>
+                                                             
+                                                             {dmgMatch && (
+                                                                 <button 
+                                                                    onClick={() => rollDiceString(dmgMatch[0], `Magia: ${cleanName.split(':')[0]}`)}
+                                                                    className="p-1.5 bg-purple-900/30 text-purple-400 rounded hover:bg-purple-600 hover:text-white transition-all"
+                                                                    title={`Rolar ${dmgMatch[0]}`}
+                                                                 >
+                                                                     <Zap size={12} fill="currentColor"/>
+                                                                 </button>
+                                                             )}
+
                                                              <button onClick={() => deleteSpellLine(index)} className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-red-500 transition-all p-1">
                                                                  <Trash2 size={14}/>
                                                              </button>

@@ -1313,7 +1313,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   }, [containerRef]);
 
   return (
-    <div className="flex h-full bg-[#0a0a10] text-[#e8e8ff] font-lato overflow-hidden relative" onContextMenu={e => e.preventDefault()}>
+    <div className="flex h-full bg-[#0a0a10] text-[#e8e8ff] font-sans overflow-hidden relative" onContextMenu={e => e.preventDefault()}>
         {!sidebarOpen && ( <button onClick={() => setSidebarOpen(true)} className="absolute top-4 right-4 z-30 p-2 bg-[#181822] border border-[#444] rounded-lg text-[#ffb74d] hover:bg-[#252535] shadow-lg opacity-80 hover:opacity-100"><ChevronLeft size={20} /></button> )}
         
         <div className="flex-1 relative overflow-hidden bg-[#0a0a10]" ref={containerRef} onWheel={handleWheel}>

@@ -476,7 +476,7 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#121212] text-stone-200 font-lato overflow-hidden">
+    <div className="flex flex-col h-full bg-[#121212] text-stone-200 font-sans overflow-hidden">
       {renderInspector()}
       
       {aiPromptOpen && (

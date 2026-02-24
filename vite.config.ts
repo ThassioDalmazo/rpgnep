@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => {
       sourcemap: false
     },
     server: {
-      port: 5173,
+      port: 3000,
       // Liberação do domínio para o Cloudflare Tunnel
       allowedHosts: [
         'rpgnep.com.br',

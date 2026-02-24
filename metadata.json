@@ -1,5 +1,5 @@
 {
-  "name": "RPGNEP",
+  "name": "RPGNEP Ultimate - Gerenciador D&D 5e",
   "description": "gerenciador de campanha de RPG de mesa com criador de mapa e controle de combate",
   "requestFramePermissions": [
     "camera",

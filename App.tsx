@@ -12,7 +12,8 @@ import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { SoundController } from './components/SoundController';
 import { DMScreen } from './components/DMScreen';
-import { User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, Loader2, Map as MapIcon, Settings, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, LayoutDashboard, Menu, RotateCcw, PanelLeftClose, PanelLeftOpen, BookOpen, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, Loader2, Map as MapIcon, Settings, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, LayoutDashboard, Menu, RotateCcw, PanelLeftClose, PanelLeftOpen, BookOpen, PanelRightOpen, PanelRightClose, Dices } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { DEFAULT_MONSTERS, INITIAL_CHAR } from './constants';
 
 import { auth, googleProvider, db, isDriveConfigured } from './firebaseConfig';
@@ -1021,42 +1022,72 @@ export default function App() {
           </header>
 
           {/* MOBILE HEADER (Visible on Mobile) */}
-          <header className={`md:hidden fixed top-0 left-0 right-0 z-40 bg-stone-950/80 backdrop-blur-md border-b border-white/10 h-[56px] flex justify-between items-center px-4 shadow-md`}>
+          <header className={`md:hidden fixed top-0 left-0 right-0 z-40 bg-stone-950/90 backdrop-blur-md border-b border-white/5 h-[60px] flex justify-between items-center px-4 shadow-lg`}>
              <div className="flex items-center gap-3">
-                <img src="/favicon.png" alt="RPGNEP" className="w-8 h-8 object-contain" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
-                <h1 className="text-lg font-cinzel font-bold text-white tracking-widest">RPGNEP</h1>
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-stone-800 to-stone-900 border border-white/5">
+                    <img src="/favicon.png" alt="RPGNEP" className="w-7 h-7 object-contain" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H5"/><path d="M21 16h-2"/><path d="M16 12h2"/></svg>'}} />
+                </div>
+                <h1 className="text-lg font-cinzel font-bold text-stone-100 tracking-wider">RPGNEP</h1>
              </div>
-             <div className="flex items-center gap-4">
-                <div className={`w-2.5 h-2.5 rounded-full ${isOnlineMultiplayer ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-red-500'}`}></div>
-                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-stone-400 p-2 rounded-lg hover:bg-white/10 active:bg-white/20"><Menu size={22}/></button>
+             <div className="flex items-center gap-2">
+                <button 
+                    onClick={() => {
+                        const r = Math.floor(Math.random() * 20) + 1;
+                        broadcastChat(`🎲 Rolagem Rápida (d20): **${r}**`);
+                        addLogEntry("Rolagem Rápida", `Rolou d20: ${r}`, r === 20 ? 'crit' : r === 1 ? 'fail' : 'dice');
+                    }}
+                    className="p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-amber-500 active:scale-90 transition-transform"
+                >
+                    <Dices size={20}/>
+                </button>
+                <div className="h-6 w-px bg-white/10 mx-1"></div>
+                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-stone-300 p-2.5 rounded-xl bg-stone-900 border border-stone-800 active:scale-90 transition-transform"><Menu size={20}/></button>
              </div>
           </header>
 
           {/* MOBILE MENU DRAWER */}
-          {mobileMenuOpen && (
-              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end" onClick={() => setMobileMenuOpen(false)}>
-                  <div className="w-72 bg-[#121214] h-full border-l border-stone-800 p-5 animate-in slide-in-from-right shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
-                      <div className="flex justify-between items-center mb-8 border-b border-stone-800 pb-4">
-                          <span className="font-bold text-lg text-stone-200 font-cinzel">Menu</span>
-                          <button onClick={() => setMobileMenuOpen(false)} className="p-2 bg-stone-800 rounded-full text-stone-400 hover:text-white"><X size={18}/></button>
-                      </div>
-                      <div className="space-y-3 flex-1">
-                          <button onClick={() => {setShowDMScreen(!showDMScreen); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold transition-all"><BookOpen size={18} className="text-amber-500"/> Escudo do Mestre</button>
-                          <button onClick={() => {setShowAI(!showAI); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold transition-all"><Sparkles size={18} className="text-purple-500"/> Oráculo IA</button>
-                          <button onClick={() => {setShowNotepad(!showNotepad); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold transition-all"><FileText size={18} className="text-yellow-500"/> Bloco de Notas</button>
-                          <button onClick={() => {setShowSaveModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold transition-all"><Save size={18} className="text-blue-500"/> Salvar / Carregar</button>
-                          <button onClick={() => {setShowConfigModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-3 p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold transition-all"><Settings size={18} className="text-stone-500"/> Configurações</button>
-                          <button onClick={handleShare} className="w-full flex items-center gap-3 p-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold transition-all"><LinkIcon size={18} className="text-emerald-500"/> Compartilhar Sala</button>
-                      </div>
-                      <div className="border-t border-stone-800 pt-4 mt-auto">
-                          <button onClick={() => { if(auth) signOut(auth as Auth); setViewState('LAUNCHER'); }} className="w-full flex items-center gap-3 p-3 rounded-xl bg-red-950/30 text-red-400 font-bold hover:bg-red-900/50 transition-all border border-red-900/30"><LogOut size={18}/> Sair</button>
-                      </div>
-                  </div>
-              </div>
-          )}
+          <AnimatePresence>
+            {mobileMenuOpen && (
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end" 
+                    onClick={() => setMobileMenuOpen(false)}
+                >
+                    <motion.div 
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        className="w-80 bg-[#0c0a09] h-full border-l border-stone-800 p-6 shadow-2xl flex flex-col" 
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center mb-8 border-b border-stone-800 pb-4">
+                            <div className="flex items-center gap-2">
+                                <Settings size={18} className="text-stone-500"/>
+                                <span className="font-bold text-lg text-stone-200 font-cinzel tracking-widest">Menu</span>
+                            </div>
+                            <button onClick={() => setMobileMenuOpen(false)} className="p-2 bg-stone-800 rounded-full text-stone-400 hover:text-white"><X size={18}/></button>
+                        </div>
+                        <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2">
+                            <button onClick={() => {setShowDMScreen(!showDMScreen); setMobileMenuOpen(false);}} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-stone-900/50 border border-stone-800/50 text-stone-300 font-bold transition-all active:bg-stone-800"><BookOpen size={20} className="text-amber-500"/> Escudo do Mestre</button>
+                            <button onClick={() => {setShowAI(!showAI); setMobileMenuOpen(false);}} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-stone-900/50 border border-stone-800/50 text-stone-300 font-bold transition-all active:bg-stone-800"><Sparkles size={20} className="text-purple-500"/> Oráculo IA</button>
+                            <button onClick={() => {setShowNotepad(!showNotepad); setMobileMenuOpen(false);}} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-stone-900/50 border border-stone-800/50 text-stone-300 font-bold transition-all active:bg-stone-800"><FileText size={20} className="text-yellow-500"/> Bloco de Notas</button>
+                            <button onClick={() => {setShowSaveModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-stone-900/50 border border-stone-800/50 text-stone-300 font-bold transition-all active:bg-stone-800"><Save size={20} className="text-blue-500"/> Salvar / Carregar</button>
+                            <button onClick={() => {setShowConfigModal(true); setMobileMenuOpen(false);}} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-stone-900/50 border border-stone-800/50 text-stone-300 font-bold transition-all active:bg-stone-800"><Settings size={20} className="text-stone-500"/> Configurações</button>
+                            <button onClick={handleShare} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-stone-900/50 border border-stone-800/50 text-stone-300 font-bold transition-all active:bg-stone-800"><LinkIcon size={20} className="text-emerald-500"/> Compartilhar Sala</button>
+                        </div>
+                        <div className="border-t border-stone-800 pt-6 mt-auto">
+                            <button onClick={() => { if(auth) signOut(auth as Auth); setViewState('LAUNCHER'); }} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-red-950/20 text-red-400 font-bold hover:bg-red-900/30 transition-all border border-red-900/20 active:scale-95"><LogOut size={20}/> Sair da Sessão</button>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* MOBILE BOTTOM NAVIGATION (Floating Dock) */}
-          <nav className="md:hidden fixed bottom-6 left-4 right-4 z-40 bg-stone-950/80 backdrop-blur-xl border border-white/10 rounded-2xl h-[64px] flex items-center justify-around px-2 shadow-2xl pb-safe">
+          <nav className="md:hidden fixed bottom-6 left-4 right-4 z-40 bg-stone-950/90 backdrop-blur-xl border border-white/10 rounded-[24px] h-[72px] flex items-center justify-around px-2 shadow-2xl pb-safe ring-1 ring-white/5">
             {[
                 { id: 'SHEET', icon: User, label: 'Herói' },
                 { id: 'NPC', icon: Users, label: 'NPCs' },
@@ -1067,12 +1098,27 @@ export default function App() {
                 <button 
                     key={item.id}
                     onClick={() => setMode(item.id as AppMode)}
-                    className={`relative flex flex-col items-center justify-center w-full h-full gap-1 transition-all group`}
+                    className={`relative flex flex-col items-center justify-center w-full h-full transition-all duration-300`}
                 >
-                    <div className={`p-2 rounded-xl transition-all duration-300 ${mode === item.id ? 'bg-amber-500 text-stone-950 -translate-y-2 shadow-lg shadow-amber-900/50' : 'text-stone-500 group-hover:text-stone-300'}`}>
-                        <item.icon size={mode === item.id ? 20 : 20} className={mode === item.id ? '' : 'opacity-70'} />
+                    <div className={`p-3 rounded-2xl transition-all duration-500 relative ${mode === item.id ? 'text-amber-500' : 'text-stone-500'}`}>
+                        {mode === item.id && (
+                            <motion.div 
+                                layoutId="mobile-nav-bg"
+                                className="absolute inset-0 bg-amber-500/10 border border-amber-500/20 rounded-2xl"
+                                transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                            />
+                        )}
+                        <item.icon size={22} className={`relative z-10 transition-transform duration-300 ${mode === item.id ? 'scale-110' : 'scale-100 opacity-60'}`} />
                     </div>
-                    {mode === item.id && <span className="text-[9px] font-bold uppercase tracking-tight text-amber-500 absolute bottom-1 animate-in fade-in slide-in-from-bottom-1">{item.label}</span>}
+                    <span className={`text-[10px] font-bold uppercase tracking-tighter transition-all duration-300 ${mode === item.id ? 'text-amber-500 opacity-100 translate-y-0' : 'text-stone-600 opacity-0 translate-y-1'}`}>
+                        {item.label}
+                    </span>
+                    {mode === item.id && (
+                        <motion.div 
+                            layoutId="mobile-nav-dot"
+                            className="absolute -bottom-1 w-1 h-1 bg-amber-500 rounded-full shadow-[0_0_8px_#f59e0b]"
+                        />
+                    )}
                 </button>
             ))}
           </nav>
@@ -1117,15 +1163,31 @@ export default function App() {
                 {mode === 'SHEET' && (
                 <div className="h-full overflow-y-auto custom-scrollbar p-2 md:p-6 lg:p-8 pb-24 md:pb-6">
                     {/* Mobile Character Toggle */}
-                    <div className="md:hidden flex overflow-x-auto gap-2 mb-4 no-scrollbar pb-2 pt-14">
-                        <button onClick={() => {const newC = {...INITIAL_CHAR, id: generateId()}; setCharacters([...characters, newC]); setActiveCharIndex(characters.length);}} className="flex-shrink-0 w-12 h-12 rounded-2xl bg-stone-800 border border-stone-700 flex items-center justify-center text-stone-400 shadow-md"><Plus size={24}/></button>
+                    <div className="md:hidden flex overflow-x-auto gap-3 mb-6 no-scrollbar pb-2 pt-20 px-1">
+                        <button 
+                            onClick={() => {const newC = {...INITIAL_CHAR, id: generateId()}; setCharacters([...characters, newC]); setActiveCharIndex(characters.length);}} 
+                            className="flex-shrink-0 w-14 h-14 rounded-2xl bg-stone-900 border border-stone-800 flex items-center justify-center text-stone-500 shadow-lg active:scale-90 transition-transform"
+                        >
+                            <Plus size={28}/>
+                        </button>
                         {characters.map((c, i) => (
                             <button 
                                 key={c.id} 
                                 onClick={() => setActiveCharIndex(i)}
-                                className={`flex-shrink-0 px-5 py-3 rounded-2xl border text-xs font-bold shadow-md transition-all ${activeCharIndex === i ? `bg-gradient-to-br ${th.gradient} text-white border-transparent` : 'bg-stone-900 border-stone-800 text-stone-500'}`}
+                                className={`flex-shrink-0 px-6 py-3 rounded-2xl border text-sm font-black shadow-xl transition-all duration-300 relative overflow-hidden ${
+                                    activeCharIndex === i 
+                                    ? `bg-gradient-to-br ${th.gradient} text-white border-transparent scale-105 ring-2 ring-amber-500/20` 
+                                    : 'bg-stone-900 border-stone-800 text-stone-500 active:bg-stone-800'
+                                }`}
                             >
                                 {c.name}
+                                {activeCharIndex === i && (
+                                    <motion.div 
+                                        layoutId="active-char-indicator"
+                                        className="absolute inset-0 bg-white/10"
+                                        initial={false}
+                                    />
+                                )}
                             </button>
                         ))}
                     </div>
@@ -1160,7 +1222,7 @@ export default function App() {
                 )}
                 
                 {mode === 'NPC' && (
-                    <div className="h-full pt-14 md:pt-0">
+                    <div className="h-full pt-20 md:pt-0">
                         <NPCManager 
                             npcs={npcs} 
                             onUpdate={(updated) => setNpcs(prev => prev.map(n => n.id === updated.id ? updated : n))}
@@ -1177,39 +1239,41 @@ export default function App() {
                 )}
 
                 {mode === 'VTT' && (
-                    <VirtualTabletopMemo 
-                        mapGrid={mapGrid} 
-                        setMapGrid={(g: string[][]) => broadcastMap(g, mapTokens, fogGrid)} 
-                        tokens={mapTokens} 
-                        setTokens={(t: any) => {
-                            const newVal = typeof t === 'function' ? t(mapTokens) : t;
-                            broadcastMap(mapGrid, newVal, fogGrid);
-                            
-                            // Check for HP changes to sync back to Encounter
-                            newVal.forEach((token: Token) => {
-                                if (token.linkedId) {
-                                    setEncounter(prevEnc => prevEnc.map(p => {
-                                        if (p.uid === token.linkedId && (p.hpCurrent !== token.hp)) {
-                                            return { ...p, hpCurrent: token.hp };
-                                        }
-                                        return p;
-                                    }));
-                                }
-                            });
-                        }}
-                        fogGrid={fogGrid}
-                        setFogGrid={(fog: boolean[][]) => broadcastMap(mapGrid, mapTokens, fog)}
-                        characters={characters}
-                        npcs={npcs}
-                        monsters={monsters}
-                        mapConfig={mapConfig}
-                        setMapConfig={setMapConfig}
-                        activeTokenIds={activeTokenIds}
-                    />
+                    <div className="h-full pt-20 md:pt-0">
+                        <VirtualTabletopMemo 
+                            mapGrid={mapGrid} 
+                            setMapGrid={(g: string[][]) => broadcastMap(g, mapTokens, fogGrid)} 
+                            tokens={mapTokens} 
+                            setTokens={(t: any) => {
+                                const newVal = typeof t === 'function' ? t(mapTokens) : t;
+                                broadcastMap(mapGrid, newVal, fogGrid);
+                                
+                                // Check for HP changes to sync back to Encounter
+                                newVal.forEach((token: Token) => {
+                                    if (token.linkedId) {
+                                        setEncounter(prevEnc => prevEnc.map(p => {
+                                            if (p.uid === token.linkedId && (p.hpCurrent !== token.hp)) {
+                                                return { ...p, hpCurrent: token.hp };
+                                            }
+                                            return p;
+                                        }));
+                                    }
+                                });
+                            }}
+                            fogGrid={fogGrid}
+                            setFogGrid={(fog: boolean[][]) => broadcastMap(mapGrid, mapTokens, fog)}
+                            characters={characters}
+                            npcs={npcs}
+                            monsters={monsters}
+                            mapConfig={mapConfig}
+                            setMapConfig={setMapConfig}
+                            activeTokenIds={activeTokenIds}
+                        />
+                    </div>
                 )}
                 
                 {mode === 'DM' && (
-                <div className="h-full overflow-hidden pt-14 md:pt-0">
+                <div className="h-full overflow-hidden pt-20 md:pt-0">
                     <DMToolsMemo 
                         encounter={encounter} 
                         setEncounter={(e: EncounterParticipant[]) => { 
@@ -1240,7 +1304,7 @@ export default function App() {
                 )}
 
                 {mode === 'GM_DASHBOARD' && (
-                    <div className="flex h-full w-full overflow-hidden bg-stone-950 relative pt-14 md:pt-0">
+                    <div className="flex h-full w-full overflow-hidden bg-stone-950 relative pt-20 md:pt-0">
                         {/* GM Sidebar (Combat Tracker) */}
                         <div 
                             className={`flex flex-col border-r border-stone-800 bg-[#161619] z-20 shrink-0 shadow-2xl transition-all duration-300 ease-in-out absolute md:relative h-full ${
@@ -1348,7 +1412,7 @@ export default function App() {
                 )}
                 
                 {mode === 'CHAT' && (
-                    <div className="h-full w-full p-2 md:p-4 overflow-hidden bg-stone-950 flex flex-col items-center pt-16 md:pt-4">
+                    <div className="h-full w-full p-2 md:p-4 overflow-hidden bg-stone-950 flex flex-col items-center pt-20 md:pt-4">
                         <div className="w-full max-w-4xl h-full flex flex-col">
                            <Chat messages={chatMessages} onSendMessage={broadcastChat} username={username} isFullPage={true} />
                         </div>
