@@ -38,7 +38,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, characters, enc
     const userMsg = (customPrompt || input).trim();
     if (!userMsg || isLoading) return;
     
-    const apiKey = process.env.API_KEY;
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!apiKey) {
         setMessages(prev => [...prev, { role: 'model', text: 'O Oráculo está mudo: API Key não configurada.', isError: true }]);
         return;

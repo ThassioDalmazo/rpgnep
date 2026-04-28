@@ -1,80 +1,62 @@
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence, Auth } from "firebase/auth";
+import { getDatabase, Database } from "firebase/database";
 
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
-import type { Auth } from "firebase/auth";
-import { getDatabase } from "firebase/database";
-import type { Database } from "firebase/database";
+// --- CONFIGURAÇÕES ---
+// Prioriza variáveis de ambiente, usa as chaves do backup como fallback
+const API_KEY = import.meta.env.VITE_API_KEY || "AIzaSyCJ6lbebFHoQ9cshaIgsYfJjsKG4jsylmk"; 
+const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "865191961428-9aerg18l6kc61at768u8u4jpkcvph0n0.apps.googleusercontent.com";
 
-// --- CONFIGURAÇÕES FORNECIDAS ---
-// Chaves inseridas diretamente para evitar erros de variáveis de ambiente (.env)
-const API_KEY = "AIzaSyCJ6lbebFHoQ9cshaIgsYfJjsKG4jsylmk"; 
-const CLIENT_ID = "865191961428-9aerg18l6kc61at768u8u4jpkcvph0n0.apps.googleusercontent.com";
-
-// Escopo específico do Google Drive
-const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
-
-// --- CONFIGURAÇÃO DO FIREBASE ---
 const firebaseConfig = {
   apiKey: API_KEY,
-  authDomain: "rpgnep.firebaseapp.com",
-  databaseURL: "https://rpgnep-default-rtdb.firebaseio.com",
-  projectId: "rpgnep",
-  storageBucket: "rpgnep.firebasestorage.app",
-  messagingSenderId: "865191961428",
-  appId: "1:865191961428:web:78515742d50b6548c75ec1"
+  authDomain: import.meta.env.VITE_AUTH_DOMAIN || "rpgnep.firebaseapp.com",
+  databaseURL: import.meta.env.VITE_DATABASE_URL || "https://rpgnep-default-rtdb.firebaseio.com",
+  projectId: import.meta.env.VITE_PROJECT_ID || "rpgnep",
+  storageBucket: import.meta.env.VITE_STORAGE_BUCKET || "rpgnep.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID || "865191961428",
+  appId: import.meta.env.VITE_APP_ID || "1:865191961428:web:78515742d50b6548c75ec1"
 };
 
-// --- CONFIGURAÇÕES DE API DO GOOGLE DRIVE ---
-export const GOOGLE_DRIVE_CONFIG = {
-  CLIENT_ID: CLIENT_ID,
-  API_KEY: API_KEY,
-  SCOPES: `${DRIVE_SCOPE} email profile openid`,
-  // O Picker exige o ID Numérico do Projeto (que é o mesmo que o messagingSenderId do Firebase)
-  PROJECT_NUMBER: firebaseConfig.messagingSenderId 
-};
-
-// Helper para verificar chave
-export const hasValidPickerKey = () => {
-    return GOOGLE_DRIVE_CONFIG.API_KEY.startsWith("AIza");
-};
-
-export const isDriveConfigured = () => {
-  return GOOGLE_DRIVE_CONFIG.CLIENT_ID.length > 10;
-};
-
-export const isAuthConfigured = () => {
-  return firebaseConfig.apiKey.length > 10;
-};
-
-// Inicializa o App
-let app;
+// Inicialização
+let app: FirebaseApp;
 let auth: Auth | null = null;
 let db: Database | null = null;
 let googleProvider: GoogleAuthProvider | null = null;
 
-try {
-  app = initializeApp(firebaseConfig);
-  
-  // Inicializa Auth (Modular)
-  auth = getAuth(app);
-  // Defina o idioma do dispositivo
-  auth.useDeviceLanguage();
-  setPersistence(auth, browserLocalPersistence).catch(console.error);
+const hasConfig = !!firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith("AIza");
 
-  // Inicializa Database (Modular)
-  db = getDatabase(app);
+if (hasConfig) {
+  try {
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    
+    auth = getAuth(app);
+    auth.useDeviceLanguage();
+    setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-  // Configura Provider Google (Modular)
-  googleProvider = new GoogleAuthProvider();
-  googleProvider.addScope('email');
-  googleProvider.addScope('profile');
-  googleProvider.setCustomParameters({
-    prompt: 'select_account'
-  });
-  
-  console.log("Firebase inicializado com sucesso.");
-} catch (e) {
-  console.error("Erro CRÍTICO na inicialização do Firebase:", e);
+    db = getDatabase(app);
+
+    googleProvider = new GoogleAuthProvider();
+    googleProvider.addScope('email');
+    googleProvider.addScope('profile');
+    googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
+    googleProvider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
+    console.log("Firebase inicializado com sucesso.");
+  } catch (e) {
+    console.error("Erro na inicialização do Firebase:", e);
+  }
+} else {
+  console.warn("AVISO: Firebase não configurado corretamente.");
 }
 
-export { auth, googleProvider, db };
+export { auth, db, googleProvider };
+
+export const isDriveConfigured = () => {
+  return !!CLIENT_ID && CLIENT_ID.length > 10 && !!API_KEY;
+};
+
+export const isAuthConfigured = () => {
+  return !!API_KEY && API_KEY.length > 10;
+};

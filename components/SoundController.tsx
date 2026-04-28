@@ -1,10 +1,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Music, Volume2, VolumeX, Play, Pause, FolderOpen, Radio } from 'lucide-react';
+import { Music, Volume2, VolumeX, Play, Pause, FolderOpen, Radio, X } from 'lucide-react';
 import { AudioTrack } from '../types';
 
 interface Props {
     isCompact?: boolean;
+    forceOpen?: boolean;
+    onClose?: () => void;
 }
 
 // Placeholder tracks using reliable external sources or placeholders
@@ -16,9 +18,9 @@ const DEFAULT_TRACKS: AudioTrack[] = [
     { id: 'battle_sfx', name: 'Impacto Metal', url: 'https://actions.google.com/sounds/v1/foley/metal_latch.ogg', volume: 0.8, loop: false, isPlaying: false, category: 'sfx' },
 ];
 
-export const SoundController: React.FC<Props> = ({ isCompact }) => {
+export const SoundController: React.FC<Props> = ({ isCompact, forceOpen, onClose }) => {
     const [tracks, setTracks] = useState<AudioTrack[]>(DEFAULT_TRACKS);
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(forceOpen || false);
     const [globalMute, setGlobalMute] = useState(false);
     const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
@@ -56,14 +58,17 @@ export const SoundController: React.FC<Props> = ({ isCompact }) => {
     };
 
     return (
-        <div className={`fixed bottom-24 right-4 z-[90] flex flex-col items-end pointer-events-none`}>
-            {isOpen && (
+        <div className={`${forceOpen ? '' : 'fixed bottom-24 right-4 z-[90]'} flex flex-col items-end pointer-events-none`}>
+            {(isOpen || forceOpen) && (
                 <div className="bg-stone-900/95 backdrop-blur-md border border-stone-700 p-4 rounded-xl shadow-2xl mb-2 w-72 pointer-events-auto animate-in slide-in-from-bottom-5">
                     <div className="flex justify-between items-center mb-3 border-b border-stone-700 pb-2">
                         <span className="text-xs font-bold text-amber-500 uppercase tracking-widest flex items-center gap-2"><Music size={14}/> SoundScape</span>
-                        <button onClick={() => setGlobalMute(!globalMute)} className={`p-1 rounded hover:bg-stone-800 ${globalMute ? 'text-red-500' : 'text-stone-400'}`}>
-                            {globalMute ? <VolumeX size={16}/> : <Volume2 size={16}/>}
-                        </button>
+                        <div className="flex gap-2">
+                            <button onClick={() => setGlobalMute(!globalMute)} className={`p-1 rounded hover:bg-stone-800 ${globalMute ? 'text-red-500' : 'text-stone-400'}`}>
+                                {globalMute ? <VolumeX size={16}/> : <Volume2 size={16}/>}
+                            </button>
+                            {onClose && <button onClick={onClose} className="text-stone-500 hover:text-white p-1"><X size={16}/></button>}
+                        </div>
                     </div>
                     
                     <div className="space-y-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
@@ -90,13 +95,15 @@ export const SoundController: React.FC<Props> = ({ isCompact }) => {
                 </div>
             )}
             
-            <button 
-                onClick={() => setIsOpen(!isOpen)}
-                className={`pointer-events-auto w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 border border-stone-700 ${isOpen ? 'bg-amber-600 text-white' : 'bg-stone-900 text-stone-400 hover:text-amber-500'}`}
-                title="Controle de Áudio"
-            >
-                <Music size={20}/>
-            </button>
+            {!forceOpen && (
+                <button 
+                    onClick={() => setIsOpen(!isOpen)}
+                    className={`pointer-events-auto w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 border border-stone-700 ${isOpen ? 'bg-amber-600 text-white' : 'bg-stone-900 text-stone-400 hover:text-amber-500'}`}
+                    title="Controle de Áudio"
+                >
+                    <Music size={20}/>
+                </button>
+            )}
         </div>
     );
 };

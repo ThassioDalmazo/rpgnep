@@ -4,14 +4,33 @@ import { Dices, Plus, Minus, Trash2, Zap, X } from 'lucide-react';
 
 interface Props {
   onRoll: (text: string) => void;
+  permissions?: {
+    canMoveTokens: boolean;
+    canEditCharacters: boolean;
+    canRollDice: boolean;
+  };
+  forceOpen?: boolean;
+  isOpen?: boolean;
+  onToggle?: (open: boolean) => void;
+  onClose?: () => void;
 }
 
-export const DiceTray: React.FC<Props> = ({ onRoll }) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const DiceTray: React.FC<Props> = ({ onRoll, permissions, forceOpen, isOpen: controlledIsOpen, onToggle, onClose }) => {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  
+  const setIsOpen = (val: boolean) => {
+    if (onToggle) onToggle(val);
+    else setInternalIsOpen(val);
+  };
+
   const [modifier, setModifier] = useState(0);
   const [dicePool, setDicePool] = useState<Record<number, number>>({});
 
   const addDice = (sides: number) => {
+    if (permissions && !permissions.canRollDice) {
+      return;
+    }
     setDicePool(prev => ({ ...prev, [sides]: (prev[sides] || 0) + 1 }));
   };
 
@@ -21,6 +40,9 @@ export const DiceTray: React.FC<Props> = ({ onRoll }) => {
   };
 
   const executeRoll = () => {
+    if (permissions && !permissions.canRollDice) {
+      return;
+    }
     const parts: string[] = [];
     (Object.entries(dicePool) as [string, number][]).forEach(([sides, count]) => {
       if (count > 0) parts.push(`${count}d${sides}`);
@@ -41,12 +63,15 @@ export const DiceTray: React.FC<Props> = ({ onRoll }) => {
   const totalDice = (Object.values(dicePool) as number[]).reduce((a: number, b: number) => a + b, 0);
 
   return (
-    <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end gap-3">
-      {isOpen && (
+    <div className={`${forceOpen ? '' : 'fixed bottom-6 right-6 z-[100]'} flex flex-col items-end gap-3`}>
+      {(isOpen || forceOpen) && (
         <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 shadow-2xl animate-in slide-in-from-bottom-5 w-64 border-b-amber-500 border-b-4">
           <div className="flex justify-between items-center mb-4">
             <span className="text-xs font-bold uppercase tracking-widest text-stone-500">Bandeja de Dados</span>
-            <button onClick={clearPool} className="text-stone-500 hover:text-red-500"><Trash2 size={14}/></button>
+            <div className="flex gap-2">
+                <button onClick={clearPool} className="text-stone-500 hover:text-red-500 p-1"><Trash2 size={14}/></button>
+                {onClose && <button onClick={onClose} className="text-stone-500 hover:text-white p-1"><X size={14}/></button>}
+            </div>
           </div>
           
           <div className="grid grid-cols-4 gap-2 mb-4">
@@ -87,17 +112,19 @@ export const DiceTray: React.FC<Props> = ({ onRoll }) => {
         </div>
       )}
       
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-110 active:scale-95 ${isOpen ? 'bg-amber-500 text-stone-950 rotate-45' : 'bg-stone-900 text-amber-500 border border-stone-800'}`}
-      >
-        {isOpen ? <X size={28}/> : <Dices size={28}/>}
-        {!isOpen && totalDice > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center animate-pulse">
-                {totalDice}
-            </span>
-        )}
-      </button>
+      {!forceOpen && (
+        <button 
+            onClick={() => setIsOpen(!isOpen)}
+            className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-110 active:scale-95 ${isOpen ? 'bg-amber-500 text-stone-950 rotate-45' : 'bg-stone-900 text-amber-500 border border-stone-800'}`}
+        >
+            {isOpen ? <X size={28}/> : <Dices size={28}/>}
+            {!isOpen && totalDice > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center animate-pulse">
+                    {totalDice}
+                </span>
+            )}
+        </button>
+      )}
     </div>
   );
 };

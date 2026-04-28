@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@400;700&family=Spectral:ital,wght@0,400;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+html {
+  font-size: 90%;
+}
+
+@theme {
+  --font-cinzel: "Cinzel", serif;
+  --font-spectral: "Spectral", serif;
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-stone-850: #1f1f1e;
+  --color-stone-950: #0c0a09;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+}
+
+@layer utilities {
+  .bg-parchment {
+    background-color: #f4e4bc;
+    background-image: url("https://www.transparenttextures.com/patterns/parchment.png");
+  }
+  
+  .border-medieval {
+    border-image: url("https://www.transparenttextures.com/patterns/black-linen.png") 30 round;
+  }
+}

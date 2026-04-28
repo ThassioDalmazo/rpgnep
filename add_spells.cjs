@@ -1,5 +1,6 @@
+const fs = require('fs');
 
-export const SPELLS_300: Record<string, { level: string, desc: string }> = {
+const newSpells = {
   // Truques (Nível 0)
   "Amizade": { level: "Truque", desc: "Pessoal | Nenhum | Dá vantagem em testes de Carisma contra uma criatura." },
   "Ataque Certeiro": { level: "Truque", desc: "9m | Vantagem | Dá vantagem no seu próximo ataque contra o alvo." },
@@ -317,3 +318,41 @@ export const SPELLS_300: Record<string, { level: string, desc: string }> = {
   "Eclipse de Sombras": { level: "9º Nível", desc: "Céu | Escuridão | Apaga o sol de uma área, espalhando pânico extremo." },
   "Réquiem Final": { level: "9º Nível", desc: "90m | Necromancia Max. | Ergue exército imediato de todos os corpos caídos." }
 };
+
+function updateFile(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  let content = fs.readFileSync(filePath, 'utf8');
+  
+  // Find the end of SPELLS_DB
+  const spellsDbRegex = /export const SPELLS_DB: Record<string, \{ level: string, desc: string \}> = \{([\s\S]*?)\n\};/;
+  const match = content.match(spellsDbRegex);
+  
+  if (match) {
+    let existingSpells = match[1];
+    
+    // Convert newSpells to string
+    let newSpellsStr = '';
+    for (const [key, value] of Object.entries(newSpells)) {
+      // Only add if not already in existingSpells
+      if (!existingSpells.includes(`"${key}":`)) {
+        newSpellsStr += `  "${key}": { level: "${value.level}", desc: "${value.desc}" },\n`;
+      }
+    }
+    
+    if (newSpellsStr) {
+      // Remove trailing comma from existing if needed, but it's easier to just append
+      if (!existingSpells.trim().endsWith(',')) {
+        existingSpells += ',';
+      }
+      
+      const newContent = content.replace(spellsDbRegex, `export const SPELLS_DB: Record<string, { level: string, desc: string }> = {${existingSpells}\n${newSpellsStr.replace(/,\n$/, '\n')}};`);
+      fs.writeFileSync(filePath, newContent, 'utf8');
+      console.log(`Updated ${filePath}`);
+    } else {
+      console.log(`No new spells to add to ${filePath}`);
+    }
+  }
+}
+
+updateFile('./constants.ts');
+updateFile('./src/constants.ts');

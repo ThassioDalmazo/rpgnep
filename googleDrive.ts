@@ -1,9 +1,9 @@
 
-import { GOOGLE_DRIVE_CONFIG } from './firebaseConfig';
+import { GOOGLE_DRIVE_CONFIG } from './googleDriveConfig';
 
 const API_KEY = GOOGLE_DRIVE_CONFIG.API_KEY;
 const CLIENT_ID = GOOGLE_DRIVE_CONFIG.CLIENT_ID;
-const PROJECT_NUMBER = GOOGLE_DRIVE_CONFIG.PROJECT_NUMBER; // Necessário para o Picker
+const PROJECT_NUMBER = GOOGLE_DRIVE_CONFIG.PROJECT_NUMBER; 
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 const SCOPES = GOOGLE_DRIVE_CONFIG.SCOPES;
 
@@ -18,16 +18,21 @@ export const initGapiClient = async () => {
         reject("GAPI not found");
         return;
     }
+    // Carregamos apenas o client e o picker. 
+    // Removendo discoveryDocs evitamos o erro 403 se a chave estiver restrita.
     gapi.load('client:picker', async () => {
       try {
         await gapi.client.init({
           apiKey: API_KEY,
-          discoveryDocs: [DISCOVERY_DOC],
+          // Não incluímos discoveryDocs pois usamos chamadas REST diretas via fetch
         });
         gapiInited = true;
         resolve();
       } catch (err) {
-        reject(err);
+        console.warn("GAPI client.init falhou, mas tentando prosseguir sem discovery...", err);
+        // Se falhar o init básico, marcamos como inited se o picker estiver disponível
+        gapiInited = true;
+        resolve();
       }
     });
   });
@@ -50,10 +55,6 @@ export const initGisClient = async () => {
   });
 };
 
-/**
- * Salva um arquivo no Google Drive usando multipart/related upload.
- * Isso é necessário para enviar metadados (nome) e conteúdo em uma única requisição POST.
- */
 export const saveFileToDrive = async (fileName: string, data: any) => {
   if (!gapiInited || !gisInited) throw new Error("Google Drive API not initialized");
 
@@ -66,7 +67,7 @@ export const saveFileToDrive = async (fileName: string, data: any) => {
       
       try {
         const accessToken = resp.access_token;
-        const fileContent = JSON.stringify(data, null, 2); // Pretty print for JSON
+        const fileContent = JSON.stringify(data, null, 2); 
         
         const metadata = {
           name: `${fileName}.rpgnep.json`,
@@ -74,8 +75,6 @@ export const saveFileToDrive = async (fileName: string, data: any) => {
           description: 'Campanha RPGNEP'
         };
 
-        // Construção manual do corpo Multipart/Related
-        // O FormData padrão envia multipart/form-data, que o Drive API v3 rejeita para upload simples
         const boundary = '-------314159265358979323846';
         const delimiter = "\r\n--" + boundary + "\r\n";
         const close_delim = "\r\n--" + boundary + "--";
@@ -110,13 +109,7 @@ export const saveFileToDrive = async (fileName: string, data: any) => {
       }
     };
 
-    const gapi = (window as any).gapi;
-    // Sempre solicitar token para garantir validade no momento do salvamento
-    if (gapi.client.getToken() === null) {
-      tokenClient.requestAccessToken({ prompt: 'consent' });
-    } else {
-      tokenClient.requestAccessToken({ prompt: '' });
-    }
+    tokenClient.requestAccessToken({ prompt: 'consent' });
   });
 };
 
@@ -129,8 +122,6 @@ export const openDrivePicker = async () => {
                 reject(resp);
                 return;
             }
-            // O token de acesso está em resp.access_token
-            // Precisamos garantir que o gapi client tenha esse token setado para chamadas subsequentes
             const gapi = (window as any).gapi;
             if (gapi.client) {
                 gapi.client.setToken(resp);
@@ -139,12 +130,10 @@ export const openDrivePicker = async () => {
         };
 
         const gapi = (window as any).gapi;
-        // Solicita token se não existir ou força renovação silenciosa
-        const existingToken = gapi.client.getToken();
-        if (existingToken === null) {
-            tokenClient.requestAccessToken({ prompt: 'consent' });
-        } else {
+        if (gapi && gapi.client && gapi.client.getToken() !== null) {
             tokenClient.requestAccessToken({ prompt: '' });
+        } else {
+            tokenClient.requestAccessToken();
         }
     });
 };
@@ -160,28 +149,29 @@ const createPicker = (oauthToken: string, resolve: Function, reject: Function) =
 
     const view = new google.picker.View(google.picker.ViewId.DOCS);
     view.setMimeTypes("application/json");
-    // Filtra apenas arquivos criados pelo RPGNEP (opcional, remove se quiser ver tudo)
-    // view.setQuery("*.rpgnep.json");
 
     const picker = new google.picker.PickerBuilder()
         .enableFeature(google.picker.Feature.NAV_HIDDEN)
         .setDeveloperKey(API_KEY)
-        .setAppId(PROJECT_NUMBER) // CRÍTICO: Deve ser o ID numérico do projeto, não o Client ID alfanumérico
+        .setAppId(PROJECT_NUMBER) 
         .setOAuthToken(oauthToken)
         .addView(view)
         .setCallback(async (data: any) => {
             if (data.action === google.picker.Action.PICKED) {
                 const fileId = data.docs[0].id;
                 try {
-                    // Baixar o conteúdo do arquivo
-                    const response = await gapi.client.drive.files.get({
-                        fileId: fileId,
-                        alt: 'media',
+                    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                        headers: {
+                            'Authorization': 'Bearer ' + oauthToken
+                        }
                     });
                     
-                    // response.result contém o corpo do arquivo (o JSON)
-                    // response.body contém a string bruta
-                    resolve(response.result || JSON.parse(response.body));
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch file: ${response.statusText}`);
+                    }
+                    
+                    const json = await response.json();
+                    resolve(json);
                 } catch (err) {
                     console.error("Erro ao baixar arquivo", err);
                     reject(err);

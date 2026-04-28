@@ -1,7 +1,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Token, Character, Monster, MapConfig } from '../types';
-import { Pencil, Eraser, PaintBucket, Ruler, Undo2, Redo2, Trash2, Download, Swords, Plus, Users, Minus, Upload, Eye, EyeOff, Edit, Copy, Shield, X, Hand, Target, Circle, Triangle, Palette, Loader2, Save, Scaling, ArrowRightLeft, RotateCw, CheckCircle2, Flame, PencilRuler, LayoutGrid, Snowflake, CloudFog, Zap, Filter, Sun, CloudRain, Box, ChevronRight, ChevronLeft, Map as MapIcon, Move, Maximize, AlertTriangle, Square, RotateCcw, ChevronsUp, ChevronsDown, Lock, Unlock, Layers } from 'lucide-react';
+import { compressImage } from '../lib/imageUtils';
+import { Token, Character, Monster, MapConfig, CustomAsset } from '../types';
+import { Pencil, Eraser, PaintBucket, Ruler, Undo2, Redo2, Trash2, Download, Swords, Plus, Users, Minus, Upload, Eye, EyeOff, Edit, Copy, Shield, X, Hand, Target, Circle, Triangle, Palette, Loader2, Save, Scaling, ArrowRightLeft, RotateCw, CheckCircle2, Flame, PencilRuler, LayoutGrid, Snowflake, CloudFog, Zap, Filter, Sun, CloudRain, Box, ChevronRight, ChevronLeft, Map as MapIcon, Move, Maximize, AlertTriangle, Square, RotateCcw, ChevronsUp, ChevronsDown, Lock, Unlock, Layers, MoreHorizontal, Image as ImageIcon, Frame, ZoomIn, ZoomOut, Heart, HeartOff } from 'lucide-react';
 
 interface Props {
   mapGrid: string[][];
@@ -16,21 +17,32 @@ interface Props {
   mapConfig?: MapConfig;
   setMapConfig?: React.Dispatch<React.SetStateAction<MapConfig>>;
   activeTokenIds?: number[];
-}
-
-interface CustomAsset {
-    id: string;
-    url: string;
-    name: string;
-    type?: 'upload' | 'edited';
+  customAssets?: Record<string, CustomAsset>;
+  setCustomAssets?: React.Dispatch<React.SetStateAction<Record<string, CustomAsset>>>;
+  onSyncAsset?: (asset: CustomAsset) => void;
+  permissions?: {
+    canMoveTokens: boolean;
+    canEditCharacters: boolean;
+    canRollDice: boolean;
+  };
+  isDM?: boolean;
+  setConfirmModal?: (modal: {message: string, onConfirm: () => void, onCancel?: () => void} | null) => void;
 }
 
 type WeatherType = 'none' | 'rain' | 'snow' | 'ember' | 'fog';
 
-const getName = (url: string) => {
-    const filename = url.split('/').pop() || '';
-    return filename.split('.')[0].replace(/[_-]/g, ' ');
-};
+import {
+    LIST_IMG,
+    LIST_MURRO,
+    LIST_PREDIOS,
+    LIST_VEGETACAO,
+    LIST_CREATURES,
+    LIST_MOBILIA,
+    LIST_MAPS,
+    LIST_FRAMES,
+    TEXTURE_LINKS,
+    PALETTES
+} from '../assets';
 
 const convertDriveLink = (url: string) => {
     if (!url) return '';
@@ -63,85 +75,24 @@ const parseTileData = (cellData: string) => {
 };
 
 // --- ASSET LIBRARIES LOCAIS ---
-
-const LIST_IMG = [
-    'cogu1.PNG', 'cogu2.PNG', 'cogu3.PNG', 'cogu4.PNG', 'cogu5.PNG', 'cogu6.PNG',
-    'dunge0.PNG', 'dunge1.PNG', 'dunge2.PNG', 'dunge3.PNG', 'dunge4.PNG', 'dunge5.PNG', 'dunge6.PNG', 'dunge7.PNG', 'dunge8.PNG', 'dunge9.PNG', 'dunge10.PNG',
-    'flora1.PNG', 'flora2.PNG', 'flora3.PNG', 'flora4.PNG', 'flora5.PNG', 'flora7.PNG', 'flora8.PNG', 'flora9.PNG',
-    'g_pantano1.png', 'g_pantano2.png', 'g_pantano3.png', 'g_pantano4.png', 'g_pantano5.png', 'g_pantano6.png', 'g_pantano7.png', 'g_pantano9.png',
-    'mesa.png', 'rpgtextura2.JPG', 'rpgtextura3.JPG', 'rpgtextura4.JPG', 'rpgtextura5.JPG', 'rpgtextura6.JPG',
-    'textura.PNG', 'textura1.PNG', 'textura2.PNG', 'textura3.PNG'
-].map(f => `/textures/img/${f}`);
-
-const LIST_MURRO = [
-    '1.PNG', '2.PNG', '3.PNG', '4.PNG', '5.PNG', '6.PNG', '7.PNG',
-    'muro10.PNG', 'muro11.PNG', 'muro12.PNG',
-    'murro.PNG', 'murro1.PNG', 'murro3.PNG', 'murro4.PNG', 'murro5.PNG', 'murro6.PNG', 'murro7.PNG', 'murro8.PNG', 'murro9.PNG'
-].map(f => `/textures/murro/${f}`);
-
-const LIST_PREDIOS = [
-    '1.PNG', '13.png', '1_2.png', '1_3.png', '1_4.png', '1_6.png', '1_7.png', '1_8.png', '1_9.png', '7_1.png', '7_2.png', '7_3.png'
-].map(f => `/textures/predios/${f}`);
-
-const LIST_VEGETACAO = [
-    'arbusto.PNG', 'arbusto_de_flores.png', 'arvore.PNG', 'baga.PNG', 'castor.PNG', 'coelho.PNG', 'cogumelo.PNG', 'cogumelomarron.PNG', 'cogumelomarronp.PNG', 'esquilo.PNG', 'florbranca.PNG', 'furão.PNG', 'java.PNG', 'lobo.PNG', 'ratinhos.PNG', 'raul.PNG', 'teixugo.PNG', 'urso.PNG'
-].map(f => `/textures/vegetacao/${f}`);
-
-const LIST_MAPS = [
-    'Gemini_Generated_Image_1yp7rs1yp7rs1yp7.png',
-    'Gemini_Generated_Image_mt9xb5mt9xb5mt9x (1).png',
-    'Gemini_Generated_Image_2364ch2364ch2364.png',
-    'Gemini_Generated_Image_mx16jemx16jemx16.png',
-    'Gemini_Generated_Image_3zj1cj3zj1cj3zj1.png',
-    'Gemini_Generated_Image_puuhqdpuuhqdpuuh.png',
-    'Gemini_Generated_Image_6g2oyn6g2oyn6g2o.png',
-    'Gemini_Generated_Image_rx5hpprx5hpprx5h.png',
-    'Gemini_Generated_Image_9zi8p69zi8p69zi8.png',
-    'Gemini_Generated_Image_tmsd2ttmsd2ttmsd.png',
-    'Gemini_Generated_Image_fqn04xfqn04xfqn0.png',
-    'Gemini_Generated_Image_und11uund11uund1.png',
-    'Gemini_Generated_Image_h81ra7h81ra7h81r.png',
-    'Gemini_Generated_Image_vnrd5dvnrd5dvnrd.png',
-    'Gemini_Generated_Image_jkg28ujkg28ujkg2.png',
-    'Gemini_Generated_Image_wigz7iwigz7iwigz.png',
-    'Gemini_Generated_Image_lbsuaclbsuaclbsu.png',
-    'Gemini_Generated_Image_x3kgihx3kgihx3kg.png',
-    'Gemini_Generated_Image_lrx6zzlrx6zzlrx6.png',
-    'Gemini_Generated_Image_y1tpexy1tpexy1tp.png',
-    'Gemini_Generated_Image_m6rhf9m6rhf9m6rh.png',
-    'Gemini_Generated_Image_yeqn2ayeqn2ayeqn.png'
-].map(f => `/textures/salas_fundo/${f}`);
-
-const TEXTURE_LINKS = {
-    base: '/textures/img/textura.PNG',
-    wall: '/textures/murro/murro.PNG',
-    water: '/textures/img/g_pantano9.png',
-    grass: '/textures/img/g_pantano1.png',
-    wood: '/textures/img/mesa.png',
-    stone: '/textures/img/dunge1.PNG'
-};
-
-const PALETTES: Record<string, {c: string, n: string}[]> = {
-    "Básicos": [
-        {c: TEXTURE_LINKS.base, n: 'Base'}, {c: TEXTURE_LINKS.wall, n: 'Parede'},
-        {c: TEXTURE_LINKS.water, n: 'Água'}, {c: TEXTURE_LINKS.grass, n: 'Grama'},
-        {c: TEXTURE_LINKS.wood, n: 'Madeira'}, {c: TEXTURE_LINKS.stone, n: 'Pedra'}
-    ],
-    "Pisos e Chão": LIST_IMG.map(url => ({ c: url, n: getName(url) })),
-    "Paredes e Muros": LIST_MURRO.map(url => ({ c: url, n: getName(url) })),
-    "Estruturas": LIST_PREDIOS.map(url => ({ c: url, n: getName(url) })),
-    "Natureza": LIST_VEGETACAO.map(url => ({ c: url, n: getName(url) })),
-    "Mapas Prontos": LIST_MAPS.map(url => ({ c: url, n: getName(url) })),
-};
+// Moved to assets.ts
 
 const MARKER_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#000000'];
 
-export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, setTokens, characters, npcs = [], monsters, fogGrid, setFogGrid, mapConfig: propMapConfig, setMapConfig: propSetMapConfig, activeTokenIds }) => {
+const CONDITION_ICONS: Record<string, string> = {
+    "Agarrado": "⚓", "Amedrontado": "😨", "Atordoado": "😵", "Caído": "🦶", "Cego": "🕶️", 
+    "Enfeitiçado": "💖", "Envenenado": "🤢", "Exausto": "💤", "Impedido": "🕸️", 
+    "Incapacitado": "🚫", "Inconsciente": "🛌", "Invisível": "👻", "Paralisado": "❄️", 
+    "Petrificado": "🗿", "Surdo": "🔇"
+};
+
+export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, setTokens, characters, npcs = [], monsters, fogGrid, setFogGrid, mapConfig: propMapConfig, setMapConfig: propSetMapConfig, activeTokenIds, customAssets: propCustomAssets = {}, setCustomAssets: propSetCustomAssets, onSyncAsset, permissions, isDM = false, setConfirmModal }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editCanvasRef = useRef<HTMLCanvasElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
   const particlesRef = useRef<any[]>([]);
+  const localAssetsRef = useRef<Record<string, CustomAsset>>({});
   
   // Safe grid dimensions - fallback to 0 if empty
   const gridH = mapGrid?.length || 0;
@@ -158,9 +109,9 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   const [bgProps, setBgProps] = useState({ x: propMapConfig?.bgX || 0, y: propMapConfig?.bgY || 0, scale: propMapConfig?.bgScale || 1.0 });
   const [history, setHistory] = useState<string[][][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState<'tools' | 'assets' | 'map' | 'tokens' | 'weather'>('tools');
-  const [tool, setTool] = useState<'pencil' | 'eraser' | 'fill' | 'ruler' | 'move' | 'rect' | 'line' | 'fog-hide' | 'fog-reveal' | 'hand' | 'measure-circle' | 'measure-cone' | 'measure-cube'>('pencil');
+  const [sidebarOpen, setSidebarOpen] = useState(isDM);
+  const [sidebarTab, setSidebarTab] = useState<'tools' | 'assets' | 'map' | 'tokens' | 'weather'>(isDM ? 'tools' : 'tokens');
+  const [tool, setTool] = useState<'pencil' | 'eraser' | 'fill' | 'ruler' | 'move' | 'rect' | 'line' | 'fog-hide' | 'fog-reveal' | 'hand' | 'measure-circle' | 'measure-cone' | 'measure-cube' | 'ping'>('move');
   
   // NEW: Layer Control
   const [editLayer, setEditLayer] = useState<'token' | 'background'>('token');
@@ -173,6 +124,11 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   const [tokenBench, setTokenBench] = useState<Token[]>([]);
   const [brushSize, setBrushSize] = useState(1);
   
+  const latestMapGridRef = useRef(mapGrid);
+  useEffect(() => {
+      latestMapGridRef.current = mapGrid;
+  }, [mapGrid]);
+
   // Palette State
   const [activePalette, setActivePalette] = useState('Básicos');
 
@@ -184,6 +140,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   });
   const [isTaintedSource, setIsTaintedSource] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isCropping, setIsCropping] = useState(false);
   const [cropRect, setCropRect] = useState<{x: number, y: number, w: number, h: number} | null>(null);
@@ -200,44 +157,82 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   const [gridOpacity, setGridOpacity] = useState(propMapConfig?.gridOpacity || 0.15); 
   const [gridColor, setGridColor] = useState(propMapConfig?.gridColor || '#ffffff');
   const [backgroundImage, setBackgroundImage] = useState<string | null>(propMapConfig?.bgUrl || null);
+  const [bgBrightness, setBgBrightness] = useState(propMapConfig?.bgBrightness ?? 100);
+  const [bgStretch, setBgStretch] = useState(propMapConfig?.bgStretch ?? false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isGameMode, setIsGameMode] = useState(false);
-  const [customAssets, setCustomAssets] = useState<CustomAsset[]>([]);
+  const [isGameMode, setIsGameMode] = useState(!isDM);
   const imageCache = useRef<Record<string, HTMLImageElement>>({});
   const failedImages = useRef<Set<string>>(new Set());
   const taintedImages = useRef<Set<string>>(new Set()); 
   const [tick, setTick] = useState(0); 
   const [isDrawing, setIsDrawing] = useState(false);
   const [isDraggingToken, setIsDraggingToken] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [startPos, setStartPos] = useState<{x:number, y:number} | null>(null); 
   const [mousePos, setMousePos] = useState<{x:number, y:number} | null>(null);
+  const [measureStart, setMeasureStart] = useState<{x: number, y: number} | null>(null);
+  const [measureEnd, setMeasureEnd] = useState<{x: number, y: number} | null>(null);
   const [ping, setPing] = useState<{x: number, y: number, t: number} | null>(null);
-  const [selectedTokenId, setSelectedTokenId] = useState<number | null>(null);
+  const [selectedTokenIds, setSelectedTokenIds] = useState<number[]>([]);
+  const [primaryDragTokenId, setPrimaryDragTokenId] = useState<number | null>(null);
+  const [dragStartPositions, setDragStartPositions] = useState<Record<number, {x: number, y: number}>>({});
   const [weather, setWeather] = useState<WeatherType>(propMapConfig?.weather || 'none');
+  const [dynamicMaps, setDynamicMaps] = useState<string[]>([]);
   
   // Dynamic Canvas Resizing
   const [canvasSize, setCanvasSize] = useState({ w: 800, h: 600 });
+  const [showBench, setShowBench] = useState(isDM); // Toggle Bench Visibility
+  const [showHpBars, setShowHpBars] = useState(true); // Toggle HP Bars Visibility
+
+  // Dice Roller State
+  const [diceCount, setDiceCount] = useState(1);
+  const [diceType, setDiceType] = useState(20);
+  const [diceMod, setDiceMod] = useState(0);
+  const [diceResult, setDiceResult] = useState<string | number>('--');
 
   // Sync Logic
   const hasSyncedInitial = useRef(false);
+  const lastKnownBgUrl = useRef<string | null>(null);
 
   useEffect(() => {
       if (propMapConfig) {
-          if (!hasSyncedInitial.current || propMapConfig.weather !== weather) setWeather(propMapConfig.weather || 'none');
-          if (!hasSyncedInitial.current || propMapConfig.scale !== gridScale) setGridScale(propMapConfig.scale);
-          if (!hasSyncedInitial.current || propMapConfig.unit !== gridUnit) setGridUnit(propMapConfig.unit);
-          if (!hasSyncedInitial.current || propMapConfig.gridColor !== gridColor) setGridColor(propMapConfig.gridColor);
-          if (!hasSyncedInitial.current || propMapConfig.gridOpacity !== gridOpacity) setGridOpacity(propMapConfig.gridOpacity);
-          if (!hasSyncedInitial.current || propMapConfig.gridStyle !== gridStyle) setGridStyle(propMapConfig.gridStyle);
-          if (!hasSyncedInitial.current || propMapConfig.tileSize !== tileSize) setTileSize(propMapConfig.tileSize || 32);
-          if (!hasSyncedInitial.current || propMapConfig.bgUrl !== backgroundImage) setBackgroundImage(propMapConfig.bgUrl);
-          if (!hasSyncedInitial.current || propMapConfig.bgX !== bgProps.x || propMapConfig.bgY !== bgProps.y || propMapConfig.bgScale !== bgProps.scale) {
-              setBgProps({ x: propMapConfig.bgX, y: propMapConfig.bgY, scale: propMapConfig.bgScale });
+          if (!hasSyncedInitial.current) {
+              setWeather(propMapConfig.weather || 'none');
+              setGridScale(propMapConfig.scale || 1.5);
+              setGridUnit(propMapConfig.unit || 'm');
+              setGridColor(propMapConfig.gridColor || '#cccccc');
+              setGridOpacity(propMapConfig.gridOpacity || 0.3);
+              setGridStyle(propMapConfig.gridStyle || 'line');
+              setTileSize(propMapConfig.tileSize || 32);
+              setBackgroundImage(propMapConfig.bgUrl || null);
+              lastKnownBgUrl.current = propMapConfig.bgUrl || null;
+              if (propMapConfig.bgX !== undefined) {
+                  setBgProps({ x: propMapConfig.bgX, y: propMapConfig.bgY || 0, scale: propMapConfig.bgScale || 1 });
+              }
+              setBgStretch(propMapConfig.bgStretch ?? false);
+              hasSyncedInitial.current = true;
+          } else {
+              if (propMapConfig.weather !== weather) setWeather(propMapConfig.weather || 'none');
+              if (propMapConfig.scale !== gridScale) setGridScale(propMapConfig.scale);
+              if (propMapConfig.unit !== gridUnit) setGridUnit(propMapConfig.unit);
+              if (propMapConfig.gridColor !== gridColor) setGridColor(propMapConfig.gridColor);
+              if (propMapConfig.gridOpacity !== gridOpacity) setGridOpacity(propMapConfig.gridOpacity);
+              if (propMapConfig.gridStyle !== gridStyle) setGridStyle(propMapConfig.gridStyle);
+              if (propMapConfig.tileSize !== tileSize) setTileSize(propMapConfig.tileSize || 32);
+              
+              if (propMapConfig.bgUrl !== lastKnownBgUrl.current) {
+                  setBackgroundImage(propMapConfig.bgUrl);
+                  lastKnownBgUrl.current = propMapConfig.bgUrl;
+              }
+
+              if (propMapConfig.bgX !== bgProps.x || propMapConfig.bgY !== bgProps.y || propMapConfig.bgScale !== bgProps.scale) {
+                  setBgProps({ x: propMapConfig.bgX, y: propMapConfig.bgY, scale: propMapConfig.bgScale });
+              }
+              if (propMapConfig.bgStretch !== bgStretch) setBgStretch(propMapConfig.bgStretch ?? false);
           }
-          hasSyncedInitial.current = true;
       }
   }, [propMapConfig]);
 
@@ -246,6 +241,22 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
     setMapDimW(gridW.toString());
     setMapDimH(gridH.toString());
   }, [gridW, gridH]);
+
+  // Fetch dynamic maps from server
+  useEffect(() => {
+    const fetchDynamicMaps = async () => {
+      try {
+        const response = await fetch('/api/assets/maps');
+        if (response.ok) {
+          const data = await response.json();
+          setDynamicMaps(data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar mapas dinâmicos:", error);
+      }
+    };
+    fetchDynamicMaps();
+  }, []);
 
   // Push changes to App (debounce could be added for performance)
   useEffect(() => {
@@ -263,12 +274,14 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                   bgX: bgProps.x,
                   bgY: bgProps.y,
                   bgScale: bgProps.scale,
+                  bgBrightness,
+                  bgStretch,
                   weather
               }));
           }, 500); // 500ms debounce
           return () => clearTimeout(timeout);
       }
-  }, [gridScale, gridUnit, gridColor, gridOpacity, gridStyle, backgroundImage, bgProps, weather, tileSize]);
+  }, [gridScale, gridUnit, gridColor, gridOpacity, gridStyle, backgroundImage, bgProps, weather, tileSize, bgBrightness, bgStretch]);
 
   // Resize Observer for Canvas
   useEffect(() => {
@@ -284,6 +297,8 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
 
   // Animation Loop
   useEffect(() => {
+      if (weather === 'none' && !ping) return;
+      
       let animId: number;
       const animate = () => {
           setTick(t => t + 1);
@@ -292,7 +307,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
       };
       animId = requestAnimationFrame(animate);
       return () => cancelAnimationFrame(animId);
-  }, [ping]);
+  }, [ping, weather]);
 
   const resizeMap = (w: number, h: number) => {
       const newW = Math.max(10, w);
@@ -310,26 +325,35 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   };
 
   const clearLayer = (layerIndex: number) => {
-        if(!window.confirm(`Tem certeza que deseja limpar toda a Camada?`)) return;
-        const newGrid = mapGrid.map(row => row.map(cell => {
-            const parts = cell.split('|');
-            while(parts.length <= layerIndex) parts.push('');
-            if (layerIndex === 0) parts[0] = '⬜';
-            else parts[layerIndex] = '';
-            return parts.join('|');
-        }));
-        setMapGrid(newGrid);
-        saveToHistory(newGrid);
+        if (setConfirmModal) {
+            setConfirmModal({
+                message: `Tem certeza que deseja limpar toda a Camada?`,
+                onConfirm: () => {
+                    const newGrid = mapGrid.map(row => row.map(cell => {
+                        const parts = cell.split('|');
+                        while(parts.length <= layerIndex) parts.push('');
+                        if (layerIndex === 0) parts[0] = '⬜';
+                        else parts[layerIndex] = '';
+                        return parts.join('|');
+                    }));
+                    setMapGrid(newGrid);
+                    saveToHistory(newGrid);
+                }
+            });
+        } else {
+            const newGrid = mapGrid.map(row => row.map(cell => {
+                const parts = cell.split('|');
+                while(parts.length <= layerIndex) parts.push('');
+                if (layerIndex === 0) parts[0] = '⬜';
+                else parts[layerIndex] = '';
+                return parts.join('|');
+            }));
+            setMapGrid(newGrid);
+            saveToHistory(newGrid);
+        }
   };
 
   useEffect(() => {
-      const savedAssets = localStorage.getItem('nexus_custom_assets');
-      if (savedAssets) {
-          try { 
-              const parsed = JSON.parse(savedAssets);
-              if (Array.isArray(parsed)) setCustomAssets(parsed);
-          } catch (e) { console.error("Erro ao carregar assets", e); }
-      }
       Object.values(TEXTURE_LINKS).forEach(url => preloadImage(url));
       // Preload current palette
       if (PALETTES[activePalette]) {
@@ -347,7 +371,15 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
           if (assetTransform.r !== 0) transformStr += `$r=${assetTransform.r}`;
           if (assetTransform.fx) transformStr += `$fx=1`;
           if (assetTransform.fy) transformStr += `$fy=1`;
-          parts[layer] = `${newUrl}${transformStr}`;
+
+          // Optimization: Use asset ID if it's a custom asset to save space in the grid
+          let finalUrl = newUrl;
+          const asset = Object.values(propCustomAssets).find(a => a.url === newUrl);
+          if (asset) {
+              finalUrl = `asset:${asset.id}`;
+          }
+
+          parts[layer] = `${finalUrl}${transformStr}`;
       }
       return parts.join('|');
   };
@@ -521,7 +553,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
           }
       } catch (e) { 
           console.error("Failed to save texture", e); 
-          alert("Não foi possível salvar a imagem. Ela está protegida contra edição (CORS) e o método de recuperação falhou."); 
+          console.warn("Não foi possível salvar a imagem. Ela está protegida contra edição (CORS) e o método de recuperação falhou."); 
       }
       setIsSaving(false);
   };
@@ -562,8 +594,19 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
 
   const handleEditorMouseUp = () => { setIsCropping(false); };
 
+  const resolveUrl = (url: string) => {
+      if (!url) return '';
+      if (url.startsWith('asset:')) {
+          const id = url.substring(6);
+          const asset = propCustomAssets[id] || localAssetsRef.current[id];
+          return asset ? asset.url : '';
+      }
+      return url;
+  };
+
   const preloadImage = (url: string, attempt = 0) => {
-      const cleanUrl = url.split('$')[0];
+      const resolved = resolveUrl(url);
+      const cleanUrl = resolved;
       if (!cleanUrl || cleanUrl === 'VOID' || cleanUrl === '⬜') return;
       if (imageCache.current[cleanUrl]?.complete && imageCache.current[cleanUrl]?.naturalWidth > 0) return;
       if (failedImages.current.has(cleanUrl) && attempt > 1) return;
@@ -579,8 +622,8 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
           if (attempt === 1) taintedImages.current.add(cleanUrl);
       };
       img.onerror = () => {
-          if (attempt === 0) preloadImage(cleanUrl, 1);
-          else { failedImages.current.add(cleanUrl); }
+          if (attempt === 0) preloadImage(url, 1);
+          else failedImages.current.add(cleanUrl);
       };
       if (attempt === 0) imageCache.current[cleanUrl] = img;
   };
@@ -592,15 +635,22 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                   const parts = cell.split('|');
                   parts.forEach(p => {
                       const { url } = parseTileData(p);
-                      if (url && (url.startsWith('http') || url.startsWith('data:'))) preloadImage(url);
+                      if (url && url !== '⬜' && url !== 'VOID') preloadImage(url);
                   });
               }
           });
       });
-      tokens.forEach((t: Token) => { if (t.image) preloadImage(t.image); });
-      tokenBench.forEach((t: Token) => { if (t.image) preloadImage(t.image); });
+      tokens.forEach((t: Token) => { 
+          if (t.image) preloadImage(t.image); 
+          if (t.frame) preloadImage(t.frame); // Preload Frames
+      });
+      tokenBench.forEach((t: Token) => { 
+          if (t.image) preloadImage(t.image); 
+          if (t.frame) preloadImage(t.frame); // Preload Frames
+      });
+      LIST_FRAMES.forEach(f => preloadImage(f)); // Preload All Frames on Mount
       if (backgroundImage) preloadImage(backgroundImage);
-  }, [mapGrid, tokens, backgroundImage, tokenBench]);
+  }, [mapGrid, tokens, backgroundImage, tokenBench, propCustomAssets]);
 
   const getGridPos = (e: React.MouseEvent | MouseEvent) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
@@ -631,18 +681,35 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   const redo = () => { if (historyIndex < history.length - 1) { const i = historyIndex + 1; setHistoryIndex(i); setMapGrid(history[i]); } };
   
   const clearMap = () => { 
-      if (window.confirm("Limpar todo o mapa para Branco?")) { 
+      if (setConfirmModal) {
+          setConfirmModal({
+              message: "Limpar todo o mapa para Branco?",
+              onConfirm: () => {
+                  const g = Array(gridH).fill(null).map(()=>Array(gridW).fill('⬜||')); 
+                  saveToHistory(g); 
+              }
+          });
+      } else {
           const g = Array(gridH).fill(null).map(()=>Array(gridW).fill('⬜||')); 
           saveToHistory(g); 
-      } 
+      }
   };
 
   const clearToBackground = () => {
-    if (window.confirm("Limpar todos os tiles desenhados (mantendo fundo)?")) {
-        const g = Array(gridH).fill(null).map(() => Array(gridW).fill('⬜||'));
-        setMapGrid(g);
-        saveToHistory(g);
-    }
+      if (setConfirmModal) {
+          setConfirmModal({
+              message: "Limpar todos os tiles desenhados (mantendo fundo)?",
+              onConfirm: () => {
+                  const g = Array(gridH).fill(null).map(() => Array(gridW).fill('⬜||'));
+                  setMapGrid(g);
+                  saveToHistory(g);
+              }
+          });
+      } else {
+          const g = Array(gridH).fill(null).map(() => Array(gridW).fill('⬜||'));
+          setMapGrid(g);
+          saveToHistory(g);
+      }
   };
 
   const setBgFromPreset = (url: string) => {
@@ -677,57 +744,142 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
     if (backgroundImage && imageCache.current[backgroundImage]) {
         const img = imageCache.current[backgroundImage];
         if (img.naturalWidth > 0) {
-            const gridPixelW = gridW * tileSize;
-            const scale = gridPixelW / img.naturalWidth;
-            setBgProps(prev => ({ ...prev, scale: Number.isFinite(scale) ? scale : 1, x: 0, y: 0 }));
+            const newW = Math.ceil(img.naturalWidth / tileSize);
+            const newH = Math.ceil(img.naturalHeight / tileSize);
+            setMapDimW(newW.toString());
+            setMapDimH(newH.toString());
+            resizeMap(newW, newH);
+            setBgProps(prev => ({ ...prev, scale: 1, x: 0, y: 0 }));
+            setBgStretch(true);
         }
     }
   };
 
   const fillFog = (visible: boolean) => setFogGrid(Array(gridH).fill(null).map(() => Array(gridW).fill(!visible)));
 
-  const addCustomAsset = (url: string, name: string = 'Custom', type: 'upload' | 'edited' = 'upload') => {
-      if (!url) return;
+  const registerCustomAsset = (url: string, name: string = 'Custom', type: 'upload' | 'edited' = 'upload') => {
+      if (!url) return '';
       const directLink = url.startsWith('data:') ? url : convertDriveLink(url);
-      const newAsset: CustomAsset = { id: Date.now().toString(), url: directLink, name: `${name}`, type: type };
-      const updated = [...customAssets, newAsset];
-      setCustomAssets(updated);
-      localStorage.setItem('nexus_custom_assets', JSON.stringify(updated));
-      setSelectedTile(directLink);
-      preloadImage(directLink);
+      const assetId = Date.now().toString() + Math.random().toString(36).substring(2, 7);
+      const newAsset: CustomAsset = { id: assetId, url: directLink, name: `${name}`, type: type };
+      
+      console.log("Registrando asset:", assetId, "Tipo:", type);
+      
+      // Armazena localmente para uso imediato antes da sincronização
+      localAssetsRef.current[assetId] = newAsset;
+
+      if (propSetCustomAssets) {
+          propSetCustomAssets(prev => ({ ...prev, [assetId]: newAsset }));
+      }
+      if (onSyncAsset) {
+          onSyncAsset(newAsset);
+      }
+
+      const assetToken = `asset:${assetId}`;
+      
+      // Forçamos a entrada no cache imediatamente usando o directLink (Base64)
+      if (directLink.startsWith('data:')) {
+          const img = new Image();
+          img.onload = () => {
+              imageCache.current[directLink] = img;
+              console.log("Asset pré-carregado no cache com sucesso.");
+          };
+          img.src = directLink;
+      } else {
+          preloadImage(assetToken);
+      }
+      
+      return assetToken;
+  };
+
+  const addCustomAsset = (url: string, name: string = 'Custom', type: 'upload' | 'edited' = 'upload') => {
+      const assetToken = registerCustomAsset(url, name, type);
+      if (!assetToken) return '';
+      setSelectedTile(assetToken);
       setTool('pencil');
       if (type === 'edited') setAssetTab('edited'); else setAssetTab('upload');
+      return assetToken;
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) {
-          const reader = new FileReader();
-          reader.onload = (ev) => { if (ev.target?.result) addCustomAsset(ev.target.result as string, file.name.split('.')[0], 'upload'); };
-          reader.readAsDataURL(file);
-      }
+      if (!file) return;
+
+      setIsUploadingImage(true);
+      console.log("Iniciando upload de ativo:", file.name);
+      
+      const reader = new FileReader();
+      reader.onload = async (ev) => { 
+          const result = ev.target?.result as string;
+          if (!result) {
+              console.error("Erro: Leitor de ativo retornou vazio.");
+              setIsUploadingImage(false);
+              return;
+          }
+          try {
+              console.log("Processando ativo (sem compressão)...");
+              addCustomAsset(result, file.name.split('.')[0], 'upload'); 
+          } catch (err) {
+              console.error("Erro no processamento do ativo:", err);
+          } finally {
+              setIsUploadingImage(false);
+          }
+      };
+      reader.onerror = () => {
+          console.error("Erro no FileReader (Ativo)");
+          setIsUploadingImage(false);
+      };
+      reader.readAsDataURL(file);
   };
 
   const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-          const reader = new FileReader();
-          reader.onload = (ev) => { 
-              if (ev.target?.result) {
-                  const dataUrl = ev.target.result as string;
-                  setBackgroundImage(dataUrl);
-                  const img = new Image();
-                  img.src = dataUrl;
-                  img.onload = () => {
-                      const gridPixelW = gridW * tileSize;
-                      const scale = gridPixelW / img.naturalWidth;
-                      setBgProps({ x: 0, y: 0, scale: Number.isFinite(scale) ? scale : 1 });
-                      imageCache.current[dataUrl] = img;
-                  }
-              }
-          };
-          reader.readAsDataURL(file);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    console.log("Iniciando upload de mapa:", file.name);
+    setIsUploadingImage(true);
+    const reader = new FileReader();
+    
+    reader.onload = async (ev) => { 
+      const result = ev.target?.result as string;
+      if (!result) {
+        console.error("Erro: Leitor de mapa retornou vazio.");
+        setIsUploadingImage(false);
+        return;
       }
+      try {
+        console.log("Mantendo mapa original (sem compressão)...");
+        const dataUrl = result;
+        
+        // Registramos o asset mas NÃO selecionamos como pincel (usamos register e não add)
+        const assetToken = registerCustomAsset(dataUrl, 'Background', 'upload');
+        setBackgroundImage(assetToken);
+        lastKnownBgUrl.current = assetToken; // Blindagem contra reversão de estado
+        
+        const img = new Image();
+        img.onload = () => {
+          const gridPixelW = gridW * tileSize;
+          const scale = gridPixelW / img.naturalWidth;
+          setBgProps({ x: 0, y: 0, scale: Number.isFinite(scale) ? scale : 1 });
+          imageCache.current[dataUrl] = img;
+          setIsUploadingImage(false);
+          console.log("Mapa carregado com sucesso.");
+        };
+        img.onerror = () => {
+          console.error("Erro ao carregar render do mapa.");
+          setIsUploadingImage(false);
+        };
+        img.src = dataUrl;
+      } catch (err) {
+        console.error("Erro crítico no processamento do mapa:", err);
+        setIsUploadingImage(false);
+      }
+    };
+    reader.onerror = () => {
+      console.error("Erro no FileReader (Mapa)");
+      setIsUploadingImage(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const toggleFogArea = (start: {x:number, y:number}, end: {x:number, y:number}, val: boolean) => {
@@ -759,19 +911,72 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
           setEditingToken(null); 
       }
   };
-  const handleTokenImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file && editingToken) { const r = new FileReader(); r.onload = (ev) => { if (ev.target?.result) setEditingToken({ ...editingToken, image: ev.target.result as string }); }; r.readAsDataURL(file); }};
-  const addTokenToBench = (isProp: boolean = false) => { setTokenBench([...tokenBench, {id: Date.now(), x: 0, y: 0, icon: isProp ? '' : '💀', hp: isProp ? 0 : 10, max: isProp ? 0 : 10, color: isProp ? 'transparent' : '#ef4444', size: 1, width: 1, height: 1, name: isProp ? 'Objeto' : 'Monstro', isProp }]); };
-  const handleAddPropFromSelection = () => { if (!selectedTile) return; setTokenBench([...tokenBench, { id: Date.now(), x: 0, y: 0, icon: '', image: selectedTile, hp: 10, max: 10, color: 'transparent', size: Math.max(assetDims.w, assetDims.h), width: assetDims.w, height: assetDims.h, name: 'Objeto', isProp: true, rotation: assetTransform.r, flipX: assetTransform.fx, flipY: assetTransform.fy }]); };
+  const handleTokenImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { 
+      const file = e.target.files?.[0]; 
+      if (file && editingToken) { 
+          const r = new FileReader(); 
+          r.onload = async (ev) => { 
+              if (ev.target?.result) {
+                  const result = ev.target.result as string;
+                  console.log("Adicionando imagem do token (sem compressão)...");
+                  const assetToken = addCustomAsset(result, 'Token', 'upload');
+                  setEditingToken({ ...editingToken, image: assetToken }); 
+              }
+          }; 
+          r.readAsDataURL(file); 
+      }
+  };
+  const addTokenToBench = (isProp: boolean = false) => { setTokenBench([...tokenBench, {id: Date.now(), x: 0, y: 0, icon: isProp ? '' : '💀', hp: isProp ? 0 : 10, max: isProp ? 0 : 10, color: isProp ? 'transparent' : '#ef4444', size: isProp ? 1 : 2, width: isProp ? 1 : 2, height: isProp ? 1 : 2, name: isProp ? 'Objeto' : 'Monstro', isProp }]); setShowBench(true); };
+  const handleAddPropFromSelection = () => { if (!selectedTile) return; setTokenBench([...tokenBench, { id: Date.now(), x: 0, y: 0, icon: '', image: selectedTile, hp: 10, max: 10, color: 'transparent', size: Math.max(assetDims.w, assetDims.h), width: assetDims.w, height: assetDims.h, name: 'Objeto', isProp: true, rotation: assetTransform.r, flipX: assetTransform.fx, flipY: assetTransform.fy }]); setShowBench(true); };
   
   const importCharacterToBench = (char: Character) => { 
-      setTokenBench([...tokenBench, { id: Date.now(), x: 0, y: 0, icon: '👤', image: char.imageUrl, hp: char.hp.current, max: char.hp.max, ac: char.ac, color: '#3b82f6', size: 1, width: 1, height: 1, name: char.name, isProp: false, linkedId: char.id, linkedType: 'character' }]); 
+      let finalImg = char.imageUrl;
+      if (finalImg && finalImg.startsWith('data:')) {
+          finalImg = registerCustomAsset(finalImg, char.name, 'upload');
+      }
+      setTokenBench([...tokenBench, { id: Date.now(), x: 0, y: 0, icon: '👤', image: finalImg, hp: char.hp.current, max: char.hp.max, ac: char.ac, color: '#3b82f6', size: 2, width: 2, height: 2, name: char.name, isProp: false, linkedId: char.id, linkedType: 'character' }]); 
+      setShowBench(true);
   };
   const importMonsterToBench = (mon: Monster) => { 
-      setTokenBench([...tokenBench, { id: Date.now(), x: 0, y: 0, icon: '💀', image: mon.imageUrl, hp: mon.hp, max: mon.hp, ac: mon.ac, color: '#ef4444', size: 1, width: 1, height: 1, name: mon.name, isProp: false, linkedId: mon.id, linkedType: 'monster' }]); 
+      let finalImg = mon.imageUrl;
+      if (finalImg && finalImg.startsWith('data:')) {
+          finalImg = registerCustomAsset(finalImg, mon.name, 'upload');
+      }
+      setTokenBench([...tokenBench, { id: Date.now(), x: 0, y: 0, icon: '💀', image: finalImg, hp: mon.hp, max: mon.hp, ac: mon.ac, color: '#ef4444', size: 2, width: 2, height: 2, name: mon.name, isProp: false, linkedId: mon.id, linkedType: 'monster' }]); 
+      setShowBench(true);
   };
   
   const removeTokenFromBench = (id: number) => { setTokenBench(prev => prev.filter(t => t.id !== id)); setContextMenu(null); };
   
+  const saveTokenBench = () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tokenBench));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href",     dataStr);
+      downloadAnchorNode.setAttribute("download", "token_bench.json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+  };
+
+  const loadTokenBench = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          try {
+              const loaded = JSON.parse(event.target?.result as string);
+              if (Array.isArray(loaded)) {
+                  setTokenBench(loaded);
+              }
+          } catch (err) {
+              console.error("Failed to parse token bench JSON", err);
+              console.warn("Arquivo de tokens inválido.");
+          }
+      };
+      reader.readAsText(file);
+      e.target.value = ''; // Reset input
+  };
+
   const handleLinkChange = (type: 'character' | 'monster', id: string) => { 
       if (!editingToken) return; 
       let name = editingToken.name || ''; 
@@ -812,10 +1017,60 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
       ctx.rotate((token.rotation || 0) * Math.PI / 180);
       ctx.scale(token.flipX ? -1 : 1, token.flipY ? -1 : 1);
       
-      if (token.image) {
-          if (imageCache.current[token.image]) {
-              // Exibir imagem completa sem recorte circular
-              ctx.drawImage(imageCache.current[token.image], -tw/2, -th/2, tw, th);
+      const tokenImageUrl = token.image ? resolveUrl(token.image) : '';
+      
+      if (tokenImageUrl) {
+          if (imageCache.current[tokenImageUrl] && imageCache.current[tokenImageUrl].complete && imageCache.current[tokenImageUrl].naturalWidth > 0) {
+              // Exibir imagem completa com suporte a imageConfig
+              const config = token.imageConfig || { x: 0, y: 0, scale: 1, rotation: 0 };
+              ctx.save();
+              // Clipping mask for the token area
+              ctx.beginPath();
+              if (!token.isProp) {
+                  ctx.arc(0, 0, Math.min(tw, th)/2, 0, Math.PI*2);
+              } else {
+                  ctx.rect(-tw/2, -th/2, tw, th);
+              }
+              ctx.clip();
+
+              const img = imageCache.current[tokenImageUrl];
+              const imgW = img.naturalWidth;
+              const imgH = img.naturalHeight;
+              const imgRatio = imgW / imgH;
+              const tokenRatio = tw / th;
+
+              let drawW = tw;
+              let drawH = th;
+              let offsetX = -tw/2;
+              let offsetY = -th/2;
+
+              // Only apply framing transformations if it's a prop
+              // For characters/monsters, the user wants the "whole" image to appear in the token
+              if (token.isProp) {
+                  ctx.translate(config.x * tw / 100, config.y * th / 100);
+                  ctx.scale(config.scale, config.scale);
+                  ctx.rotate((config.rotation || 0) * Math.PI / 180);
+              } else {
+                  // For characters, ensure the whole image fits inside the token area (contain)
+                  if (imgRatio > tokenRatio) {
+                      drawH = tw / imgRatio;
+                      offsetY = -drawH / 2;
+                  } else {
+                      drawW = th * imgRatio;
+                      offsetX = -drawW / 2;
+                  }
+              }
+
+              ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+              ctx.restore();
+          } else if (failedImages.current.has(tokenImageUrl)) {
+              // Missing texture placeholder
+              ctx.fillStyle = '#ff00ff';
+              ctx.fillRect(-tw/2, -th/2, tw/2, th/2);
+              ctx.fillRect(0, 0, tw/2, th/2);
+              ctx.fillStyle = '#000000';
+              ctx.fillRect(0, -th/2, tw/2, th/2);
+              ctx.fillRect(-tw/2, 0, tw/2, th/2);
           } else {
               ctx.fillStyle = token.color || '#ccc';
               if (!token.isProp) {
@@ -838,9 +1093,19 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
           ctx.fillText(token.icon || token.name?.substring(0,1) || '?', 0, 0);
       }
       
+      // Draw Frame over Token if exists
+      if (token.frame) {
+          if (imageCache.current[token.frame]) {
+              // Draw frame slightly larger to encompass the token
+              const fw = tw * 1.3;
+              const fh = th * 1.3;
+              ctx.drawImage(imageCache.current[token.frame], -fw/2, -fh/2, fw, fh);
+          }
+      }
+
       ctx.restore();
 
-      if (token.id === selectedTokenId) {
+      if (selectedTokenIds.includes(token.id)) {
           ctx.strokeStyle = '#ffb74d';
           ctx.lineWidth = 2;
           ctx.strokeRect(tx, ty, tw, th);
@@ -877,6 +1142,43 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
               ctx.fillStyle = m;
               ctx.fill();
           });
+      }
+
+      // DRAW CONDITIONS
+      if (token.conditions && token.conditions.length > 0) {
+          ctx.font = `${Math.max(10, tileSize * 0.4)}px Arial`;
+          ctx.textAlign = 'right';
+          token.conditions.forEach((cond, i) => {
+              const icon = CONDITION_ICONS[cond] || '🔹';
+              ctx.fillText(icon, tx + tw - 2, ty + th - 2 - (i * (tileSize * 0.45)));
+          });
+      }
+
+      // DRAW INSPIRATION
+      if (token.inspiration) {
+          ctx.fillStyle = '#facc15'; // Yellow
+          ctx.font = `${Math.max(12, tileSize * 0.5)}px Arial`;
+          ctx.textAlign = 'left';
+          ctx.fillText('⭐', tx + 2, ty + th - 2);
+      }
+
+      // DRAW HP BAR
+      if (showHpBars && !token.isProp && token.hp !== undefined && token.max > 0) {
+          const hpRoll = Math.min(1, Math.max(0, token.hp / token.max));
+          const barW = tw * 0.8;
+          const barH = Math.max(4, tileSize * 0.15);
+          const barX = tx + (tw - barW) / 2;
+          const barY = ty + th + 2;
+
+          ctx.fillStyle = 'rgba(0,0,0,0.5)';
+          ctx.fillRect(barX, barY, barW, barH);
+          
+          ctx.fillStyle = hpRoll > 0.5 ? '#22c55e' : hpRoll > 0.2 ? '#eab308' : '#ef4444';
+          ctx.fillRect(barX, barY, barW * hpRoll, barH);
+          
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(barX, barY, barW, barH);
       }
   };
 
@@ -944,12 +1246,26 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
       }
 
       // 4. Draw Custom Background Image
-      if (backgroundImage && imageCache.current[backgroundImage]) {
-          const img = imageCache.current[backgroundImage];
+      const bgUrl = backgroundImage ? resolveUrl(backgroundImage) : '';
+      if (bgUrl && imageCache.current[bgUrl]) {
+          const img = imageCache.current[bgUrl];
           if (img.naturalWidth > 0) {
-             const dw = img.naturalWidth * bgProps.scale;
-             const dh = img.naturalHeight * bgProps.scale;
-             ctx.drawImage(img, bgProps.x, bgProps.y, dw, dh);
+             ctx.save();
+             // Apply Brightness Filter
+             if (bgBrightness !== 100) {
+                 ctx.filter = `brightness(${bgBrightness}%)`;
+             }
+             
+             if (bgStretch) {
+                 // Stretch to fit the entire grid exactly
+                 ctx.drawImage(img, 0, 0, gridW * tileSize, gridH * tileSize);
+             } else {
+                 // Free transform mode
+                 const dw = img.naturalWidth * bgProps.scale;
+                 const dh = img.naturalHeight * bgProps.scale;
+                 ctx.drawImage(img, bgProps.x, bgProps.y, dw, dh);
+             }
+             ctx.restore();
           }
       }
 
@@ -958,31 +1274,66 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
           const parts = cellData.split('|');
           parts.forEach((part, layerIndex) => {
               if (!part) return;
-              const { url, r: rotation, fx, fy } = parseTileData(part);
+              const { url: rawUrl, r: rotation, fx, fy } = parseTileData(part);
+              const url = resolveUrl(rawUrl);
               
               // REMOVED: White Fill Logic for VOID/Square
               if (url === '⬜' || url === 'VOID') {
                   return; 
               }
 
+              const cx = c * tileSize + tileSize / 2;
+              const cy = r * tileSize + tileSize / 2;
+
               if (imageCache.current[url]) {
                   const img = imageCache.current[url];
                   ctx.save();
-                  const cx = c * tileSize + tileSize / 2;
-                  const cy = r * tileSize + tileSize / 2;
                   ctx.translate(cx, cy);
                   ctx.rotate((rotation * Math.PI) / 180);
                   ctx.scale(fx ? -1 : 1, fy ? -1 : 1);
-                  ctx.drawImage(img, -tileSize / 2, -tileSize / 2, tileSize, tileSize);
+                  
+                  if (img.complete && img.naturalWidth > 0) {
+                      ctx.drawImage(img, -tileSize / 2, -tileSize / 2, tileSize, tileSize);
+                  } else if (failedImages.current.has(url)) {
+                      // Missing texture placeholder
+                      ctx.fillStyle = '#ff00ff';
+                      ctx.fillRect(-tileSize / 2, -tileSize / 2, tileSize / 2, tileSize / 2);
+                      ctx.fillRect(0, 0, tileSize / 2, tileSize / 2);
+                      ctx.fillStyle = '#000000';
+                      ctx.fillRect(0, -tileSize / 2, tileSize / 2, tileSize / 2);
+                      ctx.fillRect(-tileSize / 2, 0, tileSize / 2, tileSize / 2);
+                  }
+                  ctx.restore();
+              } else if (failedImages.current.has(url)) {
+                  ctx.save();
+                  ctx.translate(cx, cy);
+                  ctx.rotate((rotation * Math.PI) / 180);
+                  ctx.scale(fx ? -1 : 1, fy ? -1 : 1);
+                  ctx.fillStyle = '#ff00ff';
+                  ctx.fillRect(-tileSize / 2, -tileSize / 2, tileSize / 2, tileSize / 2);
+                  ctx.fillRect(0, 0, tileSize / 2, tileSize / 2);
+                  ctx.fillStyle = '#000000';
+                  ctx.fillRect(0, -tileSize / 2, tileSize / 2, tileSize / 2);
+                  ctx.fillRect(-tileSize / 2, 0, tileSize / 2, tileSize / 2);
                   ctx.restore();
               }
           });
       };
 
-      for (let y = 0; y < gridH; y++) {
+      // Viewport culling for performance
+      let startX = 0, endX = gridW - 1;
+      let startY = 0, endY = gridH - 1;
+      
+      if (!exportMode) {
+          startX = Math.max(0, Math.floor(-pan.x / (zoom * tileSize)));
+          endX = Math.min(gridW - 1, Math.ceil((width / zoom - pan.x / zoom) / tileSize));
+          startY = Math.max(0, Math.floor(-pan.y / (zoom * tileSize)));
+          endY = Math.min(gridH - 1, Math.ceil((height / zoom - pan.y / zoom) / tileSize));
+      }
+
+      for (let y = startY; y <= endY; y++) {
           if (!mapGrid[y]) continue; 
-          for (let x = 0; x < gridW; x++) {
-              // Optimization: Only draw if within approximate view (optional, skipped for simplicity)
+          for (let x = startX; x <= endX; x++) {
               drawTileAt(x, y, mapGrid[y][x]);
           }
       }
@@ -993,10 +1344,28 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
           ctx.lineWidth = 1;
           ctx.beginPath();
           if (gridStyle === 'line') {
-              for (let x = 0; x <= gridW; x++) { ctx.moveTo(x * tileSize, 0); ctx.lineTo(x * tileSize, gridH * tileSize); }
-              for (let y = 0; y <= gridH; y++) { ctx.moveTo(0, y * tileSize); ctx.lineTo(gridW * tileSize, y * tileSize); }
+              for (let x = startX; x <= endX + 1; x++) { 
+                  if (x <= gridW) {
+                      ctx.moveTo(x * tileSize, startY * tileSize); 
+                      ctx.lineTo(x * tileSize, Math.min(gridH, endY + 1) * tileSize); 
+                  }
+              }
+              for (let y = startY; y <= endY + 1; y++) { 
+                  if (y <= gridH) {
+                      ctx.moveTo(startX * tileSize, y * tileSize); 
+                      ctx.lineTo(Math.min(gridW, endX + 1) * tileSize, y * tileSize); 
+                  }
+              }
           } else {
-              for (let y = 0; y <= gridH; y++) for (let x = 0; x <= gridW; x++) { ctx.rect(x*tileSize-1, y*tileSize-1, 2, 2); }
+              for (let y = startY; y <= endY + 1; y++) {
+                  if (y <= gridH) {
+                      for (let x = startX; x <= endX + 1; x++) { 
+                          if (x <= gridW) {
+                              ctx.rect(x*tileSize-1, y*tileSize-1, 2, 2); 
+                          }
+                      }
+                  }
+              }
           }
           ctx.stroke();
           ctx.globalAlpha = 1.0;
@@ -1005,20 +1374,84 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
       tokens.filter(t => t.isBackground).forEach(token => drawToken(ctx, token));
       tokens.filter(t => !t.isBackground).forEach(token => drawToken(ctx, token));
 
+      if (measureStart && measureEnd && (tool === 'ruler' || tool === 'measure-circle' || tool === 'measure-cone' || tool === 'measure-cube') && !exportMode) {
+          const sx = measureStart.x * tileSize;
+          const sy = measureStart.y * tileSize;
+          const ex = measureEnd.x * tileSize;
+          const ey = measureEnd.y * tileSize;
+          const dx = measureEnd.x - measureStart.x;
+          const dy = measureEnd.y - measureStart.y;
+          const distanceSquares = Math.round(Math.hypot(dx, dy) * 10) / 10;
+          const distanceMeters = (distanceSquares * 1.5).toFixed(1);
+
+          ctx.save();
+          ctx.strokeStyle = '#3b82f6';
+          ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+          ctx.lineWidth = 4 / zoom;
+
+          if (tool === 'ruler') {
+              ctx.beginPath();
+              ctx.moveTo(sx, sy);
+              ctx.lineTo(ex, ey);
+              ctx.stroke();
+          } else if (tool === 'measure-circle') {
+              const radius = Math.hypot(ex - sx, ey - sy);
+              ctx.beginPath();
+              ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+              
+              ctx.beginPath();
+              ctx.moveTo(sx, sy);
+              ctx.lineTo(ex, ey);
+              ctx.stroke();
+          } else if (tool === 'measure-cone') {
+              const angle = Math.atan2(ey - sy, ex - sx);
+              const radius = Math.hypot(ex - sx, ey - sy);
+              const coneAngle = Math.PI / 3; // 60 degrees
+              ctx.beginPath();
+              ctx.moveTo(sx, sy);
+              ctx.arc(sx, sy, radius, angle - coneAngle / 2, angle + coneAngle / 2);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+          } else if (tool === 'measure-cube') {
+              const width = Math.abs(ex - sx);
+              const height = Math.abs(ey - sy);
+              const minX = Math.min(sx, ex);
+              const minY = Math.min(sy, ey);
+              ctx.beginPath();
+              ctx.rect(minX, minY, width, height);
+              ctx.fill();
+              ctx.stroke();
+          }
+
+          ctx.translate(ex + (15/zoom), ey - (15/zoom));
+          ctx.scale(1/zoom, 1/zoom); 
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+          ctx.fillRect(0, -24, 110, 32);
+          ctx.fillStyle = '#60a5fa';
+          ctx.font = 'bold 16px Arial';
+          ctx.fillText(`${distanceSquares} Q | ${distanceMeters}m`, 8, -4);
+          ctx.restore();
+      }
+
       if (showFog && !exportMode) {
           ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
-          for (let y = 0; y < gridH; y++) {
-              for (let x = 0; x < gridW; x++) {
-                  if (fogGrid[y] && fogGrid[y][x]) {
-                      ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+          for (let y = startY; y <= endY; y++) {
+              if (y < gridH) {
+                  for (let x = startX; x <= endX; x++) {
+                      if (x < gridW && fogGrid[y] && fogGrid[y][x]) {
+                          ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                      }
                   }
               }
           }
       }
       
       if (ping && !exportMode) {
-          const px = ping.x * tileSize + tileSize / 2;
-          const py = ping.y * tileSize + tileSize / 2;
+          const px = ping.x * tileSize;
+          const py = ping.y * tileSize;
           ctx.beginPath();
           ctx.arc(px, py, 20 + Math.sin(Date.now() / 100) * 10, 0, Math.PI * 2);
           ctx.strokeStyle = 'red';
@@ -1046,7 +1479,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
             link.href = dataUrl;
             link.click();
         } catch (e) {
-            alert("Não foi possível exportar o mapa devido a restrições de segurança (imagens externas protegidas/CORS).");
+            console.warn("Não foi possível exportar o mapa devido a restrições de segurança (imagens externas protegidas/CORS).");
             console.error(e);
         }
     }
@@ -1062,29 +1495,69 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
           return;
       }
       if (e.button !== 0) return;
-      if(e.altKey) { setPing({ ...getGridPos(e), t: Date.now() }); return; }
+      if(e.altKey || tool === 'ping') { setPing({ ...getExactGridPos(e), t: Date.now() }); return; }
       
       const p = getGridPos(e);
+      const exactP = getExactGridPos(e);
       if(tool==='move') { 
+          if (permissions && !permissions.canMoveTokens) return; // Permissions check
           const targetTokens = tokens.filter(t => editLayer === 'background' ? t.isBackground : !t.isBackground);
           const t = [...targetTokens].reverse().find(tk => {
               const w = tk.width || tk.size || 1;
               const h = tk.height || tk.size || 1;
-              return p.x >= tk.x && p.x < tk.x + w && p.y >= tk.y && p.y < tk.y + h;
+              return exactP.x >= tk.x && exactP.x < tk.x + w && exactP.y >= tk.y && exactP.y < tk.y + h;
           });
-          if(t) { setSelectedTokenId(t.id); setIsDraggingToken(true); } else { setSelectedTokenId(null); }
+          if(t) { 
+              let newSelection = selectedTokenIds;
+              if (e.shiftKey || e.ctrlKey) {
+                  if (selectedTokenIds.includes(t.id)) {
+                      newSelection = selectedTokenIds.filter(id => id !== t.id);
+                  } else {
+                      newSelection = [...selectedTokenIds, t.id];
+                  }
+              } else {
+                  if (!selectedTokenIds.includes(t.id)) {
+                      newSelection = [t.id];
+                  }
+              }
+              setSelectedTokenIds(newSelection); 
+              setPrimaryDragTokenId(t.id);
+              setIsDraggingToken(true); 
+              setDragOffset({ x: exactP.x - t.x, y: exactP.y - t.y });
+              
+              const startPos: Record<number, {x: number, y: number}> = {};
+              tokens.forEach(tk => {
+                  if (newSelection.includes(tk.id)) {
+                      startPos[tk.id] = { x: tk.x, y: tk.y };
+                  }
+              });
+              setDragStartPositions(startPos);
+          } else { 
+              if (!e.shiftKey && !e.ctrlKey) {
+                  setSelectedTokenIds([]); 
+                  setPrimaryDragTokenId(null);
+              }
+          }
           return;
       }
       if (tool === 'pencil' && placeMode === 'object' && selectedTile) {
+          const w = assetDims.w;
+          const h = assetDims.h;
           const newToken: Token = {
               id: Date.now(),
-              x: p.x, y: p.y, icon: '', image: selectedTile, hp: 10, max: 10, color: 'transparent',
+              x: exactP.x - w / 2, y: exactP.y - h / 2, icon: '', image: selectedTile, hp: 10, max: 10, color: 'transparent',
               size: Math.max(assetDims.w, assetDims.h), width: assetDims.w, height: assetDims.h,
               name: 'Objeto', isProp: true, rotation: assetTransform.r, flipX: assetTransform.fx, flipY: assetTransform.fy,
               isBackground: editLayer === 'background'
           };
           setTokens(prev => [...prev, newToken]);
           return; 
+      }
+      if (tool === 'ruler' || tool === 'measure-circle' || tool === 'measure-cone' || tool === 'measure-cube') {
+          setMeasureStart(exactP);
+          setMeasureEnd(exactP);
+          setIsDrawing(true);
+          return;
       }
       setIsDrawing(true); setStartPos(p);
       if(tool==='pencil'||tool==='eraser') drawTile(p.x, p.y);
@@ -1103,11 +1576,25 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
           setPanStart({ x: e.clientX, y: e.clientY });
           return; 
       }
-      if (isDraggingToken && selectedTokenId !== null && tool === 'move') {
+      if (isDraggingToken && primaryDragTokenId !== null && tool === 'move') {
+          if (permissions && !permissions.canMoveTokens) return; // Permissions check
+          const primaryStart = dragStartPositions[primaryDragTokenId];
+          if (!primaryStart) return;
+          const newPrimaryX = p.x - dragOffset.x;
+          const newPrimaryY = p.y - dragOffset.y;
+          const dx = newPrimaryX - primaryStart.x;
+          const dy = newPrimaryY - primaryStart.y;
+
           setTokens(prev => prev.map((t: Token) => {
-              if (t.id === selectedTokenId) return { ...t, x: Math.floor(p.x), y: Math.floor(p.y) };
+              if (selectedTokenIds.includes(t.id) && dragStartPositions[t.id]) {
+                  return { ...t, x: dragStartPositions[t.id].x + dx, y: dragStartPositions[t.id].y + dy };
+              }
               return t;
           }));
+          return;
+      }
+      if (isDrawing && (tool === 'ruler' || tool === 'measure-circle' || tool === 'measure-cone' || tool === 'measure-cube')) {
+          setMeasureEnd(p);
           return;
       }
       if(!isDrawing) return;
@@ -1117,8 +1604,21 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
 
   const handleMouseUp = (e: React.MouseEvent) => {
       if(isPanning) { setIsPanning(false); return; }
-      if(isDraggingToken) { setIsDraggingToken(false); return; }
+      if(isDraggingToken) { 
+          if (permissions && !permissions.canMoveTokens) {
+              setIsDraggingToken(false);
+              return;
+          }
+          setIsDraggingToken(false); 
+          return; 
+      }
       if(!isDrawing) return;
+      if (tool === 'ruler' || tool === 'measure-circle' || tool === 'measure-cone' || tool === 'measure-cube') {
+          setIsDrawing(false);
+          setMeasureStart(null);
+          setMeasureEnd(null);
+          return;
+      }
       setIsDrawing(false);
       const end = getGridPos(e);
       if(startPos) {
@@ -1133,6 +1633,8 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                   while(true){ if(nG[y0] && nG[y0][x0]) nG[y0][x0]=mergeCell(nG[y0][x0], selectedTile, activeLayer); if(x0===end.x && y0===end.y)break; const e2=2*err; if(e2>-dy){err-=dy;x0+=sx;} if(e2<dx){err+=dx;y0+=sy;} }
               }
               setMapGrid(nG); saveToHistory(nG);
+          } else if (tool === 'pencil' || tool === 'eraser') {
+              saveToHistory(latestMapGridRef.current);
           }
           if(tool==='fog-hide') toggleFogArea(startPos, end, true);
           if(tool==='fog-reveal') toggleFogArea(startPos, end, false);
@@ -1142,6 +1644,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
 
   const handleContextMenu = (e: React.MouseEvent) => {
       e.preventDefault();
+      if (permissions && !permissions.canEditCharacters) return; // Permissions check
       const p = getGridPos(e);
       const targetTokens = tokens.filter(t => editLayer === 'background' ? t.isBackground : !t.isBackground);
       const t = [...targetTokens].reverse().find(tk => {
@@ -1166,15 +1669,23 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
-      const p = getGridPos(e);
+      if (permissions && !permissions.canEditCharacters) return; // Permissions check
+      const exactP = getExactGridPos(e);
       const targetTokens = tokens.filter(t => editLayer === 'background' ? t.isBackground : !t.isBackground);
       const t = [...targetTokens].reverse().find(tk => {
           const w = tk.width || tk.size || 1;
           const h = tk.height || tk.size || 1;
-          return p.x >= tk.x && p.x < tk.x + w && p.y >= tk.y && p.y < tk.y + h;
+          return exactP.x >= tk.x && exactP.x < tk.x + w && exactP.y >= tk.y && exactP.y < tk.y + h;
       });
-      if (t) openTokenEditor(t.id);
-      else setSelectedTokenId(null);
+      if (t) {
+          openTokenEditor(t.id);
+      } else {
+          setSelectedTokenIds([]);
+          setPrimaryDragTokenId(null);
+          if (tool === 'hand' || isGameMode) {
+              setPing({ ...exactP, t: Date.now() });
+          }
+      }
   };
 
   const handleBenchDragStart = (e: React.DragEvent, token: Token) => {
@@ -1184,62 +1695,162 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
 
   const handleCanvasDragOver = (e: React.DragEvent) => {
       e.preventDefault();
+      if (permissions && !permissions.canEditCharacters) {
+          e.dataTransfer.dropEffect = 'none';
+          return;
+      }
       e.dataTransfer.dropEffect = 'copy';
   };
 
   const handleCanvasDrop = (e: React.DragEvent) => {
       e.preventDefault();
+      if (permissions && !permissions.canEditCharacters) return; // Permissions check
+      
+      // Handle combatant drop from DMTools
+      const combatantData = e.dataTransfer.getData('application/x-rpg-combatant');
+      if (combatantData) {
+          try {
+              const participant = JSON.parse(combatantData);
+              const rect = canvasRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              
+              const exactX = (e.clientX - rect.left - pan.x) / zoom / tileSize;
+              const exactY = (e.clientY - rect.top - pan.y) / zoom / tileSize;
+              
+              const newToken: Token = {
+                  id: Date.now(),
+                  x: Math.floor(exactX),
+                  y: Math.floor(exactY),
+                  icon: '',
+                  image: participant.imageUrl || '',
+                  hp: participant.hpCurrent,
+                  max: participant.hpMax,
+                  color: 'transparent',
+                  size: 1,
+                  width: 1,
+                  height: 1,
+                  name: participant.name,
+                  linkedId: participant.uid,
+                  isProp: false
+              };
+              
+              setTokens([...tokens, newToken]);
+              return;
+          } catch (err) {
+              console.error("Erro ao processar drop de combatente:", err);
+          }
+      }
+      
+      // Handle image file drop
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          const file = e.dataTransfer.files[0];
+          if (file.type.startsWith('image/')) {
+              const reader = new FileReader();
+              reader.onload = async (ev) => {
+                  if (ev.target?.result) {
+                      const compressed = ev.target.result as string;
+                      const assetToken = addCustomAsset(compressed, file.name, 'upload');
+                      const rect = canvasRef.current?.getBoundingClientRect();
+                      if (!rect) return;
+                      const exactX = (e.clientX - rect.left - pan.x) / zoom / tileSize;
+                      const exactY = (e.clientY - rect.top - pan.y) / zoom / tileSize;
+                      
+                      // Ask user if they want to add as token or background
+                      if (setConfirmModal) {
+                          setConfirmModal({
+                              message: "Deseja adicionar esta imagem como Token ou Fundo do Mapa?",
+                              onConfirm: () => {
+                                  setTokens([...tokens, {
+                                      id: Date.now(),
+                                      x: exactX - 1,
+                                      y: exactY - 1,
+                                      icon: '',
+                                      image: assetToken,
+                                      hp: 10,
+                                      max: 10,
+                                      color: 'transparent',
+                                      size: 2,
+                                      width: 2,
+                                      height: 2,
+                                      name: file.name.split('.')[0],
+                                      isProp: true,
+                                      isBackground: editLayer === 'background'
+                                  }]);
+                              },
+                              onCancel: () => {
+                                  setBackgroundImage(assetToken);
+                              }
+                          });
+                      }
+                  }
+              };
+              reader.readAsDataURL(file);
+              return;
+          }
+      }
+
       const tokenDataStr = e.dataTransfer.getData('tokenData');
       if (tokenDataStr) {
           const tokenTemplate = JSON.parse(tokenDataStr) as Token;
           if (!canvasRef.current) return;
           const rect = canvasRef.current.getBoundingClientRect();
-          const x = Math.floor((e.clientX - rect.left - pan.x) / zoom / tileSize);
-          const y = Math.floor((e.clientY - rect.top - pan.y) / zoom / tileSize);
+          const exactX = (e.clientX - rect.left - pan.x) / zoom / tileSize;
+          const exactY = (e.clientY - rect.top - pan.y) / zoom / tileSize;
+          
+          const w = tokenTemplate.width || tokenTemplate.size || 1;
+          const h = tokenTemplate.height || tokenTemplate.size || 1;
+          
           const newToken: Token = { 
               ...tokenTemplate, 
               id: Date.now(), 
-              x: Math.min(Math.max(0, x), gridW - 1), 
-              y: Math.min(Math.max(0, y), gridH - 1),
+              x: exactX - w / 2, 
+              y: exactY - h / 2,
               isBackground: editLayer === 'background'
           };
           setTokens(prev => [...prev, newToken]);
       }
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault(); 
-    if (!containerRef.current) return;
-    const isPinch = e.ctrlKey;
-    const isTrackpad = Math.abs(e.deltaX) > 0 || Math.abs(e.deltaY) < 40;
-    if (isPinch) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const zoomFactor = -e.deltaY * 0.01;
-        const newZoom = Math.max(0.1, Math.min(5.0, zoom * (1 + zoomFactor)));
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        const worldX = (mouseX - pan.x) / zoom;
-        const worldY = (mouseY - pan.y) / zoom;
-        const newPanX = mouseX - (worldX * newZoom);
-        const newPanY = mouseY - (worldY * newZoom);
-        setZoom(newZoom);
-        setPan({ x: newPanX, y: newPanY });
-    } else if (isTrackpad) {
-        setPan(prev => ({ x: prev.x - e.deltaX, y: prev.y - e.deltaY }));
-    } else {
-        const rect = containerRef.current.getBoundingClientRect();
-        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        const newZoom = Math.max(0.1, Math.min(5.0, zoom + delta));
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        const worldX = (mouseX - pan.x) / zoom;
-        const worldY = (mouseY - pan.y) / zoom;
-        const newPanX = mouseX - (worldX * newZoom);
-        const newPanY = mouseY - (worldY * newZoom);
-        setZoom(newZoom);
-        setPan({ x: newPanX, y: newPanY });
-    }
-  };
+  useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const handleWheelNative = (e: WheelEvent) => {
+          e.preventDefault();
+          const isPinch = e.ctrlKey;
+          const isTrackpad = Math.abs(e.deltaX) > 0 || Math.abs(e.deltaY) < 40;
+          if (isPinch) {
+              const rect = container.getBoundingClientRect();
+              const zoomFactor = -e.deltaY * 0.01;
+              const newZoom = Math.max(0.1, Math.min(5.0, zoom * (1 + zoomFactor)));
+              const mouseX = e.clientX - rect.left;
+              const mouseY = e.clientY - rect.top;
+              const worldX = (mouseX - pan.x) / zoom;
+              const worldY = (mouseY - pan.y) / zoom;
+              const newPanX = mouseX - (worldX * newZoom);
+              const newPanY = mouseY - (worldY * newZoom);
+              setZoom(newZoom);
+              setPan({ x: newPanX, y: newPanY });
+          } else if (isTrackpad) {
+              setPan(prev => ({ x: prev.x - e.deltaX, y: prev.y - e.deltaY }));
+          } else {
+              const rect = container.getBoundingClientRect();
+              const delta = e.deltaY > 0 ? -0.1 : 0.1;
+              const newZoom = Math.max(0.1, Math.min(5.0, zoom + delta));
+              const mouseX = e.clientX - rect.left;
+              const mouseY = e.clientY - rect.top;
+              const worldX = (mouseX - pan.x) / zoom;
+              const worldY = (mouseY - pan.y) / zoom;
+              const newPanX = mouseX - (worldX * newZoom);
+              const newPanY = mouseY - (worldY * newZoom);
+              setZoom(newZoom);
+              setPan({ x: newPanX, y: newPanY });
+          }
+      };
+
+      container.addEventListener('wheel', handleWheelNative, { passive: false });
+      return () => container.removeEventListener('wheel', handleWheelNative);
+  }, [zoom, pan]);
 
   const fitToScreen = () => {
       if (!containerRef.current) return;
@@ -1259,41 +1870,62 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   const centerMap = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
 
   const getSelectedTokenHUD = () => {
-      if (!selectedTokenId || !canvasRef.current) return null;
-      const token = tokens.find(t => t.id === selectedTokenId);
-      if (!token) return null;
-      if (editLayer === 'token' && token.isBackground) return null;
-      if (editLayer === 'background' && !token.isBackground) return null;
-
-      // HUD position calculation needs to account for the canvas transform
-      // Since HUD is an HTML overlay, we need screen coordinates
-      const screenX = (token.x * tileSize * zoom) + pan.x;
-      const screenY = (token.y * tileSize * zoom) + pan.y;
-      const w = (token.width || 1) * tileSize * zoom;
+      if (selectedTokenIds.length === 0 || !canvasRef.current) return null;
       
-      return (
-          <div 
-            className="absolute z-40 bg-[#1a1a24] border border-[#333] rounded-lg shadow-xl p-1 flex gap-1 animate-in fade-in slide-in-from-bottom-2"
-            style={{ left: screenX + w / 2, top: screenY - 50, transform: 'translateX(-50%)' }}
-          >
-              <button onClick={() => rotateToken(token.id, -45)} className="p-1.5 hover:bg-[#333] rounded text-stone-400 hover:text-white" title="Girar -45°"><RotateCcw size={14}/></button>
-              <button onClick={() => rotateToken(token.id, 45)} className="p-1.5 hover:bg-[#333] rounded text-stone-400 hover:text-white" title="Girar +45°"><RotateCw size={14}/></button>
-              <div className="w-px bg-[#333] mx-0.5"></div>
-              <button onClick={() => flipToken(token.id, 'x')} className="p-1.5 hover:bg-[#333] rounded text-stone-400 hover:text-white" title="Espelhar Horiz"><ArrowRightLeft size={14}/></button>
-              <div className="w-px bg-[#333] mx-0.5"></div>
-              <button onClick={() => updateTokenSize(token.id, -0.5)} className="p-1.5 hover:bg-[#333] rounded text-stone-400 hover:text-white" title="Diminuir"><ChevronsDown size={14}/></button>
-              <button onClick={() => updateTokenSize(token.id, 0.5)} className="p-1.5 hover:bg-[#333] rounded text-stone-400 hover:text-white" title="Aumentar"><ChevronsUp size={14}/></button>
-              <div className="w-px bg-[#333] mx-0.5"></div>
-              <button onClick={() => duplicateToken(token.id)} className="p-1.5 hover:bg-[#333] rounded text-stone-400 hover:text-white" title="Duplicar"><Copy size={14}/></button>
-              <button onClick={() => deleteToken(token.id)} className="p-1.5 hover:bg-red-900/30 rounded text-red-400 hover:text-red-300" title="Excluir"><Trash2 size={14}/></button>
-          </div>
-      );
+      if (selectedTokenIds.length === 1) {
+          const token = tokens.find(t => t.id === selectedTokenIds[0]);
+          if (!token) return null;
+          if (editLayer === 'token' && token.isBackground) return null;
+          if (editLayer === 'background' && !token.isBackground) return null;
+
+          const screenX = (token.x * tileSize * zoom) + pan.x;
+          const screenY = (token.y * tileSize * zoom) + pan.y;
+          const w = (token.width || 1) * tileSize * zoom;
+          
+          return (
+              <div 
+                className="absolute z-40 bg-[#1a1a24] border border-[#333] rounded-lg shadow-xl p-1 flex gap-1 animate-in fade-in slide-in-from-bottom-2"
+                style={{ left: screenX + w / 2, top: screenY - 50, transform: 'translateX(-50%)' }}
+              >
+                  <button onClick={() => rotateToken(token.id, -45)} className="p-1.5 hover:bg-[#333] rounded text-stone-400 hover:text-white" title="Girar -45°"><RotateCcw size={14}/></button>
+                  <button onClick={() => rotateToken(token.id, 45)} className="p-1.5 hover:bg-[#333] rounded text-stone-400 hover:text-white" title="Girar +45°"><RotateCw size={14}/></button>
+                  <div className="w-px bg-[#333] mx-0.5"></div>
+                  <button onClick={() => flipToken(token.id, 'x')} className="p-1.5 hover:bg-[#333] rounded text-stone-400 hover:text-white" title="Espelhar Horiz"><ArrowRightLeft size={14}/></button>
+                  <div className="w-px bg-[#333] mx-0.5"></div>
+                  <button onClick={() => updateTokenSize(token.id, -0.5)} className="p-1.5 hover:bg-[#333] rounded text-stone-400 hover:text-white" title="Diminuir"><ChevronsDown size={14}/></button>
+                  <button onClick={() => updateTokenSize(token.id, 0.5)} className="p-1.5 hover:bg-[#333] rounded text-stone-400 hover:text-white" title="Aumentar"><ChevronsUp size={14}/></button>
+                  <div className="w-px bg-[#333] mx-0.5"></div>
+                  <button onClick={() => duplicateToken(token.id)} className="p-1.5 hover:bg-[#333] rounded text-stone-400 hover:text-white" title="Duplicar"><Copy size={14}/></button>
+                  <button onClick={() => deleteToken(token.id)} className="p-1.5 hover:bg-red-900/30 rounded text-red-400 hover:text-red-300" title="Excluir"><Trash2 size={14}/></button>
+              </div>
+          );
+      } else {
+          const firstToken = tokens.find(t => t.id === selectedTokenIds[0]);
+          if (!firstToken) return null;
+          const screenX = (firstToken.x * tileSize * zoom) + pan.x;
+          const screenY = (firstToken.y * tileSize * zoom) + pan.y;
+          const w = (firstToken.width || 1) * tileSize * zoom;
+          
+          return (
+              <div 
+                className="absolute z-40 bg-[#1a1a24] border border-[#333] rounded-lg shadow-xl p-1 flex gap-1 animate-in fade-in slide-in-from-bottom-2"
+                style={{ left: screenX + w / 2, top: screenY - 50, transform: 'translateX(-50%)' }}
+              >
+                  <span className="px-2 py-1 text-xs text-stone-400 font-bold">{selectedTokenIds.length} selecionados</span>
+                  <div className="w-px bg-[#333] mx-0.5"></div>
+                  <button onClick={() => {
+                      setTokens(prev => prev.filter(t => !selectedTokenIds.includes(t.id)));
+                      setSelectedTokenIds([]);
+                  }} className="p-1.5 hover:bg-red-900/30 rounded text-red-400 hover:text-red-300 flex items-center gap-1" title="Excluir Todos"><Trash2 size={14}/> Excluir</button>
+              </div>
+          );
+      }
   };
 
   useEffect(() => {
       const ctx = canvasRef.current?.getContext('2d');
       if(ctx && canvasRef.current) renderScene(ctx, canvasRef.current.width, canvasRef.current.height, false);
-  }, [mapGrid, zoom, pan, tokens, selectedTokenId, tool, mousePos, startPos, showGrid, gridColor, gridOpacity, gridStyle, showFog, fogGrid, tick, backgroundImage, isDraggingToken, tokenBench, assetDims, placeMode, tileSize, gridScale, gridUnit, bgProps, gridW, gridH, assetTransform, weather, ping, activeTokenIds, editLayer]);
+  }, [mapGrid, zoom, pan, tokens, selectedTokenIds, tool, mousePos, startPos, showGrid, gridColor, gridOpacity, gridStyle, showFog, fogGrid, tick, backgroundImage, isDraggingToken, tokenBench, assetDims, placeMode, tileSize, gridScale, gridUnit, bgProps, gridW, gridH, assetTransform, weather, ping, activeTokenIds, editLayer]);
 
   // Viewport resize handling
   useEffect(() => {
@@ -1313,60 +1945,95 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
   }, [containerRef]);
 
   return (
-    <div className="flex h-full bg-[#0a0a10] text-[#e8e8ff] font-sans overflow-hidden relative" onContextMenu={e => e.preventDefault()}>
-        {!sidebarOpen && ( <button onClick={() => setSidebarOpen(true)} className="absolute top-4 right-4 z-30 p-2 bg-[#181822] border border-[#444] rounded-lg text-[#ffb74d] hover:bg-[#252535] shadow-lg opacity-80 hover:opacity-100"><ChevronLeft size={20} /></button> )}
+    <div className="flex h-full bg-[#0a0a10] text-[#e8e8ff] font-lato overflow-hidden relative" onContextMenu={e => e.preventDefault()}>
+        {isDM && !sidebarOpen && ( <button onClick={() => setSidebarOpen(true)} className="absolute top-4 right-4 z-30 p-2 bg-[#181822] border border-[#444] rounded-lg text-[#ffb74d] hover:bg-[#252535] shadow-lg opacity-80 hover:opacity-100"><ChevronLeft size={20} /></button> )}
         
-        <div className="flex-1 relative overflow-hidden bg-[#0a0a10]" ref={containerRef} onWheel={handleWheel}>
+        <div className="flex-1 relative overflow-hidden bg-[#0a0a10]" ref={containerRef}>
             {getSelectedTokenHUD()}
             
-            <div className="absolute top-4 left-4 z-30 flex flex-col gap-3 animate-in slide-in-from-left duration-300 pointer-events-none">
-                <div className="bg-[#181822] rounded-xl border border-[#444] shadow-xl overflow-hidden flex flex-col pointer-events-auto">
-                    <button onClick={exportMap} className="p-3 text-green-400 hover:bg-[#252535] hover:text-white transition-colors border-b border-[#444]" title="Exportar Mapa / Salvar">
+            {/* FLOATING VTT HUD (PC/MOBILE) */}
+            <div className="absolute top-4 left-4 z-30 flex flex-col gap-2 animate-in slide-in-from-left duration-300 pointer-events-none md:top-6 md:left-6">
+                <div className="bg-[#1a1a1d]/90 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col pointer-events-auto p-1.5 gap-1 w-12 md:w-14">
+                    <button onClick={exportMap} className="p-2 md:p-2.5 text-emerald-400 hover:bg-emerald-900/30 hover:text-emerald-300 transition-colors rounded-xl" title="Exportar Mapa / Salvar">
                         <Download size={20}/>
                     </button>
+                    <button onClick={() => setShowHpBars(!showHpBars)} className={`p-2 md:p-2.5 rounded-xl transition-all ${showHpBars ? 'text-red-500 hover:bg-red-950/20 shadow-md' : 'text-stone-500 hover:text-white hover:bg-white/5'}`} title={showHpBars ? "Ocultar Barras de Vida" : "Mostrar Barras de Vida"}>
+                        {showHpBars ? <Heart size={20} fill="currentColor" /> : <HeartOff size={20} />}
+                    </button>
+                    <div className="h-px bg-white/10 w-8 mx-auto my-1"></div>
+                    
+                    {/* Player Tools (Always visible) */}
+                    <button onClick={() => setTool('move')} className={`p-2 md:p-2.5 rounded-xl transition-all ${tool === 'move' ? 'bg-amber-500 text-stone-950 shadow-md' : 'text-stone-400 hover:text-white hover:bg-white/5'}`} title="Mover Tokens">
+                        <Move size={20}/>
+                    </button>
+                    <button onClick={() => setTool('hand')} className={`p-2 md:p-2.5 rounded-xl transition-all ${tool === 'hand' ? 'bg-amber-500 text-stone-950 shadow-md' : 'text-stone-400 hover:text-white hover:bg-white/5'}`} title="Mover Mapa (Pan)">
+                        <Hand size={20}/>
+                    </button>
+                    <button onClick={() => setTool('ping')} className={`p-2 md:p-2.5 rounded-xl transition-all ${tool === 'ping' ? 'bg-red-500 text-white shadow-md' : 'text-stone-400 hover:text-white hover:bg-white/5'}`} title="Ping (Sinalizar)">
+                        <Target size={20}/>
+                    </button>
+                    <button onClick={() => setTool('ruler')} className={`p-2 md:p-2.5 rounded-xl transition-all ${tool === 'ruler' ? 'bg-amber-500 text-stone-950 shadow-md' : 'text-stone-400 hover:text-white hover:bg-white/5'}`} title="Medir Distância">
+                        <Ruler size={20}/>
+                    </button>
+                    <button onClick={() => setTool('measure-circle')} className={`p-2 md:p-2.5 rounded-xl transition-all ${tool === 'measure-circle' ? 'bg-blue-500 text-white shadow-md' : 'text-stone-400 hover:text-white hover:bg-white/5'}`} title="Medir Área (Círculo)">
+                        <Circle size={20}/>
+                    </button>
+                    <button onClick={() => setTool('measure-cone')} className={`p-2 md:p-2.5 rounded-xl transition-all ${tool === 'measure-cone' ? 'bg-blue-500 text-white shadow-md' : 'text-stone-400 hover:text-white hover:bg-white/5'}`} title="Medir Área (Cone)">
+                        <Triangle size={20}/>
+                    </button>
+                    <button onClick={() => setTool('measure-cube')} className={`p-2 md:p-2.5 rounded-xl transition-all ${tool === 'measure-cube' ? 'bg-blue-500 text-white shadow-md' : 'text-stone-400 hover:text-white hover:bg-white/5'}`} title="Medir Área (Cubo)">
+                        <Box size={20}/>
+                    </button>
+
+                    <div className="h-px bg-white/10 w-8 mx-auto my-1"></div>
+                    <button onClick={() => setZoom(z => Math.min(5, z * 1.2))} className="p-2 md:p-2.5 text-stone-400 hover:text-white hover:bg-white/5 transition-colors rounded-xl" title="Aproximar (Zoom In)">
+                        <ZoomIn size={20}/>
+                    </button>
+                    <button onClick={() => setZoom(z => Math.max(0.1, z / 1.2))} className="p-2 md:p-2.5 text-stone-400 hover:text-white hover:bg-white/5 transition-colors rounded-xl" title="Afastar (Zoom Out)">
+                        <ZoomOut size={20}/>
+                    </button>
+                    <button onClick={() => { setZoom(1); setPan({x: 0, y: 0}); }} className="p-2 md:p-2.5 text-stone-400 hover:text-white hover:bg-white/5 transition-colors rounded-xl" title="Centralizar Mapa">
+                        <Maximize size={20}/>
+                    </button>
+
                     {!isGameMode && (
                         <>
-                            <button onClick={() => setTool('move')} className={`p-3 transition-colors ${tool === 'move' ? 'bg-[#ffb74d] text-black' : 'text-stone-400 hover:text-white hover:bg-[#252535]'}`} title="Mover">
-                                <Move size={20}/>
-                            </button>
-                            <button onClick={() => setTool('pencil')} className={`p-3 transition-colors ${tool === 'pencil' ? 'bg-[#ffb74d] text-black' : 'text-stone-400 hover:text-white hover:bg-[#252535]'}`} title="Lápis">
+                            <div className="h-px bg-white/10 w-8 mx-auto my-1"></div>
+                            <button onClick={() => setTool('pencil')} className={`p-2 md:p-2.5 rounded-xl transition-all ${tool === 'pencil' ? 'bg-amber-500 text-stone-950 shadow-md' : 'text-stone-400 hover:text-white hover:bg-white/5'}`} title="Lápis">
                                 <Pencil size={20}/>
                             </button>
-                            <button onClick={() => setTool('eraser')} className={`p-3 transition-colors ${tool === 'eraser' ? 'bg-[#ffb74d] text-black' : 'text-stone-400 hover:text-white hover:bg-[#252535]'}`} title="Borracha">
+                            <button onClick={() => setTool('eraser')} className={`p-2 md:p-2.5 rounded-xl transition-all ${tool === 'eraser' ? 'bg-amber-500 text-stone-950 shadow-md' : 'text-stone-400 hover:text-white hover:bg-white/5'}`} title="Borracha">
                                 <Eraser size={20}/>
                             </button>
-                            <button onClick={() => setTool('fill')} className={`p-3 transition-colors ${tool === 'fill' ? 'bg-[#ffb74d] text-black' : 'text-stone-400 hover:text-white hover:bg-[#252535]'}`} title="Preencher">
+                            <button onClick={() => setTool('fill')} className={`p-2 md:p-2.5 rounded-xl transition-all ${tool === 'fill' ? 'bg-amber-500 text-stone-950 shadow-md' : 'text-stone-400 hover:text-white hover:bg-white/5'}`} title="Preencher">
                                 <PaintBucket size={20}/>
-                            </button>
-                            <button onClick={() => setTool('ruler')} className={`p-3 transition-colors ${tool === 'ruler' ? 'bg-[#ffb74d] text-black' : 'text-stone-400 hover:text-white hover:bg-[#252535]'}`} title="Régua">
-                                <Ruler size={20}/>
                             </button>
                         </>
                     )}
                 </div>
 
                 {!isGameMode && (
-                    <div className="bg-[#181822] rounded-xl border border-[#444] shadow-xl overflow-hidden flex flex-col pointer-events-auto">
+                    <div className="bg-[#1a1a1d]/90 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col pointer-events-auto p-1.5 w-12 md:w-14 mt-1 md:mt-2">
                          <button 
                             onClick={() => setEditLayer(editLayer === 'token' ? 'background' : 'token')} 
-                            className={`p-3 transition-colors flex flex-col items-center justify-center gap-1 ${editLayer === 'background' ? 'bg-purple-600 text-white' : 'text-stone-400 hover:text-white hover:bg-[#252535]'}`} 
+                            className={`p-2 md:p-2.5 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5 ${editLayer === 'background' ? 'bg-purple-600 text-white shadow-md' : 'text-stone-400 hover:text-white hover:bg-white/5'}`} 
                             title={`Editando: ${editLayer === 'token' ? 'Tokens' : 'Fundo'}`}
                         >
-                            <Layers size={20}/>
-                            <span className="text-[8px] font-bold uppercase">{editLayer === 'token' ? 'Tokens' : 'Fundo'}</span>
+                            <Layers size={18} className="md:w-5 md:h-5"/>
+                            <span className="text-[6px] md:text-[7px] font-bold uppercase tracking-tighter leading-none">{editLayer === 'token' ? 'TOK' : 'BG'}</span>
                         </button>
                     </div>
                 )}
 
-                <div className="bg-[#181822] rounded-xl border border-[#444] shadow-xl overflow-hidden flex flex-col pointer-events-auto">
-                    <button onClick={() => setZoom(z => Math.min(5, z + 0.1))} className="p-3 text-stone-300 hover:bg-[#252535] hover:text-white transition-colors"><Plus size={20}/></button>
-                    <button onClick={() => setZoom(z => Math.max(0.1, z - 0.1))} className="p-3 text-stone-300 hover:bg-[#252535] hover:text-white transition-colors"><Minus size={20}/></button>
-                    <div className="h-px bg-[#444] mx-2"></div>
-                    <button onClick={centerMap} className="p-3 text-stone-300 hover:bg-[#252535] hover:text-white transition-colors" title="Centralizar"><Target size={20}/></button>
-                    <button onClick={fitToScreen} className="p-3 text-stone-300 hover:bg-[#252535] hover:text-white transition-colors" title="Ajustar à Tela"><Maximize size={20}/></button>
+                <div className="bg-[#1a1a1d]/90 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col pointer-events-auto p-1.5 gap-1 w-12 md:w-14 mt-1 md:mt-2">
+                    <button onClick={() => setZoom(z => Math.min(5, z + 0.1))} className="p-2 md:p-2.5 text-stone-300 hover:bg-white/10 hover:text-white transition-colors rounded-xl"><Plus size={20}/></button>
+                    <button onClick={() => setZoom(z => Math.max(0.1, z - 0.1))} className="p-2 md:p-2.5 text-stone-300 hover:bg-white/10 hover:text-white transition-colors rounded-xl"><Minus size={20}/></button>
+                    <div className="h-px bg-white/10 w-8 mx-auto my-1"></div>
+                    <button onClick={centerMap} className="p-2 md:p-2.5 text-stone-300 hover:bg-white/10 hover:text-white transition-colors rounded-xl" title="Centralizar"><Target size={20}/></button>
+                    <button onClick={fitToScreen} className="p-2 md:p-2.5 text-stone-300 hover:bg-white/10 hover:text-white transition-colors rounded-xl" title="Ajustar à Tela"><Maximize size={20}/></button>
                 </div>
                 
-                <button onClick={() => setShowFog(!showFog)} className={`p-3 rounded-xl border shadow-xl pointer-events-auto transition-all ${showFog ? 'bg-[#ffb74d] text-black border-[#ffb74d]' : 'bg-[#181822] border-[#444] text-stone-400 hover:text-white hover:bg-[#252535]'}`} title="Alternar Névoa"><CloudRain size={20}/></button>
+                <button onClick={() => setShowFog(!showFog)} className={`p-2.5 md:p-3 rounded-2xl border shadow-xl pointer-events-auto transition-all w-12 md:w-14 mt-1 md:mt-2 flex justify-center items-center ${showFog ? 'bg-amber-500 text-stone-950 border-amber-400' : 'bg-[#1a1a1d]/90 backdrop-blur-md border-white/10 text-stone-400 hover:text-white hover:bg-white/10'}`} title="Alternar Névoa"><CloudRain size={20}/></button>
             </div>
 
             <canvas
@@ -1386,9 +2053,9 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                 }}
             />
 
-            <div className="absolute bottom-24 left-24 flex gap-2 pointer-events-none">
-                <button onClick={undo} disabled={historyIndex <= 0} className="bg-[#181822] p-2 rounded-full border border-[#444] text-white disabled:opacity-50 hover:bg-[#252535] shadow-lg pointer-events-auto"><Undo2 size={20}/></button>
-                <button onClick={redo} disabled={historyIndex >= history.length - 1} className="bg-[#181822] p-2 rounded-full border border-[#444] text-white disabled:opacity-50 hover:bg-[#252535] shadow-lg pointer-events-auto"><Redo2 size={20}/></button>
+            <div className="absolute bottom-4 left-4 flex gap-2 pointer-events-none md:bottom-6 md:left-8">
+                <button onClick={undo} disabled={historyIndex <= 0} className="bg-[#1a1a1d]/90 backdrop-blur-md p-3 rounded-full border border-white/10 text-white disabled:opacity-50 hover:bg-white/10 shadow-lg pointer-events-auto transition-all"><Undo2 size={20}/></button>
+                <button onClick={redo} disabled={historyIndex >= history.length - 1} className="bg-[#1a1a1d]/90 backdrop-blur-md p-3 rounded-full border border-white/10 text-white disabled:opacity-50 hover:bg-white/10 shadow-lg pointer-events-auto transition-all"><Redo2 size={20}/></button>
             </div>
             
             {/* Context Menu and Editing Panels (omitted for brevity as they remain unchanged) */}
@@ -1434,9 +2101,14 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                         <>
                             <button onClick={() => openTextureEditor(contextMenu.assetUrl!)} className="w-full text-left px-4 py-2 hover:bg-[#252535] text-stone-200 flex items-center gap-2"><Edit size={14}/> Editar Imagem</button>
                             <button onClick={() => {
-                                const newAssets = customAssets.filter(a => a.url !== contextMenu.assetUrl);
-                                setCustomAssets(newAssets);
-                                localStorage.setItem('nexus_custom_assets', JSON.stringify(newAssets));
+                                if (propSetCustomAssets) {
+                                    const assetToDelete = Object.values(propCustomAssets).find(a => a.url === contextMenu.assetUrl);
+                                    if (assetToDelete) {
+                                        const next = { ...propCustomAssets };
+                                        delete next[assetToDelete.id];
+                                        propSetCustomAssets(next);
+                                    }
+                                }
                                 setContextMenu(null);
                             }} className="w-full text-left px-4 py-2 hover:bg-red-900/30 text-red-400 flex items-center gap-2"><Trash2 size={14}/> Remover Asset</button>
                         </>
@@ -1456,7 +2128,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                         
                         <div className="flex gap-4 mb-4">
                             <div className="w-24 h-24 bg-[#000] rounded-lg border border-[#333] flex items-center justify-center overflow-hidden relative group shrink-0">
-                                {editingToken.image ? <img src={editingToken.image} className="w-full h-full object-cover"/> : <span className="text-4xl">{editingToken.icon}</span>}
+                                {editingToken.image ? <img src={editingToken.image} className="w-full h-full object-contain"/> : <span className="text-4xl">{editingToken.icon}</span>}
                                 <label className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
                                     <Upload size={24} className="text-white"/>
                                     <input type="file" hidden onChange={handleTokenImageUpload} accept="image/*" />
@@ -1483,6 +2155,33 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                                         <input type="color" className="w-full h-8 bg-transparent cursor-pointer" value={editingToken.color} onChange={e => setEditingToken({...editingToken, color: e.target.value})} />
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                        
+                        {/* SELETOR DE MOLDURAS (FRAMES) */}
+                        <div className="mb-4 bg-[#222] p-2 rounded border border-[#333]">
+                            <label className="block text-[10px] text-stone-500 uppercase font-bold mb-2 flex items-center gap-1"><Frame size={10}/> Moldura (Frame)</label>
+                            <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2">
+                                <button 
+                                    onClick={() => setEditingToken({...editingToken, frame: undefined})}
+                                    className={`w-10 h-10 shrink-0 border-2 rounded flex items-center justify-center bg-black ${!editingToken.frame ? 'border-[#ffb74d]' : 'border-[#444]'}`}
+                                    title="Sem Moldura"
+                                >
+                                    <X size={14} className="text-stone-500"/>
+                                </button>
+                                {LIST_FRAMES.map((frame, i) => (
+                                    <button 
+                                        key={i} 
+                                        onClick={() => setEditingToken({...editingToken, frame})}
+                                        className={`w-10 h-10 shrink-0 border-2 rounded flex items-center justify-center bg-black overflow-hidden relative ${editingToken.frame === frame ? 'border-[#ffb74d]' : 'border-[#444]'}`}
+                                    >
+                                        {/* Preview com o token dentro */}
+                                        <div className="absolute inset-0 flex items-center justify-center p-0.5">
+                                             {editingToken.image ? <img src={editingToken.image} className="w-full h-full object-contain opacity-50"/> : <div className="w-full h-full bg-stone-800"/>}
+                                        </div>
+                                        <img src={frame} className="absolute inset-0 w-full h-full object-contain z-10"/>
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
@@ -1536,37 +2235,47 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                         </div>
 
                         <div className="mb-4">
-                            <label className="block text-[10px] text-stone-500 uppercase font-bold mb-1">Vincular Ficha (Auto-Atualizar)</label>
-                            <div className="flex gap-2">
-                                <select 
-                                    className="flex-1 bg-[#252535] border border-[#333] rounded p-1.5 text-xs"
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        if(!val) return;
-                                        const [type, id] = val.split(':');
-                                        handleLinkChange(type as 'character'|'monster', id);
-                                    }}
-                                    value={editingToken.linkedId ? `${editingToken.linkedType}:${editingToken.linkedId}` : ''}
-                                >
-                                    <option value="">Sem Vínculo</option>
-                                    <optgroup label="Personagens">
-                                        {characters.map(c => <option key={c.id} value={`character:${c.id}`}>{c.name}</option>)}
-                                    </optgroup>
-                                    <optgroup label="Monstros">
-                                        {monsters.map(m => <option key={m.id} value={`monster:${m.id}`}>{m.name}</option>)}
-                                    </optgroup>
-                                </select>
-                            </div>
+                            <label className="block text-[10px] text-stone-500 uppercase font-bold mb-1">Vincular a Ficha</label>
+                            <select 
+                                className="w-full bg-[#252535] border border-[#333] rounded p-2 text-sm text-stone-300 outline-none"
+                                value={editingToken.linkedId || ''}
+                                onChange={(e) => {
+                                    const selectedId = e.target.value;
+                                    if(!selectedId) {
+                                        setEditingToken({...editingToken, linkedId: undefined, linkedType: undefined});
+                                    } else {
+                                        const type = characters.some(c => c.id === selectedId) ? 'character' : 'monster';
+                                        handleLinkChange(type, selectedId);
+                                    }
+                                }}
+                            >
+                                <option value="">Sem Vínculo</option>
+                                <optgroup label="Personagens">
+                                    {characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </optgroup>
+                                <optgroup label="Monstros">
+                                    {monsters.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                </optgroup>
+                            </select>
                         </div>
 
-                        <div className="flex justify-end gap-2">
-                            <button onClick={() => setEditingToken(null)} className="px-4 py-2 text-stone-500 hover:text-stone-300">Cancelar</button>
-                            <button onClick={saveTokenChanges} className="px-6 py-2 bg-[#ffb74d] hover:bg-amber-500 text-black font-bold rounded shadow-lg">Salvar</button>
+                        <div className="flex justify-end gap-2 pt-2 border-t border-[#333]">
+                            <button onClick={() => setEditingToken(null)} className="px-4 py-2 text-stone-400 hover:text-white text-sm font-bold">Cancelar</button>
+                            <button onClick={saveTokenChanges} className="px-6 py-2 bg-[#ffb74d] hover:bg-amber-600 text-black font-bold rounded shadow-lg text-sm">Salvar Alterações</button>
                         </div>
                     </div>
                 </div>
             )}
             
+            {isUploadingImage && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
+                    <div className="bg-stone-900 border border-stone-800 p-8 rounded-3xl flex flex-col items-center gap-4 shadow-2xl">
+                        <Loader2 size={48} className="text-amber-500 animate-spin" />
+                        <div className="text-xl font-cinzel font-bold text-stone-100 uppercase tracking-widest">Processando Imagem...</div>
+                        <div className="text-stone-400 text-sm text-center max-w-xs px-4">Otimizando arquivo para garantir performance e sincronização total.</div>
+                    </div>
+                </div>
+            )}
             {editingTexture && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[60] p-4" onClick={() => setEditingTexture(null)}>
                     <div className="bg-[#1a1a1d] border border-[#333] rounded-xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl relative overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -1664,8 +2373,11 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                 <button onClick={() => setSidebarOpen(false)} className="p-1 text-stone-500 hover:text-white"><ChevronRight size={18} /></button>
                 <h1 className="font-cinzel text-[#ffb74d] text-base tracking-[2px] truncate">FERRAMENTAS</h1>
             </div>
+            {/* ... Rest of Sidebar content unchanged ... */}
             <div className="flex-1 overflow-y-auto p-2 custom-scrollbar bg-[#181822]">
-                <button onClick={() => { setIsGameMode(!isGameMode); setTool(isGameMode ? 'pencil' : 'move'); }} className={`w-full py-2 mb-3 rounded font-bold border transition-all flex items-center justify-center gap-2 text-xs ${isGameMode ? 'bg-green-700 border-green-500 text-white' : 'bg-[#252535] border-[#444]'}`}>{isGameMode ? <><Swords size={14}/> MODO JOGO</> : <><Pencil size={14}/> MODO EDIÇÃO</>}</button>
+                {isDM && (
+                    <button onClick={() => { setIsGameMode(!isGameMode); setTool(isGameMode ? 'pencil' : 'move'); }} className={`w-full py-2 mb-3 rounded font-bold border transition-all flex items-center justify-center gap-2 text-xs ${isGameMode ? 'bg-green-700 border-green-500 text-white' : 'bg-[#252535] border-[#444]'}`}>{isGameMode ? <><Swords size={14}/> MODO JOGO</> : <><Pencil size={14}/> MODO EDIÇÃO</>}</button>
+                )}
                 
                 <div className="flex gap-1 mb-3 bg-[#1a1a24] p-1 rounded border border-[#333]">
                     {!isGameMode && <button onClick={() => setSidebarTab('tools')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'tools' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Ferramentas"><PencilRuler size={16}/></button>}
@@ -1674,11 +2386,38 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                     <button onClick={() => setSidebarTab('tokens')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'tokens' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Tokens"><Users size={16}/></button>
                     {!isGameMode && <button onClick={() => setSidebarTab('weather')} className={`flex-1 p-1.5 rounded flex items-center justify-center ${sidebarTab === 'weather' ? 'bg-[#ffb74d] text-black shadow' : 'text-stone-500 hover:text-stone-300'}`} title="Efeitos"><CloudRain size={16}/></button>}
                 </div>
-
-                {sidebarTab === 'tools' && !isGameMode && (
+                
+                {/* ... (Conteúdo das tabs mantido, omitido por brevidade pois já está no código original e não precisa de alterações) ... */}
+                {/* ... O código interno das tabs já está presente no arquivo original e não foi modificado. ... */}
+                {sidebarTab === 'tokens' && (
+                    <div className="space-y-2">
+                        <div className="text-xs text-stone-500 text-center mb-2">Arraste para o mapa ou clique para adicionar</div>
+                        {characters.map(char => (
+                            <div key={char.id} onClick={() => importCharacterToBench(char)} className="bg-[#222] p-2 rounded border border-[#333] flex justify-between items-center cursor-pointer hover:bg-[#333]">
+                                <span className="font-bold text-blue-400 text-xs">{char.name}</span>
+                                <Plus size={14} className="text-stone-500"/>
+                            </div>
+                        ))}
+                        {npcs && npcs.map(npc => (
+                            <div key={npc.id} onClick={() => importCharacterToBench(npc)} className="bg-[#222] p-2 rounded border border-[#333] flex justify-between items-center cursor-pointer hover:bg-[#333]">
+                                <span className="font-bold text-green-400 text-xs">{npc.name}</span>
+                                <Plus size={14} className="text-stone-500"/>
+                            </div>
+                        ))}
+                        <div className="border-t border-[#333] my-2"></div>
+                        {monsters.map(mon => (
+                            <div key={mon.id} onClick={() => importMonsterToBench(mon)} className="bg-[#222] p-2 rounded border border-[#333] flex justify-between items-center cursor-pointer hover:bg-[#333]">
+                                <span className="font-bold text-red-400 text-xs">{mon.name}</span>
+                                <Plus size={14} className="text-stone-500"/>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {/* ... (Outras tabs mantidas implicitamente) ... */}
+                 {sidebarTab === 'tools' && !isGameMode && (
                     <div className="space-y-4">
                         <div className="grid grid-cols-4 gap-1">
-                            {[
+                             {[
                                 { id: 'pencil', icon: Pencil, title: 'Lápis' }, { id: 'eraser', icon: Eraser, title: 'Borracha' },
                                 { id: 'fill', icon: PaintBucket, title: 'Balde' }, { id: 'move', icon: Move, title: 'Mover' },
                                 { id: 'rect', icon: Square, title: 'Retângulo' }, { id: 'line', icon: Minus, title: 'Linha' },
@@ -1719,9 +2458,8 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                         </div>
                     </div>
                 )}
-
-                {sidebarTab === 'assets' && !isGameMode && (
-                    <div className="space-y-4">
+                 {sidebarTab === 'assets' && !isGameMode && (
+                     <div className="space-y-4">
                         <div className="flex border-b border-[#333]">
                             <button onClick={() => setAssetTab('standard')} className={`flex-1 pb-2 text-xs font-bold ${assetTab === 'standard' ? 'text-[#ffb74d] border-b-2 border-[#ffb74d]' : 'text-stone-500'}`}>Padrão</button>
                             <button onClick={() => setAssetTab('upload')} className={`flex-1 pb-2 text-xs font-bold ${assetTab === 'upload' ? 'text-[#ffb74d] border-b-2 border-[#ffb74d]' : 'text-stone-500'}`}>Meus Assets</button>
@@ -1784,7 +2522,7 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                                     <div className="grid grid-cols-4 gap-2">
                                         {(PALETTES[activePalette] || PALETTES['Básicos']).map((t, i) => (
                                             <div key={i} onClick={() => { setSelectedTile(t.c); setTool('pencil'); }} onContextMenu={(e) => handleAssetContextMenu(e, t.c)} className={`aspect-square rounded border cursor-pointer overflow-hidden relative group ${selectedTile === t.c ? 'border-[#ffb74d] ring-2 ring-[#ffb74d]/50' : 'border-[#444] hover:border-white'}`} title={t.n}>
-                                                <img src={t.c} className="w-full h-full object-cover" loading="lazy" />
+                                                <img src={t.c} className="w-full h-full object-contain" loading="lazy" />
                                                 <button onClick={(e) => { e.stopPropagation(); openTextureEditor(t.c); }} className="absolute top-0 right-0 bg-black/60 p-1 text-white opacity-0 group-hover:opacity-100 hover:bg-blue-600"><Edit size={10}/></button>
                                             </div>
                                         ))}
@@ -1798,20 +2536,19 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                                         <span className="text-[9px] font-bold mt-1">Upload</span>
                                         <input type="file" hidden accept="image/*" onChange={handleFileUpload} />
                                     </label>
-                                    {customAssets.filter(a => assetTab === 'upload' ? a.type !== 'edited' : a.type === 'edited').map((a) => (
-                                        <div key={a.id} onClick={() => { setSelectedTile(a.url); setTool('pencil'); }} onContextMenu={(e) => handleAssetContextMenu(e, a.url)} className={`aspect-square rounded border cursor-pointer overflow-hidden relative group ${selectedTile === a.url ? 'border-[#ffb74d] ring-2 ring-[#ffb74d]/50' : 'border-[#444] hover:border-white'}`}>
-                                            <img src={a.url} className="w-full h-full object-cover" />
-                                            <button onClick={(e) => { e.stopPropagation(); openTextureEditor(a); }} className="absolute top-0 right-0 bg-black/60 p-1 text-white opacity-0 group-hover:opacity-100 hover:bg-blue-600"><Edit size={10}/></button>
+                                    {Object.values(propCustomAssets).filter(a => assetTab === 'upload' ? a.type !== 'edited' : a.type === 'edited').map((a) => (
+                                        <div key={a.id} onClick={() => { setSelectedTile(`asset:${a.id}`); setTool('pencil'); }} onContextMenu={(e) => handleAssetContextMenu(e, `asset:${a.id}`)} className={`aspect-square rounded border cursor-pointer overflow-hidden relative group ${selectedTile === `asset:${a.id}` ? 'border-[#ffb74d] ring-2 ring-[#ffb74d]/50' : 'border-[#444] hover:border-white'}`}>
+                                            <img src={a.url} className="w-full h-full object-contain" />
+                                            <button onClick={(e) => { e.stopPropagation(); openTextureEditor(a.url); }} className="absolute top-0 right-0 bg-black/60 p-1 text-white opacity-0 group-hover:opacity-100 hover:bg-blue-600"><Edit size={10}/></button>
                                         </div>
                                     ))}
                                 </>
                             )}
                         </div>
-                    </div>
-                )}
-
-                {sidebarTab === 'map' && !isGameMode && (
-                    <div className="space-y-4 text-xs">
+                     </div>
+                 )}
+                 {sidebarTab === 'map' && !isGameMode && (
+                     <div className="space-y-4 text-xs">
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <span className="text-stone-400 font-bold">Mostrar Grid</span>
@@ -1832,8 +2569,12 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                                 <span className="text-stone-400">Cor</span>
                                 <input type="color" value={gridColor} onChange={e => setGridColor(e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"/>
                             </div>
-                            <div className="flex items-center justify-between border-t border-[#333] pt-2 mt-2">
-                                <span className="text-stone-400 font-bold text-[#ffb74d]">Resolução (Px)</span>
+                             <div className="flex items-center justify-between">
+                                 <span className="text-stone-400 font-bold">Barras de Vida</span>
+                                 <input type="checkbox" checked={showHpBars} onChange={e => setShowHpBars(e.target.checked)} className="accent-[#ffb74d]"/>
+                             </div>
+                             <div className="flex items-center justify-between border-t border-[#333] pt-2 mt-2">
+                                 <span className="text-stone-400 font-bold text-[#ffb74d]">Resolução (Px)</span>
                                 <div className="flex items-center gap-2">
                                     <input type="range" min="16" max="128" value={tileSize} onChange={e => setTileSize(parseInt(e.target.value))} className="w-20 accent-[#ffb74d]" />
                                     <input type="number" className="w-12 bg-[#252535] border border-[#333] rounded px-1 text-center font-bold" value={tileSize} onChange={e => setTileSize(parseInt(e.target.value))} />
@@ -1884,9 +2625,9 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                             <div className="mt-2">
                                 <span className="text-[9px] text-stone-500 font-bold uppercase mb-1 block">Mapas Prontos</span>
                                 <div className="grid grid-cols-3 gap-1">
-                                    {LIST_MAPS.map((url, i) => (
+                                    {[...LIST_MAPS, ...dynamicMaps.filter(dm => !LIST_MAPS.includes(dm))].map((url, i) => (
                                         <div key={i} className="aspect-video bg-stone-800 border border-stone-600 rounded cursor-pointer hover:border-amber-500 relative group overflow-hidden" onClick={() => setBgFromPreset(url)}>
-                                            <img src={convertDriveLink(url)} className="w-full h-full object-cover" loading="lazy" />
+                                            <img src={convertDriveLink(url)} className="w-full h-full object-contain" loading="lazy" />
                                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs font-bold text-white transition-opacity">Usar</div>
                                         </div>
                                     ))}
@@ -1895,31 +2636,46 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
 
                             {backgroundImage && (
                                 <div className="space-y-2 mt-2 bg-[#1a1a24] p-2 rounded border border-[#333]">
-                                    <button onClick={fitBackgroundToGrid} className="w-full bg-blue-900/30 text-blue-400 text-[10px] py-1 rounded border border-blue-900/50 hover:bg-blue-900/50">Ajustar ao Grid</button>
+                                    <button onClick={fitBackgroundToGrid} className="w-full bg-blue-900/30 text-blue-400 text-[10px] py-1 rounded border border-blue-900/50 hover:bg-blue-900/50">Ajustar Grid ao Fundo Atual</button>
+                                    
+                                    <label className="flex items-center gap-2 text-xs text-stone-400 mt-2">
+                                        <input type="checkbox" checked={bgStretch} onChange={e => setBgStretch(e.target.checked)} className="accent-[#ffb74d]"/>
+                                        Esticar para preencher o Grid
+                                    </label>
+
                                     <div className="flex items-center justify-between">
-                                        <span>Escala BG</span>
-                                        <div className="flex items-center gap-1">
-                                            <button onClick={() => setBgProps(p => ({...p, scale: Math.max(0.01, parseFloat((p.scale - 0.05).toFixed(2)))}))} className="bg-[#333] p-1 rounded hover:text-white"><Minus size={10}/></button>
-                                            <input type="number" step="0.01" className="w-14 bg-[#000] p-1 rounded text-right text-xs" value={bgProps.scale} onChange={e => setBgProps({...bgProps, scale: parseFloat(e.target.value)})} />
-                                            <button onClick={() => setBgProps(p => ({...p, scale: parseFloat((p.scale + 0.05).toFixed(2))}))} className="bg-[#333] p-1 rounded hover:text-white"><Plus size={10}/></button>
-                                        </div>
+                                        <span>Brilho</span>
+                                        <input type="range" min="10" max="200" value={bgBrightness} onChange={e => setBgBrightness(parseInt(e.target.value))} className="w-20 accent-[#ffb74d]"/>
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                        <span>Pos X</span>
-                                        <div className="flex items-center gap-1">
-                                            <button onClick={() => setBgProps(p => ({...p, x: p.x - tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronLeft size={10}/></button>
-                                            <input type="number" className="w-14 bg-[#000] p-1 rounded text-right text-xs" value={bgProps.x} onChange={e => setBgProps({...bgProps, x: parseInt(e.target.value)})} />
-                                            <button onClick={() => setBgProps(p => ({...p, x: p.x + tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronRight size={10}/></button>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span>Pos Y</span>
-                                        <div className="flex items-center gap-1">
-                                            <button onClick={() => setBgProps(p => ({...p, y: p.y - tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronsUp size={10}/></button>
-                                            <input type="number" className="w-14 bg-[#000] p-1 rounded text-right text-xs" value={bgProps.y} onChange={e => setBgProps({...bgProps, y: parseInt(e.target.value)})} />
-                                            <button onClick={() => setBgProps(p => ({...p, y: p.y + tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronsDown size={10}/></button>
-                                        </div>
-                                    </div>
+
+                                    {!bgStretch && (
+                                        <>
+                                            <div className="flex items-center justify-between">
+                                                <span>Escala BG</span>
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={() => setBgProps(p => ({...p, scale: Math.max(0.01, parseFloat((p.scale - 0.05).toFixed(2)))}))} className="bg-[#333] p-1 rounded hover:text-white"><Minus size={10}/></button>
+                                                    <input type="number" step="0.01" className="w-14 bg-[#000] p-1 rounded text-right text-xs" value={bgProps.scale} onChange={e => setBgProps({...bgProps, scale: parseFloat(e.target.value)})} />
+                                                    <button onClick={() => setBgProps(p => ({...p, scale: parseFloat((p.scale + 0.05).toFixed(2))}))} className="bg-[#333] p-1 rounded hover:text-white"><Plus size={10}/></button>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span>Pos X</span>
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={() => setBgProps(p => ({...p, x: p.x - tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronLeft size={10}/></button>
+                                                    <input type="number" className="w-14 bg-[#000] p-1 rounded text-right text-xs" value={bgProps.x} onChange={e => setBgProps({...bgProps, x: parseInt(e.target.value)})} />
+                                                    <button onClick={() => setBgProps(p => ({...p, x: p.x + tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronRight size={10}/></button>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span>Pos Y</span>
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={() => setBgProps(p => ({...p, y: p.y - tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronsUp size={10}/></button>
+                                                    <input type="number" className="w-14 bg-[#000] p-1 rounded text-right text-xs" value={bgProps.y} onChange={e => setBgProps({...bgProps, y: parseInt(e.target.value)})} />
+                                                    <button onClick={() => setBgProps(p => ({...p, y: p.y + tileSize}))} className="bg-[#333] p-1 rounded hover:text-white"><ChevronsDown size={10}/></button>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -1932,36 +2688,10 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                                 <Eraser size={16}/> Limpar Tiles (Manter Fundo)
                             </button>
                         </div>
-                    </div>
-                )}
-
-                {sidebarTab === 'tokens' && (
-                    <div className="space-y-2">
-                        <div className="text-xs text-stone-500 text-center mb-2">Arraste para o mapa ou clique para adicionar</div>
-                        {characters.map(char => (
-                            <div key={char.id} onClick={() => importCharacterToBench(char)} className="bg-[#222] p-2 rounded border border-[#333] flex justify-between items-center cursor-pointer hover:bg-[#333]">
-                                <span className="font-bold text-blue-400 text-xs">{char.name}</span>
-                                <Plus size={14} className="text-stone-500"/>
-                            </div>
-                        ))}
-                        {npcs && npcs.map(npc => (
-                            <div key={npc.id} onClick={() => importCharacterToBench(npc)} className="bg-[#222] p-2 rounded border border-[#333] flex justify-between items-center cursor-pointer hover:bg-[#333]">
-                                <span className="font-bold text-green-400 text-xs">{npc.name}</span>
-                                <Plus size={14} className="text-stone-500"/>
-                            </div>
-                        ))}
-                        <div className="border-t border-[#333] my-2"></div>
-                        {monsters.map(mon => (
-                            <div key={mon.id} onClick={() => importMonsterToBench(mon)} className="bg-[#222] p-2 rounded border border-[#333] flex justify-between items-center cursor-pointer hover:bg-[#333]">
-                                <span className="font-bold text-red-400 text-xs">{mon.name}</span>
-                                <Plus size={14} className="text-stone-500"/>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {sidebarTab === 'weather' && !isGameMode && (
-                    <div className="space-y-4">
+                     </div>
+                 )}
+                 {sidebarTab === 'weather' && !isGameMode && (
+                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-2">
                             <button onClick={() => setWeather('none')} className={`p-2 rounded border flex flex-col items-center justify-center ${weather==='none'?'bg-[#ffb74d] text-black border-[#ffb74d]':'bg-[#252535] border-[#333] text-stone-400 hover:text-white'}`}>
                                 <Sun size={20}/>
@@ -1984,8 +2714,8 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
                                 <span className="text-[10px] font-bold mt-1">Brasas</span>
                             </button>
                         </div>
-                    </div>
-                )}
+                     </div>
+                 )}
             </div>
             
             <div className="p-3 border-t border-[#2a2a3a] bg-[#1a1a24]">
@@ -1993,38 +2723,85 @@ export const VirtualTabletop: React.FC<Props> = ({ mapGrid, setMapGrid, tokens, 
             </div>
         </div>
         
-        {/* Token Bench */}
-        <div className="absolute bottom-[60px] md:bottom-0 left-0 w-full h-20 bg-[#181822] border-t border-[#333] z-20 flex items-center px-4 gap-4 overflow-x-auto custom-scrollbar">
-            {!isGameMode && (
-                <>
-                    <button onClick={() => addTokenToBench(false)} className="flex flex-col items-center justify-center w-16 h-16 rounded border border-dashed border-[#444] text-stone-500 hover:text-[#ffb74d] hover:border-[#ffb74d] shrink-0">
-                        <Plus size={20}/>
-                        <span className="text-[9px] font-bold mt-1">NPC</span>
-                    </button>
-                    <button onClick={() => handleAddPropFromSelection()} className="flex flex-col items-center justify-center w-16 h-16 rounded border border-dashed border-[#444] text-stone-500 hover:text-blue-400 hover:border-blue-400 shrink-0">
-                        <Plus size={20}/>
-                        <span className="text-[9px] font-bold mt-1">Objeto</span>
-                    </button>
-                    <div className="w-[1px] h-10 bg-[#333] mx-2"></div>
-                </>
-            )}
-            {tokenBench.map(token => (
-                <div 
-                    key={token.id} 
-                    draggable
-                    onDragStart={(e) => handleBenchDragStart(e, token)}
-                    onContextMenu={(e) => handleBenchContextMenu(e, token.id)}
-                    className="relative w-14 h-14 bg-[#222] rounded-full border-2 border-[#444] hover:border-[#ffb74d] cursor-grab active:cursor-grabbing flex items-center justify-center shrink-0 group transition-all"
-                >
-                    {token.image ? (
-                        <img src={token.image} className="w-full h-full object-cover rounded-full pointer-events-none" />
-                    ) : (
-                        <span className="text-xl">{token.icon || (token.isProp ? '📦' : '♟️')}</span>
+        {/* Token Bench - REFACTORED TO FLOATING DOCK */}
+        <div className="absolute bottom-[20px] md:bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none">
+            {/* Toggle Button */}
+            <button 
+                onClick={() => setShowBench(!showBench)}
+                className="bg-[#1a1a1d]/90 backdrop-blur-md border border-white/10 rounded-full p-2 mb-2 pointer-events-auto text-stone-400 hover:text-white shadow-lg"
+            >
+                <MoreHorizontal size={20} />
+            </button>
+
+            {showBench && (
+                <div className="bg-[#1a1a1d]/90 backdrop-blur-md border border-white/10 rounded-2xl p-2 flex items-center gap-2 shadow-2xl pointer-events-auto max-w-[90vw] overflow-x-auto custom-scrollbar ring-1 ring-white/5 animate-in slide-in-from-bottom-2">
+                    {!isGameMode && (
+                        <>
+                            <label className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-stone-800/50 border border-dashed border-[#ffb74d] text-[#ffb74d] hover:bg-[#ffb74d] hover:text-black cursor-pointer shrink-0 transition-colors shadow-lg" title="Upload Token">
+                                <Upload size={16}/>
+                                <span className="text-[8px] font-bold mt-0.5">Upload</span>
+                                <input type="file" hidden accept="image/*" onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        const reader = new FileReader();
+                                        reader.onload = (ev) => {
+                                            const result = ev.target?.result;
+                                            if (result) {
+                                                setTokenBench(prev => [{
+                                                    id: Date.now(), x: 0, y: 0, icon: '', image: result as string, hp: 10, max: 10, color: 'transparent', size: 2, width: 2, height: 2, name: 'Novo Token', isProp: false
+                                                }, ...prev]);
+                                            }
+                                        };
+                                        reader.readAsDataURL(file);
+                                    }
+                                    e.target.value = '';
+                                }} />
+                            </label>
+                            <button onClick={() => addTokenToBench(false)} className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-stone-800/50 border border-dashed border-stone-600 text-stone-500 hover:text-[#ffb74d] hover:border-[#ffb74d] shrink-0 transition-colors">
+                                <Plus size={16}/>
+                                <span className="text-[8px] font-bold mt-0.5">NPC</span>
+                            </button>
+                            <button onClick={() => handleAddPropFromSelection()} className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-stone-800/50 border border-dashed border-stone-600 text-stone-500 hover:text-blue-400 hover:border-blue-400 shrink-0 transition-colors">
+                                <Plus size={16}/>
+                                <span className="text-[8px] font-bold mt-0.5">OBJ</span>
+                            </button>
+                            <div className="w-[1px] h-8 bg-white/10 mx-1"></div>
+                        </>
                     )}
-                    {!isGameMode && <button onClick={() => removeTokenFromBench(token.id)} className="absolute -top-1 -right-1 bg-red-600 rounded-full p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"><X size={10}/></button>}
-                    <div className="absolute -bottom-5 text-[9px] bg-black/80 px-1 rounded text-stone-300 truncate max-w-full">{token.name}</div>
+                    {tokenBench.map(token => (
+                        <div 
+                            key={token.id} 
+                            draggable
+                            onDragStart={(e) => handleBenchDragStart(e, token)}
+                            onContextMenu={(e) => handleBenchContextMenu(e, token.id)}
+                            className="relative w-12 h-12 bg-black rounded-xl border border-stone-700 hover:border-[#ffb74d] cursor-grab active:cursor-grabbing flex items-center justify-center shrink-0 group transition-all hover:-translate-y-1 hover:shadow-lg"
+                        >
+                            {token.image ? (
+                                <img src={token.image} className="w-full h-full object-contain rounded-xl pointer-events-none" />
+                            ) : (
+                                <span className="text-lg">{token.icon || (token.isProp ? '📦' : '♟️')}</span>
+                            )}
+                            {/* RENDERIZAR MOLDURA NA BANCA DE TOKENS TAMBÉM */}
+                            {token.frame && <img src={token.frame} className="absolute inset-[-4px] w-[130%] h-[130%] object-contain pointer-events-none z-10" />}
+
+                            {!isGameMode && <button onClick={() => removeTokenFromBench(token.id)} className="absolute -top-1.5 -right-1.5 bg-red-600 rounded-full p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-20"><X size={10}/></button>}
+                            <div className="absolute -bottom-6 text-[9px] bg-black/80 px-2 py-0.5 rounded-full text-stone-300 truncate max-w-[80px] opacity-0 group-hover:opacity-100 transition-opacity border border-white/10 pointer-events-none z-20">{token.name}</div>
+                        </div>
+                    ))}
+                    {tokenBench.length === 0 && !isGameMode && <div className="text-[10px] text-stone-500 px-2 italic">Arraste ou crie tokens</div>}
+                    {!isGameMode && (
+                        <div className="flex items-center gap-1 ml-2 pl-2 border-l border-white/10">
+                            <button onClick={saveTokenBench} className="p-1.5 bg-stone-800 hover:bg-stone-700 rounded text-stone-400 hover:text-white transition-colors" title="Salvar Tokens">
+                                <Save size={14} />
+                            </button>
+                            <label className="p-1.5 bg-stone-800 hover:bg-stone-700 rounded text-stone-400 hover:text-white transition-colors cursor-pointer" title="Carregar Tokens">
+                                <Upload size={14} />
+                                <input type="file" accept=".json" className="hidden" onChange={loadTokenBench} />
+                            </label>
+                        </div>
+                    )}
                 </div>
-            ))}
+            )}
         </div>
     </div>
   );

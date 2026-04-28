@@ -143,7 +143,7 @@ export const DMScreen: React.FC<Props> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-200">
-      <div className="bg-[#1c1c1e] border-2 border-amber-900/50 w-full max-w-6xl h-[85vh] rounded-xl shadow-2xl flex flex-col relative overflow-hidden ring-1 ring-amber-600/20">
+      <div className="bg-[#1c1c1e] border-2 border-amber-900/50 w-full max-w-6xl h-[82dvh] rounded-xl shadow-2xl flex flex-col relative overflow-hidden ring-1 ring-amber-600/20">
         
         {/* Header */}
         <div className="bg-[#151518] p-4 border-b border-amber-900/30 flex justify-between items-center shrink-0">

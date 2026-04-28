@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "campaigns": {
+      "$campaignId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
+  }
+}

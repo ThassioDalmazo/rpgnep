@@ -1,0 +1,11 @@
+{
+  "projectId": "rpgnep",
+  "appId": "1:865191961428:web:cbe7cdf1d41a4a4fc75ec1",
+  "apiKey": "AIzaSyBkOf7PyWguwiLeskzjk7u8dR07SADDimY",
+  "authDomain": "rpgnep.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-d91addd7-f453-4739-9590-066083802292",
+  "storageBucket": "rpgnep.firebasestorage.app",
+  "messagingSenderId": "865191961428",
+  "measurementId": "",
+  "databaseURL": "https://rpgnep-default-rtdb.firebaseio.com"
+}

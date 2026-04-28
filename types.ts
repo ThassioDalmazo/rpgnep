@@ -1,10 +1,24 @@
 
+export interface ImageConfig {
+  x: number;
+  y: number;
+  scale: number;
+  rotation?: number;
+}
+
+export interface ClassInfo {
+  name: string;
+  subclass: string;
+  level: number;
+}
+
 export interface Character {
   id: string;
   name: string;
   class: string;
   subclass: string;
   level: number;
+  classes?: ClassInfo[]; // Optional for backward compatibility, will be initialized
   background: string;
   race: string;
   playerName: string;
@@ -39,10 +53,25 @@ export interface Character {
     slots: boolean[][];
     known: string;
     castingStat: string;
+    pact?: {
+      current: number;
+      max: number;
+      level: number;
+    };
   };
   wallet: { cp: number; sp: number; ep: number; gp: number; pp: number };
   customWeapons?: { n: string; dmg: string; prop: string }[];
-  customSpells?: { name: string; level: string; desc: string }[];
+  customSpells?: { 
+    name: string; 
+    level: string; 
+    desc: string;
+    school?: string;
+    castingTime?: string;
+    range?: string;
+    components?: string;
+    duration?: string;
+    concentration?: boolean;
+  }[];
   feats?: string[];
   autoHp?: boolean;
   autoAc?: boolean;
@@ -50,10 +79,51 @@ export interface Character {
   equippedShield?: string;
   stealthDisadvantage?: boolean;
   exhaustion: number;
+  inspiration?: boolean;
+  conditions?: string[];
   imageUrl?: string;
+  imageConfig?: ImageConfig;
+  essence?: string;
+  drops?: string;
+  spellList?: SpellEntry[];
   // Propriedades para Token Multi-tile
   width?: number; 
   height?: number;
+  inventoryList?: InventoryItem[];
+}
+
+export interface ItemEffect {
+  type: 'ac' | 'attack' | 'damage' | 'attr' | 'save' | 'skill' | 'speed';
+  value: number;
+  stat?: string; // ex: 'str', 'dex', 'atletismo'
+}
+
+export interface InventoryItem {
+  id: string;
+  n: string; // nome
+  d: string; // descrição
+  r: 'Mundano' | 'Comum' | 'Incomum' | 'Raro' | 'Muito Raro' | 'Lendário' | 'Artefato';
+  t: 'arma' | 'armadura' | 'escudo' | 'item' | 'consumível';
+  att?: boolean; // requer sintonização?
+  isAtt?: boolean; // está sintonizado?
+  eq?: boolean; // está equipado?
+  eff?: ItemEffect[];
+  weight?: number;
+  cost?: string;
+}
+
+export interface SpellEntry {
+  id: string;
+  name: string;
+  level: number;
+  school?: string;
+  castingTime: string;
+  range: string;
+  components: string;
+  duration: string;
+  concentration: boolean;
+  description: string;
+  prepared?: boolean;
 }
 
 export interface Monster {
@@ -67,8 +137,12 @@ export interface Monster {
   actions: { n: string; hit: number; dmg: string }[];
   traits?: { n: string; d: string }[];
   spells?: string[];
+  spellList?: SpellEntry[];
   imageUrl?: string;
+  imageConfig?: ImageConfig;
   description?: string;
+  lairActions?: { n: string; d: string }[];
+  legendaryActions?: { n: string; d: string; cost?: number }[];
   // Monstros também podem ter tamanho padrão no futuro, mas por enquanto default é 1x1
   width?: number;
   height?: number;
@@ -80,10 +154,14 @@ export interface EncounterParticipant extends Monster {
   uid: number;
   hpCurrent: number;
   hpMax: number;
+  hpTemp?: number;
   initiative: number;
   conditions: string[];
+  inspiration?: boolean;
   linkedCharId?: string;
+  spellList?: SpellEntry[];
   imageUrl?: string;
+  imageConfig?: ImageConfig;
   attributes?: { str: number; dex: number; con: number; int: number; wis: number; cha: number; };
 }
 
@@ -120,6 +198,17 @@ export interface Token {
   linkedType?: 'character' | 'monster';
   auraRadius?: number;
   auraColor?: string;
+  frame?: string;
+  inspiration?: boolean;
+  conditions?: string[];
+  imageConfig?: ImageConfig;
+}
+
+export interface CustomAsset {
+    id: string;
+    url: string;
+    name: string;
+    type?: 'upload' | 'edited';
 }
 
 export interface MapConfig {
@@ -133,10 +222,13 @@ export interface MapConfig {
     bgX: number;
     bgY: number;
     bgScale: number;
+    bgBrightness?: number;
+    bgStretch?: boolean;
     weather?: 'none' | 'rain' | 'snow' | 'ember' | 'fog';
+    customAssets?: Record<string, CustomAsset>;
 }
 
-export type AppMode = 'SHEET' | 'DM' | 'VTT' | 'CHAT' | 'NPC' | 'GM_DASHBOARD';
+export type AppMode = 'SHEET' | 'DM' | 'VTT' | 'CHAT' | 'NPC' | 'GM_DASHBOARD' | 'ADVENTURE';
 
 export interface LogEntry {
   id: number;
@@ -185,8 +277,14 @@ export interface CampaignData {
   combat?: {
     turnIndex: number;
     targetUid: number | null;
-    round?: number; // Novo campo
+    round?: number;
+    turnCounter?: number;
   };
   notes?: string;
   lastUpdate?: number;
+  permissions?: {
+    canMoveTokens: boolean;
+    canEditCharacters: boolean;
+    canRollDice: boolean;
+  };
 }
