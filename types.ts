@@ -90,6 +90,30 @@ export interface Character {
   width?: number; 
   height?: number;
   inventoryList?: InventoryItem[];
+  // Novos campos para Essências
+  equippedEssences?: string[]; // Nomes das essências equipadas
+  essenceInventory?: string[];  // Nomes das essências coletadas
+  guildRank?: number;          // Rank da Guilda para cálculo de slots
+}
+
+export interface Essence {
+  id: string;
+  name: string;
+  monsterSource: string;
+  cr: string;
+  attributeBonus: {
+    attr: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
+    value: number;
+  };
+  passive: {
+    name: string;
+    desc: string;
+  };
+  active: {
+    name: string;
+    desc: string;
+    limit: string; // ex: "1/descanso curto"
+  };
 }
 
 export interface ItemEffect {
@@ -148,6 +172,9 @@ export interface Monster {
   height?: number;
   // Atributos opcionais
   attributes?: { str: number; dex: number; con: number; int: number; wis: number; cha: number; };
+  // Novas propriedades de Rework
+  essence?: Essence;
+  drops?: { n: string; d: string; r: 'Mundano' | 'Comum' | 'Incomum' | 'Raro' | 'Épico' | 'Lendário' }[];
 }
 
 export interface EncounterParticipant extends Monster {

@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Character, LogEntry, SpellEntry, InventoryItem, ItemEffect } from '../types';
 import { LIST_CREATURES, LIST_AVATARS } from '../assets';
 import { CLASSES_DB, SKILL_LIST, RACES_LIST, BACKGROUNDS_DB, COMMON_WEAPONS, SPELLS_DB, CLASS_FEATURES, ARMOR_DB, FEATS_DB, DEFAULT_MONSTERS, INITIAL_CHAR, RACE_BONUSES, CLASS_STARTING_EQUIPMENT, BACKGROUND_STARTING_EQUIPMENT, SLOTS_TABLE, PACT_SLOTS, CLASS_SPELLS, SUBCLASS_FEATURES, SUBCLASS_SPELLS, RACE_FEATURES, FIGHTING_STYLES, MAGIC_ITEMS_DB, CONDITIONS_LIST } from '../constants';
-import { Sword, Shield, Heart, Zap, Scroll, Backpack, Save, Upload, Skull, Brain, Plus, ChevronDown, ChevronRight, Book, Moon, Trash2, ArrowUpCircle, Sparkles, Calculator, AlertTriangle, List, FileText, Check, X, Search, User, Camera, Eraser, BookOpen, Library, Flame, Link as LinkIcon, Star, Hammer, ShoppingBag, Store, CircleDollarSign, GripVertical, Image as ImageIcon, Download, Move, RotateCcw, Wind, Clock, MinusCircle, Dices, Ghost, Info } from 'lucide-react';
+import { BACKUP_MONSTERS } from '../monsterData';
+import { Sword, Shield, Heart, Zap, Scroll, Backpack, Save, Upload, Skull, Brain, Plus, ChevronDown, ChevronRight, Book, Moon, Trash2, ArrowUpCircle, Sparkles, Calculator, AlertTriangle, List, FileText, Check, X, Search, User, Camera, Eraser, BookOpen, Library, Flame, Link as LinkIcon, Star, Hammer, ShoppingBag, Store, CircleDollarSign, GripVertical, Image as ImageIcon, Download, Move, RotateCcw, Wind, Clock, MinusCircle, Dices, Ghost, Info, Tag } from 'lucide-react';
 
 interface Props {
   char: Character;
@@ -265,8 +266,21 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
     originalOnRoll(d, mod, label);
   };
 
-  const [activeTab, setActiveTab] = useState<'main' | 'combat' | 'spells' | 'inv' | 'bio'>('main');
+  const [activeTab, setActiveTab] = useState<'main' | 'combat' | 'spells' | 'inv' | 'essences' | 'bio'>('main');
   const [creationStep, setCreationStep] = useState<number | null>(null);
+
+  const parsedMonsterEssence = useMemo(() => {
+    if (!char.essence) return null;
+    try { return JSON.parse(char.essence); } catch (e) { return null; }
+  }, [char.essence]);
+
+  const parsedMonsterDrops = useMemo(() => {
+    if (!char.drops) return [];
+    try { 
+      const parsed = JSON.parse(char.drops); 
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
+  }, [char.drops]);
 
   const getSpellLines = () => char.spells.known.split('\n').filter(line => line.trim() !== '');
 
@@ -453,6 +467,20 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
     let itemSaveBonus = 0;
     const effectiveAttributes = { ...char.attributes };
     
+    // Bônus de Essências Equipadas (Atributos)
+    if (char.equippedEssences && char.equippedEssences.length > 0) {
+        char.equippedEssences.forEach(essId => {
+            const monster = BACKUP_MONSTERS.find(m => m.essence?.id === essId || m.essence?.name === essId);
+            if (monster && monster.essence && monster.essence.attributeBonus) {
+                const { attr, value } = monster.essence.attributeBonus;
+                const key = attr as keyof typeof effectiveAttributes;
+                if (key in effectiveAttributes) {
+                    effectiveAttributes[key] = (effectiveAttributes[key] || 0) + value;
+                }
+            }
+        });
+    }
+
     (char.inventoryList || []).forEach(item => {
         const active = (item.att && item.isAtt) || (!item.att && (item.eq || item.t === 'item'));
         if (active && item.eff) {
@@ -1697,6 +1725,13 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
     }));
   };
 
+  const updateDetailedSpell = (id: string, updates: Partial<SpellEntry>) => {
+    setChar(prev => ({
+      ...prev,
+      spellList: (prev.spellList || []).map(s => s.id === id ? { ...s, ...updates } : s)
+    }));
+  };
+
   const addMagicItem = (itemKey: string) => {
     const baseItem = MAGIC_ITEMS_DB[itemKey];
     if (!baseItem) return;
@@ -2827,7 +2862,14 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
       </div>
 
       <div className="flex gap-1 mb-8 border-b-2 border-stone-800/20 overflow-x-auto no-scrollbar">
-        {[{ id: 'main', icon: Sword, label: 'Geral' }, { id: 'combat', icon: Flame, label: 'Combate' }, { id: 'spells', icon: Zap, label: 'Magias' }, { id: 'inv', icon: Backpack, label: 'Itens & Poderes' }, { id: 'bio', icon: Scroll, label: 'História' }].map((tab) => (
+        {[
+          { id: 'main', icon: Sword, label: 'Geral' }, 
+          { id: 'combat', icon: Flame, label: 'Combate' }, 
+          { id: 'spells', icon: Zap, label: 'Magias' }, 
+          { id: 'inv', icon: Backpack, label: isNPC ? 'Mochila & Alforge' : 'Itens & Poderes' }, 
+          !isNPC && { id: 'essences', icon: Ghost, label: 'Essências' },
+          { id: 'bio', icon: Scroll, label: 'História' }
+        ].filter(Boolean).map((tab: any) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-4 py-3 text-[10px] font-black uppercase tracking-[2px] transition-all whitespace-nowrap border-b-4 ${activeTab === tab.id ? 'border-stone-800 text-stone-900 bg-white/30' : 'border-transparent text-stone-400 hover:text-stone-600 hover:bg-white/40'}`}>
             <tab.icon size={14} /> {tab.label}
           </button>
@@ -2839,6 +2881,20 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
         <button onClick={handleSave} className="p-2 text-stone-400 hover:text-stone-900 transition-colors" title="Exportar Ficha"><Save size={20} /></button>
         <label className="p-2 text-stone-400 hover:text-stone-900 cursor-pointer transition-colors" title="Importar Ficha (JSON ou PNG-Card)"><Upload size={20} /><input type="file" hidden onChange={handleLoad} accept=".json,.png" /></label>
       </div>
+
+      {isNPC && (
+          <div className="mx-8 mb-6 mt-2 bg-stone-900 text-white p-3 rounded-xl border border-stone-800 flex items-center justify-between shadow-lg">
+              <div className="flex items-center gap-4">
+                  <div className="bg-amber-600 text-black px-3 py-1 rounded font-black text-xs uppercase tracking-widest">NPC / MONSTRO</div>
+                  <div className="text-stone-400 text-[10px] font-bold uppercase tracking-widest">Tipo: <span className="text-white">{char.race}</span></div>
+              </div>
+              <div className="flex items-center gap-4 px-2">
+                  <div className="text-stone-400 text-[10px] font-bold uppercase tracking-widest">Nível/CR: <span className="text-white">{char.level}</span></div>
+                  <div className="w-1.5 h-1.5 bg-stone-700 rounded-full"></div>
+                  <div className="text-stone-400 text-[10px] font-bold uppercase tracking-widest">Proficiência: <span className="text-amber-400">+{profBonus}</span></div>
+              </div>
+          </div>
+      )}
 
       {activeTab === 'main' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -3159,6 +3215,37 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
                     value={char.essence || ''}
                     onChange={(e) => setChar({...char, essence: e.target.value})}
                 />
+                
+                {/* Visualizador de Essências de Monstros */}
+                <div className="mt-6 pt-6 border-t border-stone-300">
+                    <div className="text-[10px] font-black text-stone-400 uppercase tracking-[3px] mb-4 flex items-center gap-2">
+                        <Ghost size={14} className="text-indigo-500" /> Poderes de Monstros
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {(char.equippedEssences || []).slice(0, 5).map(essId => {
+                            const monster = BACKUP_MONSTERS.find(m => m.essence?.id === essId || m.essence?.name === essId);
+                            if (!monster?.essence) return null;
+                            const ess = monster.essence;
+                            return (
+                                <div key={essId} className="bg-indigo-50/50 border border-indigo-200 px-3 py-2 rounded-lg flex items-center gap-3 group cursor-help transition-all hover:bg-indigo-100/50" title={`${ess.passive.name}: ${ess.passive.desc}`}>
+                                    <div className="relative">
+                                        <Ghost size={16} className="text-indigo-400" />
+                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-indigo-500 rounded-full animate-pulse shadow-sm shadow-indigo-400/50"></div>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-indigo-900 uppercase tracking-tight leading-none">{ess.name}</span>
+                                        {ess.attributeBonus && <span className="text-[8px] font-bold text-indigo-500 mt-1">+{ess.attributeBonus.value} {ATTR_MAP[ess.attributeBonus.attr]?.substring(0,3)}</span>}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {(!char.equippedEssences || char.equippedEssences.length === 0) && (
+                            <div className="text-[10px] italic text-stone-400 flex items-center gap-2 bg-stone-100/50 p-3 rounded-lg w-full border border-stone-200 border-dashed">
+                                <Info size={12}/> Equipe essências de monstros derrotados para ganhar bônus exclusivos.
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
             <div className="bg-white/40 p-8 rounded border border-stone-800 shadow-sm relative overflow-hidden">
@@ -3206,6 +3293,50 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
                 <div className="bg-white/40 border border-stone-800 rounded p-6 shadow-sm">
                     <h3 className="font-cinzel text-sm font-black text-stone-900 mb-6 uppercase tracking-[4px] flex items-center gap-2 border-b border-stone-300 pb-2"><Sword size={18}/> ATAQUES COM ARMAS</h3>
                     <div className="space-y-4">
+                        {/* Custom Weapons (Monster Actions) */}
+                        {(char.customWeapons || []).map((w, idx) => {
+                            const hitBonus = parseInt(w.prop.replace(/[^0-9+-]/g, "")) || 0;
+                            return (
+                                <div key={`custom-${idx}`} className="bg-stone-100 border-2 border-stone-800 rounded p-4 flex justify-between items-center group hover:border-amber-600 transition-all shadow-sm">
+                                    <div className="flex-1">
+                                        <div className="font-black text-stone-900 uppercase text-xs mb-1">{w.n}</div>
+                                        <div className="text-[10px] text-stone-500 font-bold uppercase tracking-tighter">Acerto: {fmt(hitBonus)} • Dano: {w.dmg}</div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => onRoll(20, hitBonus, `Ataque: ${w.n}`)}
+                                            className="px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white rounded text-[10px] font-black uppercase tracking-widest shadow-md active:scale-95 transition-all"
+                                        >
+                                            ACERTAR
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                const match = w.dmg.match(/(\d+)d(\d+)(?:\s*[+-]\s*(\d+))?/);
+                                                if(match) {
+                                                    const count = parseInt(match[1]);
+                                                    const sides = parseInt(match[2]);
+                                                    const mod = parseInt(match[3] || "0") * (w.dmg.includes('-') ? -1 : 1);
+                                                    let total = mod;
+                                                    let rolls = [];
+                                                    for(let i=0; i<count; i++) {
+                                                        const r = Math.floor(Math.random() * sides) + 1;
+                                                        rolls.push(r);
+                                                        total += r;
+                                                    }
+                                                    addLog(char.name, `causou **${total}** de dano com **${w.n}**! (${rolls.join('+')}${mod !== 0 ? fmt(mod) : ""})`, 'info');
+                                                } else {
+                                                    addLog(char.name, `usou **${w.n}** causando **${w.dmg}** de dano!`, 'info');
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded text-[10px] font-black uppercase tracking-widest shadow-md active:scale-95 transition-all"
+                                        >
+                                            DANO
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+
                         {char.inventory.split('\n').filter(i => i.includes('[E]') && i.includes('Dano:')).map((weaponLine, idx) => {
                             const name = weaponLine.replace(/^- /, '').replace('[E]', '').split('|')[0].trim();
                             const damageMatch = weaponLine.match(/Dano: ([\d\w+d\s]+)/);
@@ -3279,7 +3410,77 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
 
                 <div className="bg-white/40 border border-stone-800 rounded p-6 shadow-sm">
                     <h3 className="font-cinzel text-sm font-black text-stone-900 mb-6 uppercase tracking-[4px] flex items-center gap-2 border-b border-stone-300 pb-2"><Zap size={18}/> MAGIAS E HABILIDADES DE ATAQUE</h3>
+                    
+                    {isNPC && (char.bio.traits || char.bio.features) && (
+                        <div className="mb-6 space-y-4">
+                            {char.bio.traits && (
+                                <div className="bg-amber-50/50 border border-amber-200 rounded p-4">
+                                    <div className="text-[10px] font-black text-amber-800 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Book size={14}/> Traços e Habilidades Passivas
+                                    </div>
+                                    <div className="text-xs text-stone-700 font-serif leading-relaxed whitespace-pre-wrap">{char.bio.traits}</div>
+                                </div>
+                            )}
+                            {char.bio.features && char.bio.features.includes('Ações Lendárias') && (
+                                <div className="bg-red-50/50 border border-red-200 rounded p-4">
+                                    <div className="text-[10px] font-black text-red-800 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Skull size={14}/> Ações Lendárias
+                                    </div>
+                                    <div className="text-xs text-stone-700 font-serif leading-relaxed whitespace-pre-wrap">{char.bio.features}</div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div className="space-y-4">
+                        {/* Custom Spells (Monster Spells/Abilities) */}
+                        {(char.customSpells || []).map((s, idx) => {
+                            const castingMod = getMod(char.attributes[char.spells.castingStat as keyof typeof char.attributes] || 10);
+                            const spellAttack = castingMod + profBonus;
+                            const damageMatch = s.desc.match(/(\d+d\d+)/);
+                            const damageStr = damageMatch ? damageMatch[1] : null;
+
+                            return (
+                                <div key={`custom-spell-${idx}`} className="bg-indigo-50 border-l-[6px] border-indigo-600 border-y border-r border-stone-300 rounded-r-xl p-4 flex justify-between items-center group hover:border-stone-800 transition-all shadow-sm">
+                                    <div className="flex-1">
+                                        <div className="font-black text-stone-900 uppercase text-xs mb-1 flex items-center gap-2">
+                                            {s.name}
+                                            <span className="text-[8px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-black uppercase">Especial</span>
+                                        </div>
+                                        <div className="text-[10px] text-stone-500 font-bold uppercase tracking-tighter">Bônus: {fmt(spellAttack)} • CD: {8 + spellAttack} • {s.duration || 'Instantânea'}</div>
+                                        <div className="text-[9px] text-stone-400 font-spectral italic mt-1 line-clamp-1 max-w-[250px]">{s.desc}</div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => onRoll(20, spellAttack, `Ação: ${s.name}`)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[10px] font-black uppercase tracking-widest shadow-md transition-all active:scale-95">
+                                            USAR
+                                        </button>
+                                        {damageStr && (
+                                            <button 
+                                                onClick={() => {
+                                                    const match = damageStr.match(/(\d+)d(\d+)/);
+                                                    if(match) {
+                                                        const count = parseInt(match[1]);
+                                                        const sides = parseInt(match[2]);
+                                                        let total = 0;
+                                                        let rolls = [];
+                                                        for(let i=0; i<count; i++) {
+                                                            const r = Math.floor(Math.random() * sides) + 1;
+                                                            rolls.push(r);
+                                                            total += r;
+                                                        }
+                                                        addLog(char.name, `usou **${s.name}** causando **${total}** de dano! (${rolls.join('+')})`, 'info');
+                                                    }
+                                                }}
+                                                className="px-4 py-2 bg-indigo-800 hover:bg-indigo-900 text-white rounded text-[10px] font-black uppercase tracking-widest shadow-md transition-all active:scale-95"
+                                            >
+                                                DANO
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+
                         {/* Detailed Spells */}
                         {(char.spellList || []).map((s, idx) => {
                             const castingMod = getMod(char.attributes[char.spells.castingStat as keyof typeof char.attributes] || 10);
@@ -3311,7 +3512,7 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
                                                 <span className="text-[8px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-black uppercase">Círculo {s.level}</span>
                                             )}
                                         </div>
-                                        <div className="text-[10px] text-stone-500 font-bold uppercase tracking-tighter">Nível: {s.level} • Bônus: {fmt(spellAttack)} • CD: {8 + spellAttack}</div>
+                                        <div className="text-[10px] text-stone-500 font-bold uppercase tracking-tighter">Nível: {s.level} • Bônus: {fmt(spellAttack)} • CD: {8 + spellAttack} • {s.duration}</div>
                                         <div className="text-[9px] text-stone-400 font-spectral italic mt-1 line-clamp-1 max-w-[250px]">{s.description}</div>
                                     </div>
                                     <div className="flex gap-2">
@@ -3353,6 +3554,9 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
                             const l = line.toLowerCase();
                             const isOffensive = l.includes('dano') || l.includes('ataque') || l.includes('damage') || 
                                                l.includes('hit') || l.includes('cura') || l.includes('heal') || 
+                                               l.includes('cd ') || l.includes('teste') || l.includes('salvaguarda') ||
+                                               l.includes('atordoar') || l.includes('derrubar') || l.includes('empurrar') ||
+                                               l.includes('grapple') || l.includes('agarrar') || l.includes('condição') ||
                                                line.match(/\d+d\d+/);
                             
                             if (!isOffensive) return null;
@@ -3561,7 +3765,7 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="space-y-1">
                         <label className="text-[9px] font-black uppercase text-stone-400 tracking-wider">Tempo de Conjuração</label>
                         <input className="w-full bg-white/60 border border-stone-300 p-2 rounded text-[10px] font-bold outline-none text-stone-900 shadow-inner" placeholder="1 Ação" value={newDetailedSpell.castingTime} onChange={e => setNewDetailedSpell({...newDetailedSpell, castingTime: e.target.value})} />
@@ -3574,27 +3778,30 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
                         <label className="text-[9px] font-black uppercase text-stone-400 tracking-wider">Componentes</label>
                         <input className="w-full bg-white/60 border border-stone-300 p-2 rounded text-[10px] font-bold outline-none text-stone-900 shadow-inner" placeholder="V, S, M" value={newDetailedSpell.components} onChange={e => setNewDetailedSpell({...newDetailedSpell, components: e.target.value})} />
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-stone-400 tracking-wider">Duração</label>
-                        <input className="w-full bg-white/60 border border-stone-300 p-2 rounded text-[10px] font-bold outline-none text-stone-900 shadow-inner" placeholder="Concentração, up to 1 min" value={newDetailedSpell.duration} onChange={e => setNewDetailedSpell({...newDetailedSpell, duration: e.target.value})} />
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4 bg-white/40 p-3 rounded border border-stone-300">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                        <input 
-                            type="checkbox" 
-                            className="w-4 h-4 accent-stone-800"
-                            checked={newDetailedSpell.concentration}
-                            onChange={(e) => setNewDetailedSpell({...newDetailedSpell, concentration: e.target.checked})}
-                        />
-                        <span className="text-[10px] font-black uppercase text-stone-600 tracking-widest">Requer Concentração</span>
-                    </label>
                 </div>
 
                 <div className="space-y-1">
                     <label className="text-[9px] font-black uppercase text-stone-400 tracking-wider">Descrição dos Efeitos</label>
-                    <textarea className="w-full bg-white/60 border border-stone-300 p-4 rounded text-sm h-32 resize-none outline-none focus:border-stone-800 text-stone-900 shadow-inner font-spectral italic leading-relaxed placeholder:text-stone-300" placeholder="A criatura deve ser bem-sucedida em um teste de resistência de..." value={newDetailedSpell.description} onChange={e => setNewDetailedSpell({...newDetailedSpell, description: e.target.value})} />
+                    <div className="flex flex-col md:flex-row gap-3">
+                        <textarea className="flex-1 bg-white/60 border border-stone-300 p-4 rounded text-sm h-32 resize-none outline-none focus:border-stone-800 text-stone-900 shadow-inner font-spectral italic leading-relaxed placeholder:text-stone-300" placeholder="A criatura deve ser bem-sucedida em um teste de resistência de..." value={newDetailedSpell.description} onChange={e => setNewDetailedSpell({...newDetailedSpell, description: e.target.value})} />
+                        <div className="md:w-64 space-y-3">
+                            <div className="bg-white/40 p-3 rounded border border-stone-300">
+                                <label className="text-[9px] font-black uppercase text-stone-400 tracking-wider block mb-1">Duração</label>
+                                <input className="w-full bg-white/60 border border-stone-300 p-2 rounded text-[10px] font-bold outline-none text-stone-900 shadow-inner" placeholder="Concentração, 1 min" value={newDetailedSpell.duration} onChange={e => setNewDetailedSpell({...newDetailedSpell, duration: e.target.value})} />
+                            </div>
+                            <div className="flex items-center gap-4 bg-white/40 p-3 rounded border border-stone-300">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="w-4 h-4 accent-stone-800"
+                                        checked={newDetailedSpell.concentration}
+                                        onChange={(e) => setNewDetailedSpell({...newDetailedSpell, concentration: e.target.checked})}
+                                    />
+                                    <span className="text-[10px] font-black uppercase text-stone-600 tracking-widest">Concentração</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <button onClick={addDetailedSpell} className="w-full bg-stone-800 hover:bg-stone-900 text-white p-4 rounded font-black text-xs shadow-xl uppercase tracking-[3px] transition-all active:scale-95 flex items-center justify-center gap-3">
@@ -3810,7 +4017,12 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
                                                         </div>
                                                         <div>
                                                             <div className="text-[9px] font-black text-stone-400 uppercase tracking-widest">Duração</div>
-                                                            <div className="text-xs font-bold text-stone-800">{s.duration}</div>
+                                                            <input 
+                                                                className="w-full bg-transparent border-b border-stone-200 focus:border-stone-800 text-xs font-bold text-stone-800 outline-none p-0 transition-all placeholder:text-stone-300"
+                                                                value={s.duration}
+                                                                onChange={(e) => updateDetailedSpell(s.id, { duration: e.target.value })}
+                                                                placeholder="Duração..."
+                                                            />
                                                         </div>
                                                         <div>
                                                             <div className="text-[9px] font-black text-stone-400 uppercase tracking-widest">Atributo</div>
@@ -3818,9 +4030,12 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
                                                         </div>
                                                     </div>
 
-                                                    <div className="text-base text-stone-800 leading-relaxed bg-white p-4 border border-stone-100 italic font-spectral whitespace-pre-wrap">
-                                                        {s.description}
-                                                    </div>
+                                                    <textarea 
+                                                        className="w-full text-base text-stone-800 leading-relaxed bg-white p-4 border border-stone-100 italic font-spectral whitespace-pre-wrap outline-none focus:border-stone-400 h-24 resize-none transition-all"
+                                                        value={s.description}
+                                                        onChange={(e) => updateDetailedSpell(s.id, { description: e.target.value })}
+                                                        placeholder="Descrição dos efeitos..."
+                                                    />
                                                 </div>
                                             ))}
                                         </div>
@@ -3835,7 +4050,105 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
         )}
 
       {activeTab === 'inv' && (
-        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr,2fr] gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr,2fr] gap-8 overflow-y-auto custom-scrollbar pr-2 pt-2 pb-20">
+            {/* Grimório da Alma & Espólios (Always show if present, even for PCs) */}
+            {(parsedMonsterEssence || (parsedMonsterDrops && parsedMonsterDrops.length > 0)) && (
+               <div className="lg:col-span-2 space-y-8">
+                   {/* Grimório da Alma (Essência inata) */}
+                   {parsedMonsterEssence && (
+                       <div className="bg-indigo-950 text-white p-8 rounded-2xl border border-indigo-400/30 shadow-2xl relative overflow-hidden group">
+                           <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                               <Ghost size={120} />
+                           </div>
+                           <div className="relative z-10">
+                               <div className="flex items-center gap-3 mb-6">
+                                   <div className="w-12 h-12 bg-indigo-500/20 rounded-full flex items-center justify-center border border-indigo-400/40">
+                                       <BookOpen size={24} className="text-indigo-300" />
+                                   </div>
+                                   <div>
+                                       <h2 className="text-2xl font-black tracking-[4px] uppercase italic text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-white">Grimório da Alma</h2>
+                                       <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mt-0.5">Essência Inata da Criatura</div>
+                                   </div>
+                               </div>
+
+                               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                   <div className="md:col-span-1 space-y-4">
+                                       <div className="bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-sm shadow-inner">
+                                           <div className="text-[9px] font-bold text-indigo-300 uppercase tracking-widest mb-1">Essência</div>
+                                           <div className="text-xl font-black text-white">{parsedMonsterEssence.name}</div>
+                                           <div className="text-[10px] text-indigo-400 mt-1 uppercase tracking-tighter">Fonte: {parsedMonsterEssence.monsterSource} (CR {parsedMonsterEssence.cr})</div>
+                                       </div>
+                                       {parsedMonsterEssence.attributeBonus && (
+                                           <div className="bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-sm shadow-inner">
+                                               <div className="text-[9px] font-bold text-indigo-300 uppercase tracking-widest mb-1">Bônus de Atributo</div>
+                                               <div className="text-lg font-black text-indigo-300">+{parsedMonsterEssence.attributeBonus.value} {ATTR_MAP[parsedMonsterEssence.attributeBonus.attr] || parsedMonsterEssence.attributeBonus.attr}</div>
+                                           </div>
+                                       )}
+                                   </div>
+                                   <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                       <div className="bg-indigo-900/40 p-5 rounded-2xl border border-indigo-400/20 hover:bg-indigo-900/60 transition-colors">
+                                           <div className="flex items-center gap-2 mb-3">
+                                               <Zap size={16} className="text-amber-400" />
+                                               <span className="text-xs font-black uppercase tracking-widest text-indigo-200">Habilidade Passiva</span>
+                                           </div>
+                                           <div className="font-bold text-white mb-2 text-sm">{parsedMonsterEssence.passive.name}</div>
+                                           <p className="text-xs text-indigo-200/70 leading-relaxed font-serif italic">"{parsedMonsterEssence.passive.desc}"</p>
+                                       </div>
+                                       <div className="bg-indigo-900/40 p-5 rounded-2xl border border-indigo-400/20 hover:bg-indigo-900/60 transition-colors">
+                                           <div className="flex items-center justify-between mb-3">
+                                               <div className="flex items-center gap-2">
+                                                   <Flame size={16} className="text-red-400" />
+                                                   <span className="text-xs font-black uppercase tracking-widest text-indigo-200">Poder Ativo</span>
+                                               </div>
+                                               <span className="text-[10px] bg-indigo-500/30 px-2 py-0.5 rounded text-indigo-100 font-bold border border-indigo-400/20">{parsedMonsterEssence.active.limit}</span>
+                                           </div>
+                                           <div className="font-bold text-white mb-2 text-sm">{parsedMonsterEssence.active.name}</div>
+                                           <p className="text-xs text-indigo-200/70 leading-relaxed font-serif italic">"{parsedMonsterEssence.active.desc}"</p>
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+                   )}
+
+                   {/* Inventário de Espólios (Drops) */}
+                   {parsedMonsterDrops && parsedMonsterDrops.length > 0 && (
+                       <div className="bg-stone-900 border-2 border-stone-800 p-8 rounded-2xl shadow-2xl relative overflow-hidden group">
+                           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:rotate-12 transition-transform duration-1000">
+                               <Backpack size={120} />
+                           </div>
+                           <div className="relative z-10">
+                               <div className="flex items-center gap-3 mb-6 border-b border-stone-800 pb-4">
+                                   <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center border border-amber-500/20">
+                                       <ShoppingBag size={24} className="text-amber-500" />
+                                   </div>
+                                   <div>
+                                       <h2 className="text-2xl font-black tracking-[4px] uppercase italic text-stone-100">Inventário de Espólios</h2>
+                                       <div className="text-[10px] font-bold text-stone-500 uppercase tracking-widest mt-0.5">Tesouros e Restos da Criatura</div>
+                                   </div>
+                               </div>
+                               
+                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                   {parsedMonsterDrops.map((drop: any, i: number) => (
+                                       <div key={i} className="bg-stone-950 p-5 rounded-xl border border-stone-800 hover:border-amber-500/50 transition-all shadow-xl group/drop">
+                                           <div className="flex justify-between items-start mb-3">
+                                               <div className="p-2 bg-stone-900 rounded-lg text-amber-500 shadow-inner group-hover/drop:scale-110 transition-transform">
+                                                   <Tag size={18} />
+                                               </div>
+                                               <span className="text-[9px] font-black bg-stone-800 text-stone-400 px-2 py-1 rounded uppercase tracking-widest border border-stone-700">
+                                                   {drop.r}
+                                               </span>
+                                           </div>
+                                           <div className="font-bold text-stone-100 mb-2 truncate" title={drop.n}>{drop.n}</div>
+                                           <p className="text-[10px] text-stone-500 leading-relaxed line-clamp-3 italic">"{drop.d}"</p>
+                                       </div>
+                                   ))}
+                               </div>
+                           </div>
+                       </div>
+                   )}
+               </div>
+           )}
           <div className="space-y-6">
             {/* Habilidades & Poderes Combined inside Items tab */}
             <div className="bg-white/40 p-5 rounded border-2 border-stone-800 shadow-lg relative overflow-hidden">
@@ -4236,6 +4549,152 @@ export const CharacterSheet: React.FC<Props> = ({ char, setChar: originalSetChar
                  <textarea className="w-full flex-1 min-h-[600px] bg-white/60 p-6 rounded border border-stone-800 shadow-inner font-mono text-sm leading-relaxed focus:ring-1 ring-stone-800/30 outline-none text-stone-800" placeholder="Suas posses e equipamentos..." value={char.inventory} onChange={e => setChar({...char, inventory: e.target.value})}></textarea>
              )}
           </div>
+        </div>
+      )}
+
+       {activeTab === 'essences' && (
+         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full overflow-y-auto custom-scrollbar pr-2 pt-2 pb-20">
+            <div className="lg:col-span-4 space-y-6">
+              <div className="bg-white/40 p-6 rounded border border-stone-800 shadow-md">
+                 <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-sm font-black uppercase text-stone-900 tracking-[3px] flex items-center gap-2">
+                        <Ghost size={18} className="text-indigo-600"/> Essências Equipadas
+                    </h3>
+                    <div className="text-[10px] bg-stone-100 px-2 py-1 rounded font-bold text-stone-500">
+                      {char.equippedEssences?.length || 0} / {Math.max(1, Math.floor((char.level || 1) / 4) + 1)} SLOTS
+                    </div>
+                 </div>
+                 <div className="space-y-4">
+                    {(char.equippedEssences || []).map(essId => {
+                        const monster = BACKUP_MONSTERS.find(m => m.essence?.id === essId || m.essence?.name === essId);
+                        const ess = monster?.essence;
+                        if (!ess) return null;
+                        return (
+                          <div key={essId} className="bg-white/60 p-4 rounded border border-indigo-200 border-l-4 border-l-indigo-600 shadow-sm relative group">
+                             <button 
+                                onClick={() => {
+                                  const next = (char.equippedEssences || []).filter(id => id !== essId);
+                                  setChar({...char, equippedEssences: next});
+                                }}
+                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-100 text-red-700 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border border-red-200"
+                             >
+                                <MinusCircle size={14}/>
+                             </button>
+                             <div className="font-black text-xs text-indigo-900 mb-1">{ess.name}</div>
+                             <div className="text-[10px] text-stone-500 italic mb-2 uppercase tracking-tighter">Fonte: {ess.monsterSource} (CR {ess.cr})</div>
+                             <div className="grid grid-cols-1 gap-2">
+                                {ess.attributeBonus && (
+                                    <div className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full inline-block self-start">
+                                        +{ess.attributeBonus.value} {ATTR_MAP[ess.attributeBonus.attr] || ess.attributeBonus.attr}
+                                    </div>
+                                )}
+                                <div className="space-y-1">
+                                    <div className="text-[10px] font-black text-stone-800 flex items-center gap-1">
+                                        <Zap size={10} className="text-amber-500"/> {ess.passive.name}
+                                    </div>
+                                    <div className="text-[10px] text-stone-500 leading-tight">{ess.passive.desc}</div>
+                                </div>
+                                <div className="space-y-1 mt-1 border-t border-indigo-100 pt-2">
+                                    <div className="text-[10px] font-black text-stone-800 flex items-center justify-between">
+                                        <span className="flex items-center gap-1"><Flame size={10} className="text-red-500"/> {ess.active.name}</span>
+                                        <span className="text-[8px] bg-stone-200 px-1 rounded">{ess.active.limit}</span>
+                                    </div>
+                                    <div className="text-[10px] text-stone-500 leading-tight">{ess.active.desc}</div>
+                                </div>
+                             </div>
+                          </div>
+                        );
+                    })}
+                    {(!char.equippedEssences || char.equippedEssences.length === 0) && (
+                        <div className="text-center text-[10px] text-stone-400 italic py-10 border border-dashed border-stone-300 rounded bg-stone-50/30">
+                            Nenhuma essência equipada.
+                        </div>
+                    )}
+                 </div>
+              </div>
+           </div>
+
+           <div className="lg:col-span-8 flex flex-col h-full bg-white/40 rounded border border-stone-800 shadow-md p-6">
+              <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-sm font-black uppercase text-stone-900 tracking-[3px] flex items-center gap-2">
+                      <Backpack size={18} className="text-stone-500"/> Inventário de Essências
+                  </h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto custom-scrollbar flex-1 pr-2 max-h-[600px]">
+                 {(char.essenceInventory || []).map(essId => {
+                    const monster = BACKUP_MONSTERS.find(m => m.essence?.id === essId || m.essence?.name === essId);
+                    const ess = monster?.essence;
+                    if (!ess) return null;
+                    const isEquipped = char.equippedEssences?.includes(essId);
+                    const maxSlots = Math.max(1, Math.floor((char.level || 1) / 4) + 1);
+                    const canEquip = (char.equippedEssences?.length || 0) < maxSlots;
+
+                    return (
+                        <div key={essId} className="bg-white/60 p-4 rounded border border-stone-300 hover:border-stone-800 transition-all shadow-sm flex flex-col group relative">
+                            <div className="flex justify-between items-start mb-2">
+                                <div className="font-black text-sm text-stone-900">{ess.name}</div>
+                                {isEquipped ? (
+                                    <span className="text-[8px] font-black bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full uppercase tracking-widest">Equipado</span>
+                                ) : (
+                                    <button 
+                                        disabled={!canEquip}
+                                        onClick={() => {
+                                            const current = char.equippedEssences || [];
+                                            if (current.length < maxSlots) {
+                                                setChar({...char, equippedEssences: [...current, essId]});
+                                            }
+                                        }}
+                                        className="text-[9px] font-black bg-stone-800 text-white px-3 py-1 rounded hover:bg-stone-900 disabled:opacity-30 transition-all uppercase tracking-widest"
+                                    >
+                                        Equipar
+                                    </button>
+                                )}
+                            </div>
+                            <div className="text-[9px] text-stone-400 font-bold mb-3 uppercase tracking-tighter">Fonte: {ess.monsterSource} (CR {ess.cr})</div>
+                            
+                            <div className="space-y-3 flex-1">
+                                {ess.attributeBonus && (
+                                    <div className="text-[10px] font-bold text-stone-700 flex items-center gap-1">
+                                        <Plus size={10} className="text-stone-400"/>
+                                        Bônus de Atributo: <span className="text-stone-900">+{ess.attributeBonus.value} {ATTR_MAP[ess.attributeBonus.attr] || ess.attributeBonus.attr}</span>
+                                    </div>
+                                )}
+                                <div className="space-y-1">
+                                    <div className="text-[10px] font-black text-stone-800">Passiva: {ess.passive.name}</div>
+                                    <div className="text-[10px] text-stone-500 leading-tight bg-stone-50 p-2 rounded">{ess.passive.desc}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="text-[10px] font-black text-stone-800 text-right">{ess.active.name} ({ess.active.limit})</div>
+                                    <div className="text-[10px] text-stone-500 leading-tight bg-red-50/30 p-2 rounded text-right">{ess.active.desc}</div>
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={() => {
+                                    const nextInv = (char.essenceInventory || []).filter(id => id !== essId);
+                                    const nextEquip = (char.equippedEssences || []).filter(id => id !== essId);
+                                    setChar({...char, essenceInventory: nextInv, equippedEssences: nextEquip});
+                                }}
+                                className="absolute bottom-2 left-2 text-stone-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                title="Destruir Essência"
+                            >
+                                <Trash2 size={12}/>
+                            </button>
+                        </div>
+                    );
+                 })}
+                 {(!char.essenceInventory || char.essenceInventory.length === 0) && (
+                    <div className="col-span-2 flex flex-col items-center justify-center py-20 text-stone-400 gap-4 border border-dashed border-stone-200 rounded-xl">
+                        <Skull size={48} className="opacity-10"/>
+                        <div className="text-center">
+                            <div className="text-xs font-black uppercase tracking-widest mb-1 text-stone-300">Nenhuma essência no inventário</div>
+                            <div className="text-[10px] italic">Derrote monstros poderosos para coletar suas essências e ganhar seus poderes.</div>
+                        </div>
+                    </div>
+                 )}
+              </div>
+           </div>
         </div>
       )}
 

@@ -20,30 +20,82 @@ interface Props {
 }
 
 const MonsterCard = React.memo(({ monster, onAdd }: { monster: Monster, onAdd: (m: Monster) => void }) => (
-    <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 hover:border-amber-600/50 transition-all group flex flex-col justify-between h-full">
-        <div>
-            <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-amber-500 group-hover:text-amber-400 transition-colors truncate pr-2" title={monster.name}>{monster.name}</h3>
-                <span className="text-[10px] bg-stone-800 px-2 py-0.5 rounded text-stone-400 uppercase shrink-0">{monster.cr !== '0' ? `ND ${monster.cr}` : 'ND 0'}</span>
+    <div className="bg-stone-900 border border-stone-800 rounded-xl p-0 hover:border-amber-600/50 transition-all group flex flex-col h-full overflow-hidden shadow-xl">
+        <div className="relative h-72 w-full bg-stone-950 overflow-hidden shrink-0 cursor-zoom-in">
+            {monster.imageUrl ? (
+                <img 
+                    src={monster.imageUrl} 
+                    alt={monster.name} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-80 group-hover:opacity-100"
+                    referrerPolicy="no-referrer"
+                />
+            ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-stone-700 bg-stone-900/50">
+                    <Ghost size={64} className="mb-2 opacity-50" />
+                    <span className="text-xs uppercase font-bold tracking-widest">Sem Ilustração</span>
+                </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-transparent to-transparent opacity-60"></div>
+            <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
+                <span className="text-[10px] bg-amber-600 px-2 py-1 rounded text-white font-bold uppercase shadow-lg border border-amber-500/50">{monster.cr !== '0' ? `ND ${monster.cr}` : 'ND 0'}</span>
+                <span className="text-[10px] bg-stone-800/80 px-2 py-1 rounded text-stone-300 font-bold uppercase shadow-lg border border-stone-700/50 flex items-center gap-1">
+                    <Ghost size={10} /> {monster.type}
+                </span>
             </div>
-            <p className="text-xs text-stone-500 italic mb-3 truncate">{monster.type}</p>
-            <div className="grid grid-cols-2 gap-2 text-[10px] text-stone-400">
-                <div className="flex justify-between border-b border-stone-800 pb-1">
-                    <span>CA</span>
-                    <span className="text-stone-200">{monster.ac}</span>
-                </div>
-                <div className="flex justify-between border-b border-stone-800 pb-1">
-                    <span>PV</span>
-                    <span className="text-stone-200">{monster.hp}</span>
-                </div>
+            <div className="absolute bottom-3 left-4 right-4">
+                 <h3 className="font-cinzel text-xl font-bold text-amber-500 group-hover:text-amber-400 transition-colors drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" title={monster.name}>{monster.name}</h3>
             </div>
         </div>
-        <button 
-            onClick={() => onAdd(monster)}
-            className="mt-4 w-full py-2 bg-stone-800 hover:bg-amber-600 text-stone-300 hover:text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2"
-        >
-            <Plus size={14} /> Adicionar
-        </button>
+        
+        <div className="p-5 flex-1 flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-stone-950/50 p-2 rounded border border-stone-800 flex flex-col items-center">
+                    <span className="text-[9px] uppercase tracking-tighter text-stone-500 font-bold">CA</span>
+                    <span className="text-stone-100 font-mono text-xl">{monster.ac}</span>
+                </div>
+                <div className="bg-stone-950/50 p-2 rounded border border-stone-800 flex flex-col items-center">
+                    <span className="text-[9px] uppercase tracking-tighter text-stone-500 font-bold">HP</span>
+                    <span className="text-stone-100 font-mono text-xl">{monster.hp}</span>
+                </div>
+            </div>
+
+            {/* Ações */}
+            <div className="space-y-2">
+                <h4 className="text-[10px] uppercase font-black tracking-widest text-stone-500 border-b border-stone-800 pb-1 flex justify-between items-center">
+                    Ações <span>{monster.actions.length}</span>
+                </h4>
+                <div className="space-y-1 max-h-24 overflow-y-auto custom-scrollbar pr-1">
+                    {monster.actions.map((action, i) => (
+                        <div key={i} className="text-[11px] bg-stone-950/30 p-1.5 rounded border border-stone-800/50">
+                            <span className="text-amber-600/80 font-bold">{action.n}:</span> <span className="text-stone-400">+{action.hit} | {action.dmg}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Essência e Drops */}
+            <div className="grid grid-cols-2 gap-3 mt-auto pt-2 border-t border-stone-800">
+                <div className="flex flex-col gap-1">
+                    <span className="text-[9px] uppercase font-bold text-stone-500">Essência</span>
+                    <div className={`text-[10px] truncate ${monster.essence ? 'text-purple-400' : 'text-stone-600 italic'}`}>
+                        {monster.essence ? monster.essence.name : 'Nenhuma'}
+                    </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                    <span className="text-[9px] uppercase font-bold text-stone-500">Drops</span>
+                    <div className={`text-[10px] truncate ${monster.drops && monster.drops.length > 0 ? 'text-blue-400' : 'text-stone-600 italic'}`}>
+                        {monster.drops && monster.drops.length > 0 ? `${monster.drops.length} itens` : 'Nenhum'}
+                    </div>
+                </div>
+            </div>
+
+            <button 
+                onClick={() => onAdd(monster)}
+                className="w-full py-3 bg-amber-700/20 hover:bg-amber-600 text-amber-500 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 border border-amber-900/30 hover:border-amber-500 shadow-lg mt-2"
+            >
+                <Plus size={14} /> Incorporar Monstro
+            </button>
+        </div>
     </div>
 ));
 
@@ -51,6 +103,7 @@ export const NPCManager: React.FC<Props> = ({ npcs, monsters, onUpdate, onAdd, o
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showLibrary, setShowLibrary] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const activeNPC = npcs.find(n => n.id === activeId);
 
@@ -59,29 +112,59 @@ export const NPCManager: React.FC<Props> = ({ npcs, monsters, onUpdate, onAdd, o
     m.type.toLowerCase().includes(searchTerm.toLowerCase())
   ), [monsters, searchTerm]);
 
-  // Virtualization logic: Group monsters into rows of 3 (matching lg:grid-cols-3)
-  const itemsPerRow = 3;
+  // Virtualization logic: Group monsters into rows of 2 (matching xl:grid-cols-2)
+  const itemsPerRow = 2;
   const rows = useMemo(() => {
       const r = [];
       for (let i = 0; i < filteredMonsters.length; i += itemsPerRow) {
           r.push(filteredMonsters.slice(i, i + itemsPerRow));
       }
       return r;
-  }, [filteredMonsters]);
+  }, [filteredMonsters, itemsPerRow]);
 
   const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => (
-      <div style={style} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-1 pb-4">
+      <div style={style} className="grid grid-cols-1 xl:grid-cols-2 gap-6 px-1 pb-6">
           {rows[index].map(monster => (
-              <MonsterCard key={monster.id} monster={monster} onAdd={(m) => {
-                  onAddMonster(m);
-                  setShowLibrary(false);
-              }} />
+              <div key={monster.id} onClick={(e) => {
+                  // Capture click on image for zoom
+                  const target = e.target as HTMLElement;
+                  if (target.tagName === 'IMG' && monster.imageUrl) {
+                      setZoomedImage(monster.imageUrl);
+                      e.stopPropagation();
+                      return;
+                  }
+              }}>
+                <MonsterCard monster={monster} onAdd={(m) => {
+                    onAddMonster(m);
+                    setShowLibrary(false);
+                }} />
+              </div>
           ))}
       </div>
   );
 
   return (
     <div className="flex h-full">
+      {/* Zoom Modal */}
+      {zoomedImage && (
+          <div 
+            className="fixed inset-0 z-[100] bg-black/90 p-4 md:p-12 flex items-center justify-center cursor-zoom-out animate-in fade-in zoom-in duration-300"
+            onClick={() => setZoomedImage(null)}
+          >
+              <button 
+                className="absolute top-6 right-6 p-3 bg-stone-900/50 hover:bg-stone-800 rounded-full text-white transition-all hover:scale-110 z-10"
+                onClick={() => setZoomedImage(null)}
+              >
+                  <Plus size={32} className="rotate-45" />
+              </button>
+              <img 
+                src={zoomedImage} 
+                alt="Enlarged monster" 
+                className="max-w-full max-h-full object-contain shadow-2xl rounded-lg"
+                referrerPolicy="no-referrer"
+              />
+          </div>
+      )}
       {/* Sidebar List */}
       <aside className="w-64 bg-stone-900 border-r border-stone-800 flex flex-col z-20 shadow-lg shrink-0">
         <div className="p-3 border-b border-stone-800 flex justify-between items-center bg-stone-950">
@@ -161,12 +244,12 @@ export const NPCManager: React.FC<Props> = ({ npcs, monsters, onUpdate, onAdd, o
                       />
                   </div>
 
-                  <div className="flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-hidden" id="monster-list-container">
                       {filteredMonsters.length > 0 ? (
                           <List
-                            style={{ height: 500, width: '100%' }}
+                            style={{ height: '100%', width: '100%' }}
                             rowCount={rows.length}
-                            rowHeight={180}
+                            rowHeight={650}
                             className="custom-scrollbar"
                             rowComponent={Row}
                             rowProps={{} as any}

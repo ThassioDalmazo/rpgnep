@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo, useCallback, Fragment } from 'react';
 import { GoogleGenAI } from "@google/genai";
+import { motion, AnimatePresence } from 'framer-motion';
 import { Monster, EncounterParticipant, LogEntry, Character, MapConfig } from '../types';
 import { SPELLS_DB, COMMON_WEAPONS } from '../constants';
-import { Search, Shield, Ghost, Sword, Play, ArrowDownUp, Dices, Crosshair, Minus, ChevronsUp, ChevronsDown, Trash2, Activity, Sparkles, Wand2, ScrollText, Star, X, Plus, Pencil, Users, Axe, Book, Zap, Eye, BrainCircuit, Loader2, Backpack, Tag, Hand, Info, Skull, Heart, Move, ChevronDown, List, Target, History, Cross, Clock, Calculator, Save, GripVertical, RotateCcw, RefreshCw, Check, Cloud, Wind } from 'lucide-react';
+import { Search, Shield, Ghost, Sword, Play, ArrowDownUp, Dices, Crosshair, Minus, ChevronsUp, ChevronsDown, Trash2, Activity, Sparkles, Wand2, ScrollText, Star, X, Plus, Pencil, Users, Axe, Book, Zap, Eye, BrainCircuit, Loader2, Backpack, Tag, Hand, Info, Skull, Heart, Move, ChevronDown, List, Target, History, Cross, Clock, Calculator, Save, GripVertical, RotateCcw, RefreshCw, Check, Cloud, Wind, Flame, MinusCircle } from 'lucide-react';
 import { List as ListWindow } from 'react-window';
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
   addLog: (title: string, details: string, type?: LogEntry['type']) => void;
   clearLogs?: () => void;
   characters: Character[];
+  setCharacters: React.Dispatch<React.SetStateAction<Character[]>>;
   monsters: Monster[];
   setMonsters: (m: Monster[]) => void;
   turnIndex: number;
@@ -38,6 +40,7 @@ interface Props {
   }>>;
   setConfirmModal?: (modal: {message: string, onConfirm: () => void, onCancel?: () => void} | null) => void;
   onImportMonsterDrive?: () => void;
+  onViewNPC?: (char: Character) => void;
 }
 
 const CR_XP: Record<string, number> = {
@@ -81,7 +84,7 @@ const getMulti = (n: number) => {
     return 4;
 };
 
-export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = [], addLog, clearLogs, characters = [], monsters = [], setMonsters, turnIndex, setTurnIndex, targetUid, setTargetUid, compact = false, onAddCombatant, round = 1, setRound, turnCounter = 0, setTurnCounter, npcs = [], permissions, setPermissions, setConfirmModal, onImportMonsterDrive }) => {
+export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = [], addLog, clearLogs, characters = [], setCharacters, monsters = [], setMonsters, turnIndex, setTurnIndex, targetUid, setTargetUid, compact = false, onAddCombatant, round = 1, setRound, turnCounter = 0, setTurnCounter, npcs = [], permissions, setPermissions, setConfirmModal, onImportMonsterDrive, onViewNPC }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [libraryTab, setLibraryTab] = useState<'party' | 'bestiary' | 'spells' | 'weapons' | 'abilities' | 'npcs' | 'permissions' | 'assets'>('party');
   const [localAssets, setLocalAssets] = useState<string[]>([]);
@@ -162,6 +165,12 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
 
   // Inspection State
   const [inspectingUid, setInspectingUid] = useState<number | null>(null);
+  const [previewMonster, setPreviewMonster] = useState<EncounterParticipant | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  
+  // Loot State
+  const [lootResult, setLootResult] = useState<{ mobName: string, essence?: any, drops: any[] } | null>(null);
+  const [lootReceiverId, setLootReceiverId] = useState<string>(characters[0]?.id || '');
   
   // Conditions Modal
   const [conditionModalUid, setConditionModalUid] = useState<number | null>(null);
@@ -412,7 +421,25 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
 
   const removeFromEncounter = (uid: number) => {
     const mob = encounter.find(e => e.uid === uid);
-    if (mob && CR_XP[mob.cr]) { const xp = CR_XP[mob.cr]; setSessionXp(sessionXp + xp); addLog('XP', `${mob.name} derrotado. +${xp} XP`, 'info'); }
+    if (mob) {
+      if (CR_XP[mob.cr]) { 
+        const xp = CR_XP[mob.cr]; 
+        setSessionXp(sessionXp + xp); 
+        addLog('XP', `${mob.name} derrotado. +${xp} XP`, 'info'); 
+      }
+      
+      // Lógica de Loot
+      const dropEssence = mob.essence && Math.random() < 0.3;
+      const drops = mob.drops || [];
+      
+      if (dropEssence || drops.length > 0) {
+          setLootResult({
+              mobName: mob.name,
+              essence: dropEssence ? mob.essence : undefined,
+              drops: drops
+          });
+      }
+    }
     setEncounter(encounter.filter(e => e.uid !== uid));
     if (targetUid === uid) setTargetUid(null);
     if (expandedUid === uid) setExpandedUid(null);
@@ -632,6 +659,19 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
                       </div>
                   </div>
                   <div className="flex gap-1.5 shrink-0">
+                      <button onClick={() => {
+                          const p: EncounterParticipant = { 
+                              ...m, 
+                              uid: -1, 
+                              hpCurrent: m.hp, 
+                              hpMax: m.hp, 
+                              initiative: 0, 
+                              conditions: [], 
+                              attributes: m.attributes || { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 } 
+                          };
+                          setPreviewMonster(p);
+                          setInspectingUid(-1);
+                      }} className="text-stone-600 hover:text-amber-400 p-2 bg-stone-950/50 rounded-lg hover:bg-stone-950 transition-all border border-transparent hover:border-stone-800"><Eye size={14}/></button>
                       <button onClick={() => setEditingMonster(m)} className="text-stone-600 hover:text-blue-400 p-2 bg-stone-950/50 rounded-lg hover:bg-stone-950 opacity-0 group-hover:opacity-100 transition-all border border-transparent hover:border-stone-800"><Pencil size={14}/></button>
                       <button onClick={() => internalAddToEncounter(m)} className="text-stone-500 hover:text-amber-400 p-2 bg-stone-950/50 rounded-lg hover:bg-stone-950 border border-transparent hover:border-stone-800 transition-all shadow-lg"><Plus size={18}/></button>
                   </div>
@@ -642,40 +682,51 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
 
   const renderInspector = () => {
       if (!inspectingUid) return null;
-      const participant = encounter.find(e => e.uid === inspectingUid);
+      const participant = inspectingUid === -1 ? previewMonster : encounter.find(e => e.uid === inspectingUid);
       if (!participant) return null;
       return (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-end z-[100]" onClick={() => setInspectingUid(null)}>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-end z-[100]" onClick={() => { setInspectingUid(null); setPreviewMonster(null); }}>
               <div className="w-[400px] h-full bg-[#1c1c21] border-l border-amber-600/30 shadow-2xl animate-in slide-in-from-right overflow-y-auto flex flex-col" onClick={e => e.stopPropagation()}>
                   <div className="p-4 bg-[#151518] border-b border-[#333] flex justify-between items-center">
-                      <h3 className="font-bold text-amber-500 truncate">{participant.name}</h3>
-                      <button onClick={() => setInspectingUid(null)}><X className="text-white"/></button>
+                      <h3 className="font-bold text-amber-500 truncate">{participant.name} {inspectingUid === -1 && <span className="text-[10px] bg-stone-800 px-1.5 py-0.5 rounded ml-2 text-stone-500">PREVIEW</span>}</h3>
+                      <button onClick={() => { setInspectingUid(null); setPreviewMonster(null); }}><X className="text-white"/></button>
                   </div>
                   <div className="p-4 space-y-4">
-                      <div className="flex gap-4">
-                          <div className="w-20 h-20 bg-black rounded border border-[#333] overflow-hidden">
+                      <div className="relative group/inspector cursor-zoom-in" onClick={() => participant.imageUrl && setZoomedImage(participant.imageUrl)}>
+                          <div className="w-full h-48 bg-stone-950 rounded-xl border border-stone-800 overflow-hidden relative shadow-inner">
                               {participant.imageUrl ? (
                                   <img 
                                       src={participant.imageUrl} 
                                       loading="lazy"
-                                      className="w-full h-full object-contain"
+                                      className="w-full h-full object-contain transition-transform duration-500 group-hover/inspector:scale-110"
                                       style={{
                                           transform: `translate(${participant.imageConfig?.x || 0}%, ${participant.imageConfig?.y || 0}%) scale(${participant.imageConfig?.scale || 1}) rotate(${participant.imageConfig?.rotation || 0}deg)`
                                       }}
+                                      referrerPolicy="no-referrer"
                                   />
                               ) : (
-                                  <Ghost className="w-full h-full p-4 text-stone-600"/>
+                                  <Ghost className="w-full h-full p-12 text-stone-800 opacity-30"/>
                               )}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover/inspector:opacity-100 transition-opacity flex items-end justify-center pb-4">
+                                  <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full backdrop-blur-md">Clique para Ampliar</span>
+                              </div>
                           </div>
-                          <div>
-                              <div className="text-xs text-stone-500 uppercase font-bold">{participant.type} • {participant.cr}</div>
-                              <div className="text-2xl font-bold text-white">{participant.hpCurrent} <span className="text-sm text-stone-500">/ {participant.hpMax} PV</span></div>
-                              <div className="text-sm text-blue-400 font-bold">CA {participant.ac}</div>
+                      </div>
+
+                      <div>
+                          <div className="text-xs text-stone-500 uppercase font-bold text-center mb-1">{participant.type} • {participant.cr}</div>
+                          <div className="text-3xl font-black text-white text-center mb-2">{participant.hpCurrent} <span className="text-sm text-stone-500 font-normal">/ {participant.hpMax} PV</span></div>
+                          <div className="flex justify-center gap-4">
+                              <div className="px-4 py-1 bg-blue-900/30 border border-blue-500/30 rounded-full text-blue-400 font-bold text-sm leading-none flex items-center gap-2">
+                                 <Shield size={14}/> CA {participant.ac}
+                              </div>
                           </div>
                       </div>
                       
                       <div className="bg-[#222] p-2 rounded border border-[#333]">
-                          <div className="text-[10px] uppercase font-bold text-stone-500 mb-2">Ações & Ataques</div>
+                          <div className="text-[10px] uppercase font-bold text-stone-500 mb-2 flex items-center gap-2">
+                              <Sword size={12}/> Ações & Ataques
+                          </div>
                           <div className="space-y-1">
                               {participant.actions?.map((a, i) => (
                                   <div key={i} className="flex justify-between items-center bg-[#1a1a1d] p-2 rounded border border-[#333]">
@@ -686,6 +737,52 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
                               {(!participant.actions || participant.actions.length === 0) && <div className="text-xs text-stone-600 italic">Sem ações.</div>}
                           </div>
                       </div>
+
+                      {participant.essence && (
+                          <div className="bg-indigo-950/20 p-2 rounded border border-indigo-500/30">
+                              <div className="text-[10px] uppercase font-black text-indigo-400 mb-2 flex items-center gap-2">
+                                  <Book size={12}/> Grimório da Alma
+                              </div>
+                              <div className="bg-indigo-950/40 p-3 rounded-lg border border-indigo-500/20">
+                                  <div className="text-xs font-black text-indigo-100 uppercase tracking-wider mb-1">{participant.essence.name}</div>
+                                  <div className="text-[10px] text-indigo-300/80 italic mb-2">Bônus: +{participant.essence.attributeBonus.value} {participant.essence.attributeBonus.attr.toUpperCase()}</div>
+                                  <div className="space-y-2">
+                                      <div>
+                                          <div className="text-[9px] font-bold text-indigo-400 uppercase tracking-tighter">Passiva: {participant.essence.passive.name}</div>
+                                          <div className="text-[10px] text-indigo-200 leading-tight">{participant.essence.passive.desc}</div>
+                                      </div>
+                                      <div>
+                                          <div className="text-[9px] font-bold text-indigo-400 uppercase tracking-tighter">Ativa: {participant.essence.active.name} ({participant.essence.active.limit})</div>
+                                          <div className="text-[10px] text-indigo-200 leading-tight">{participant.essence.active.desc}</div>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      )}
+
+                      {participant.drops && participant.drops.length > 0 && (
+                          <div className="bg-stone-900/50 p-2 rounded border border-stone-800">
+                              <div className="text-[10px] uppercase font-black text-stone-500 mb-2 flex items-center gap-2">
+                                  <Backpack size={12}/> Inventário de Espólios
+                              </div>
+                              <div className="space-y-1">
+                                  {participant.drops.map((drop, i) => (
+                                      <div key={i} className="bg-stone-950/40 p-2 rounded border border-stone-800 flex items-center gap-3">
+                                          <div className="w-6 h-6 bg-stone-800 rounded flex items-center justify-center text-amber-500/50 text-[10px]">
+                                              <Tag size={10}/>
+                                          </div>
+                                          <div className="flex-1">
+                                              <div className="text-[11px] font-bold text-stone-300">{drop.n}</div>
+                                              <div className="text-[9px] text-stone-600 truncate">{drop.d}</div>
+                                          </div>
+                                          <div className="text-[8px] bg-stone-900 px-1.5 py-0.5 rounded text-stone-500 uppercase font-bold border border-stone-800">
+                                              {drop.r}
+                                          </div>
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+                      )}
 
                       {participant.traits && participant.traits.length > 0 && (
                           <div className="bg-[#222] p-2 rounded border border-[#333]">
@@ -739,7 +836,27 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
   };
 
   return (
-    <div className="flex flex-col h-full bg-stone-950 text-stone-200 font-sans overflow-hidden">
+    <div className="flex flex-col h-full bg-stone-950 text-stone-200 font-sans relative overflow-hidden">
+      {/* Zoom Modal */}
+      {zoomedImage && (
+          <div 
+            className="fixed inset-0 z-[1001] bg-black/95 p-4 md:p-12 flex items-center justify-center cursor-zoom-out animate-in fade-in zoom-in duration-300"
+            onClick={() => setZoomedImage(null)}
+          >
+              <img 
+                src={zoomedImage} 
+                alt="Zoomed" 
+                className="max-w-full max-h-full object-contain shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-lg"
+                referrerPolicy="no-referrer"
+              />
+              <button 
+                  className="absolute top-6 right-6 text-white bg-stone-800/80 p-2 rounded-full hover:bg-stone-700 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }}
+              >
+                  <Plus size={32} className="rotate-45" />
+              </button>
+          </div>
+      )}
       {renderInspector()}
 
       {/* Dashboard Header (Desktop Only) */}
@@ -1086,7 +1203,10 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
                                         </div>
                                         <div className="text-xs font-bold text-green-400">{char.name}</div>
                                     </div>
-                                    <button onClick={() => internalAddCharToEncounter(char)} className="text-stone-500 hover:text-green-400 p-1 bg-black/30 rounded hover:bg-black/50"><Plus size={14}/></button>
+                                    <div className="flex gap-1.5 items-center">
+                                        <button onClick={() => onViewNPC?.(char)} className="text-stone-500 hover:text-amber-400 p-1 bg-black/30 rounded hover:bg-black/50 transition-all"><Eye size={14}/></button>
+                                        <button onClick={() => internalAddCharToEncounter(char)} className="text-stone-500 hover:text-green-400 p-1 bg-black/30 rounded hover:bg-black/50 transition-all"><Plus size={14}/></button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -1698,6 +1818,135 @@ export const DMTools: React.FC<Props> = ({ encounter = [], setEncounter, logs = 
               </div>
           </div>
       )}
+
+      {/* Loot Modal */}
+      <AnimatePresence>
+        {lootResult && (
+            <div className="fixed inset-0 bg-stone-950/80 backdrop-blur-md flex items-center justify-center z-[120] p-4">
+                <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="bg-stone-900 border-2 border-amber-500/50 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl shadow-amber-500/10"
+                >
+                    <div className="bg-gradient-to-r from-amber-600 to-orange-700 p-6 flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm shadow-inner group overflow-hidden">
+                               <Sparkles className="text-white animate-pulse" size={24}/>
+                            </div>
+                            <div>
+                                <h3 className="font-cinzel font-black text-white text-lg leading-tight uppercase tracking-widest">Tesouros Descobertos</h3>
+                                <p className="text-[10px] text-white/70 uppercase tracking-tighter">Espólios de {lootResult.mobName}</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setLootResult(null)} className="text-white/50 hover:text-white transition-colors p-2 bg-black/20 rounded-full"><X size={18}/></button>
+                    </div>
+                    
+                    <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                        {lootResult.essence && (
+                            <div className="bg-indigo-950/40 border border-indigo-500/30 p-5 rounded-2xl relative overflow-hidden group">
+                                <div className="absolute -top-4 -right-4 w-20 h-20 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all"></div>
+                                <div className="flex items-center gap-3 mb-3">
+                                    <Ghost className="text-indigo-400" size={24}/>
+                                    <div className="font-black text-indigo-100 uppercase tracking-wider">Essência: {lootResult.essence.name}</div>
+                                </div>
+                                <div className="text-[10px] text-indigo-300 leading-relaxed mb-4 bg-indigo-900/40 p-3 rounded-xl border border-indigo-500/20 italic">
+                                    {lootResult.essence.passive.desc}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button 
+                                      onClick={() => {
+                                          setCharacters(prev => prev.map(c => {
+                                              if (c.id === lootReceiverId) {
+                                                  const inv = c.essenceInventory || [];
+                                                  const equip = c.equippedEssences || [];
+                                                  const maxSlots = Math.max(1, Math.floor((c.level || 1) / 4) + 1);
+                                                  
+                                                  const nextInv = [...inv, lootResult.essence.name || lootResult.essence.id];
+                                                  let nextEquip = equip;
+                                                  if (equip.length < maxSlots) {
+                                                      nextEquip = [...equip, lootResult.essence.name || lootResult.essence.id];
+                                                      addLog("Essência", `${c.name} equipou a essência de ${lootResult.mobName}!`, "magic");
+                                                  } else {
+                                                      addLog("Essência", `${c.name} coletou a essência de ${lootResult.mobName}.`, "magic");
+                                                  }
+                                                  return { ...c, essenceInventory: nextInv, equippedEssences: nextEquip };
+                                              }
+                                              return c;
+                                          }));
+                                          setLootResult(null);
+                                      }}
+                                      className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-indigo-900/50 flex items-center justify-center gap-2"
+                                    >
+                                        Reivindicar <Plus size={14}/>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {lootResult.drops && lootResult.drops.length > 0 && (
+                            <div className="space-y-3">
+                               <div className="text-[10px] font-black text-stone-500 uppercase tracking-[4px] mb-2 px-1">Itens e Materiais</div>
+                               {lootResult.drops.map((drop, i) => (
+                                  <div key={i} className="flex items-center justify-between bg-stone-800/50 p-3 rounded-xl border border-stone-700/50 group hover:border-amber-500/30 transition-all">
+                                      <div className="flex items-center gap-3">
+                                          <div className="w-8 h-8 bg-stone-700 rounded-lg flex items-center justify-center text-stone-400 group-hover:text-amber-500 transition-colors">
+                                              <Tag size={14}/>
+                                          </div>
+                                          <div>
+                                              <div className="text-xs font-bold text-stone-200">{drop.n}</div>
+                                              <div className="text-[9px] text-stone-500 uppercase tracking-tighter">Material de Criatura</div>
+                                          </div>
+                                      </div>
+                                      <button 
+                                          onClick={() => {
+                                              setCharacters(prev => prev.map(c => {
+                                                  if (c.id === lootReceiverId) {
+                                                      const currentInv = c.inventory || '';
+                                                      const nextInv = currentInv + (currentInv ? '\n' : '') + `- ${drop.n}`;
+                                                      addLog("Sistema", `${c.name} coletou ${drop.n}.`, "info");
+                                                      return { ...c, inventory: nextInv };
+                                                  }
+                                                  return c;
+                                              }));
+                                              // Remove items from loot list
+                                              setLootResult(prev => {
+                                                if (!prev) return null;
+                                                const nextDrops = prev.drops.filter((_, idx) => idx !== i);
+                                                if (nextDrops.length === 0 && !prev.essence) return null;
+                                                return { ...prev, drops: nextDrops };
+                                              });
+                                          }}
+                                          className="p-2 text-stone-500 hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition-all"
+                                      >
+                                          <Plus size={16}/>
+                                      </button>
+                                  </div>
+                               ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-6 bg-stone-800/50 border-t border-stone-700/50 space-y-3">
+                        <div className="text-[9px] font-black text-stone-500 uppercase tracking-widest text-center mb-1">Entregar Tesouros para:</div>
+                        <select 
+                          value={lootReceiverId}
+                          onChange={(e) => setLootReceiverId(e.target.value)}
+                          className="w-full bg-stone-900 border border-stone-700 rounded-xl py-2.5 px-4 text-xs text-stone-200 focus:outline-none focus:border-amber-500 transition-all shadow-inner outline-none"
+                        >
+                            {characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        <button 
+                          onClick={() => setLootResult(null)}
+                          className="w-full py-2.5 text-stone-500 hover:text-stone-300 transition-colors font-bold text-[10px] uppercase tracking-[3px]"
+                        >
+                            Encerrar Saque
+                        </button>
+                    </div>
+                </motion.div>
+            </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

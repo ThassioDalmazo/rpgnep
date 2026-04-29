@@ -18,6 +18,7 @@ const AdventureMode = lazy(() => import('./components/AdventureMode').then(modul
 import { User, Sun, Moon, Plus, Save, Upload, Zap, Globe, ShieldCheck, LogOut, Cloud, CloudOff, Loader2, Map as MapIcon, Settings, Sparkles, MessageSquare, PlayCircle, WifiOff, AlertTriangle, Key, Link as LinkIcon, Lock, Unlock, Users, Mail, UserCheck, X, Download, FileUp, FileText, LayoutDashboard, Menu, RotateCcw, PanelLeftClose, PanelLeftOpen, BookOpen, PanelRightOpen, PanelRightClose, Dices, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DEFAULT_MONSTERS, INITIAL_CHAR } from './constants';
+import { BACKUP_MONSTERS } from './monsterData';
 
 import { auth, googleProvider, db, isDriveConfigured } from './firebaseConfig';
 
@@ -220,7 +221,8 @@ export default function App() {
   
   const [characters, setCharacters] = useState<Character[]>([{ ...INITIAL_CHAR, id: generateId() }]);
   const [npcs, setNpcs] = useState<Character[]>([]); 
-  const [monsters, setMonsters] = useState<Monster[]>(DEFAULT_MONSTERS);
+  const [previewingNPC, setPreviewingNPC] = useState<Character | null>(null);
+  const [monsters, setMonsters] = useState<Monster[]>(BACKUP_MONSTERS);
   const [activeCharIndex, setActiveCharIndex] = useState(0);
   const [encounter, setEncounter] = useState<EncounterParticipant[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -808,6 +810,12 @@ export default function App() {
       const safeType = type || 'info';
       const entry: LogEntry = { id: Date.now(), title, details, timestamp: new Date(), type: safeType, author: username };
       setLogs(prev => [entry, ...prev]);
+      
+      // Integrate with Chat as requested
+      if (title !== 'Sistema') {
+        broadcastChat(`[${title.toUpperCase()}] ${details}`);
+      }
+
       if (roomName && db && isCloudSyncEnabled) {
           const cleanRoom = sanitizeRoomName(roomName);
           const newLogRef = push(ref(db, `campaigns/${cleanRoom}/logs`));
@@ -1099,16 +1107,68 @@ export default function App() {
   }, [encounter, turnIndex, mapTokens]);
 
     const handleAddMonsterAsNPC = (monster: Monster) => {
+        const dexMod = Math.floor(((monster.attributes?.dex || 10) - 10) / 2);
+        
+        // Handle fractional CRs (1/2, 1/4, 1/8)
+        let level = 1;
+        if (monster.cr.includes('/')) {
+            level = 1; // Fractional CRs are treated as level 1 for prof bonus purposes usually
+        } else {
+            level = parseInt(monster.cr) || 1;
+        }
+
         const newNPC: Character = {
             ...INITIAL_CHAR,
             id: generateId(),
             name: monster.name,
             race: monster.type,
-            level: parseInt(monster.cr) || 0,
+            level: level,
             ac: monster.ac,
             hp: { current: monster.hp, max: monster.hp, temp: 0 },
             attributes: monster.attributes ? { ...monster.attributes } : { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
-            imageUrl: monster.imageUrl || ""
+            initiative: dexMod,
+            imageUrl: monster.imageUrl || "",
+            essence: monster.essence ? (typeof monster.essence === 'string' ? monster.essence : JSON.stringify(monster.essence)) : "",
+            drops: monster.drops ? (typeof monster.drops === 'string' ? monster.drops : JSON.stringify(monster.drops)) : "",
+            spells: {
+                ...INITIAL_CHAR.spells,
+                castingStat: monster.spellList && monster.spellList.length > 0 ? 'wis' : 'int'
+            },
+            customWeapons: monster.actions?.map(a => ({
+                n: a.n,
+                dmg: a.dmg,
+                prop: `Bônus: +${a.hit}`
+            })) || [],
+            customSpells: [
+                ...(monster.spellList?.map(s => ({
+                    name: s.name,
+                    level: s.level.toString(),
+                    desc: s.description,
+                    school: s.school,
+                    castingTime: s.castingTime,
+                    range: s.range,
+                    components: s.components,
+                    duration: s.duration,
+                    concentration: s.concentration
+                })) || []),
+                ...(monster.spells?.map(s => {
+                    // Try to extract some info from the spell string if possible, otherwise generic
+                    // Format: "Name (damage)" or just "Name"
+                    const name = s.split('(')[0].trim();
+                    return {
+                        name: name,
+                        level: "0",
+                        desc: s,
+                        castingTime: "1 Ação",
+                        duration: "Instantânea"
+                    };
+                }) || [])
+            ],
+            bio: {
+                ...INITIAL_CHAR.bio,
+                traits: monster.traits?.map(t => `${t.n}: ${t.d}`).join('\n') || "",
+                features: monster.legendaryActions ? `Ações Lendárias:\n${monster.legendaryActions.map(a => `${a.n}: ${a.d}`).join('\n')}` : ""
+            }
         };
         setNpcs(prev => [...prev, newNPC]);
         showToast(`${monster.name} adicionado aos NPCs.`);
@@ -1326,7 +1386,6 @@ export default function App() {
                     { id: 'VTT', icon: MapIcon, label: 'Mapa' },
                     { id: 'DM', icon: ShieldCheck, label: 'Mestre' },
                     { id: 'GM_DASHBOARD', icon: LayoutDashboard, label: 'Painel GM' },
-                    { id: 'CHAT', icon: MessageSquare, label: 'Chat' },
                     { id: 'ADVENTURE', icon: PlayCircle, label: 'Aventura' }
                 ].map((item) => (
                     <button 
@@ -1548,7 +1607,6 @@ export default function App() {
                 { id: 'NPC', icon: Users, label: 'NPCs' },
                 { id: 'VTT', icon: MapIcon, label: 'Mapa' },
                 { id: 'DM', icon: ShieldCheck, label: 'Mestre' },
-                { id: 'CHAT', icon: MessageSquare, label: 'Chat' },
                 { id: 'ADVENTURE', icon: PlayCircle, label: 'Aventura' }
             ].map((item) => (
                 <button 
@@ -1660,7 +1718,6 @@ export default function App() {
                                 const r1 = Math.floor(Math.random() * d) + 1;
                                 const total = r1 + mod;
                                 addLogEntry(label, `${activeChar.name} rolou ${label}: [${r1}] + ${mod} = ${total}`, r1 === 20 ? 'crit' : r1 === 1 ? 'fail' : 'dice');
-                                broadcastChat(`🎲 Rolou ${label}: [${r1}]${mod>=0?'+':''}${mod} = **${total}**`);
                             }}
                             onDelete={() => {
                                 if(characters.length <= 1) { showToast("Você precisa ter pelo menos um personagem."); return; }
@@ -1697,7 +1754,6 @@ export default function App() {
                                     const r1 = Math.floor(Math.random() * d) + 1;
                                     const total = r1 + mod;
                                     addLogEntry(label, `Mestre rolou ${label}: [${r1}] + ${mod} = ${total}`, 'dice');
-                                    broadcastChat(`🎲 Mestre rolou ${label}: [${r1}]${mod>=0?'+':''}${mod} = **${total}**`);
                                 }}
                                 setConfirmModal={setConfirmModal}
                             />
@@ -1783,6 +1839,7 @@ export default function App() {
                             addLog={addLogEntry}
                             clearLogs={clearLogs}
                             characters={characters}
+                            setCharacters={setCharacters}
                             npcs={npcs}
                             monsters={monsters}
                             setMonsters={setMonsters}
@@ -1798,6 +1855,7 @@ export default function App() {
                             setPermissions={setPermissions}
                             setConfirmModal={setConfirmModal}
                             onImportMonsterDrive={handleImportMonsterDrive}
+                            onViewNPC={setPreviewingNPC}
                         />
                     </Suspense>
                 </div>
@@ -1849,6 +1907,7 @@ export default function App() {
                                 addLog={addLogEntry}
                                 clearLogs={clearLogs}
                                 characters={characters}
+                                setCharacters={setCharacters}
                                 npcs={npcs}
                                 monsters={monsters}
                                 setMonsters={setMonsters}
@@ -1865,6 +1924,7 @@ export default function App() {
                                 setPermissions={setPermissions}
                                 setConfirmModal={setConfirmModal}
                                 onImportMonsterDrive={handleImportMonsterDrive}
+                                onViewNPC={setPreviewingNPC}
                             />
                         </div>
 
@@ -2249,6 +2309,48 @@ export default function App() {
                     />
                     <div className="bg-stone-900/50 p-2 text-[10px] text-stone-500 text-center border-t border-stone-800 font-bold uppercase tracking-widest">
                         Sincronizado automaticamente
+                    </div>
+                </div>
+            )}
+            {previewingNPC && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="bg-stone-50 w-full max-w-6xl h-[90vh] rounded-3xl overflow-hidden shadow-2xl relative border-4 border-stone-800">
+                        <button 
+                            onClick={() => setPreviewingNPC(null)}
+                            className="absolute top-4 right-4 z-[110] p-2 bg-stone-800 text-white rounded-full hover:bg-red-600 transition-all shadow-xl"
+                        >
+                            <X size={24}/>
+                        </button>
+                        <div className="h-full overflow-y-auto no-scrollbar">
+                           <CharacterSheetMemo 
+                                char={previewingNPC} 
+                                setChar={(c: any) => {
+                                    if (typeof c === 'function') {
+                                        setPreviewingNPC(prev => prev ? c(prev) : null);
+                                        setNpcs(prev => prev.map(n => n.id === previewingNPC.id ? c(n) : n));
+                                    } else {
+                                        setPreviewingNPC(c);
+                                        setNpcs(prev => prev.map(n => n.id === previewingNPC.id ? c : n));
+                                    }
+                                }} 
+                                isNPC={true}
+                                onRoll={(d: number, mod: number, label: string) => {
+                                    const r1 = Math.floor(Math.random() * d) + 1;
+                                    const total = r1 + mod;
+                                    addLogEntry(label, `${previewingNPC.name} rolou ${label}: [${r1}] + ${mod} = ${total}`, r1 === 20 ? 'crit' : r1 === 1 ? 'fail' : 'dice');
+                                }}
+                                onDelete={() => {
+                                    setConfirmModal({
+                                        message: `Excluir ${previewingNPC.name}?`,
+                                        onConfirm: () => {
+                                            setNpcs(prev => prev.filter(n => n.id !== previewingNPC.id));
+                                            setPreviewingNPC(null);
+                                            setConfirmModal(null);
+                                        }
+                                    });
+                                }}
+                            />
+                        </div>
                     </div>
                 </div>
             )}
